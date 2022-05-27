@@ -12,8 +12,6 @@ class Qemu:
         self.pytestconfig = pytestconfig
 
     def start(self):
-        target = "x86"
-        subtarget = "64"
         target, subtarget = self.pytestconfig.getoption('target').split("/")
         qemu_cmd = (
             f"./scripts/qemustart {target} {subtarget} --netdev user,id=wan "
