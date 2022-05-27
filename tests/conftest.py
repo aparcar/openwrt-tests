@@ -22,6 +22,7 @@ class Qemu:
         self.child.send("\n")
 
     def stop(self):
+        self.child.close(force=True)
         self.child = None
 
     def send_cmd(self, cmd):
