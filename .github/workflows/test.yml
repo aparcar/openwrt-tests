@@ -1,0 +1,50 @@
+name: QEMU test
+on:
+  - pull_request
+
+jobs:
+  test:
+    name: Test OpenWrt QEMU script
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: malta/be
+            file: openwrt-malta-be-vmlinux-initramfs.elf
+
+          - target: x86/64
+            file: openwrt-x86-64-generic-squashfs-combined.img.gz
+
+          - target: armvirt/64
+            file: openwrt-armvirt-64-Image-initramfs
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install \
+            python3-pexpect \
+            python3-pytest \
+            qemu-system-arm \
+            qemu-system-mips \
+            qemu-system-x86
+
+      - name: Setup qemustart
+        run: |
+          mkdir scripts/
+          wget https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/qemustart \
+            --output-document ./scripts/qemustart
+          chmod +x ./scripts/qemustart
+      
+      - name: Download file
+        run: |
+          mkdir -p bin/targets/${{ matrix.target }}
+          wget https://downloads.openwrt.org/snapshots/targets/${{ matrix.target }}/${{ matrix.file }} \
+            --output-document bin/targets/${{ matrix.target }}/${{ matrix.file }}
+
+
+      - name: Run test
+        run: pytest-3 --target ${{ matrix.target }}
