@@ -22,11 +22,7 @@ class Qemu:
             "-netdev user,id=lan,net=192.168.1.0/24,dhcpstart=192.168.1.100,restrict=yes,hostfwd=tcp::8022-:22 "
             "-net nic,netdev=wan -net nic,netdev=lan -device virtio-rng-pci"
         )
-        qemu_cmd = (
-            f"./scripts/qemustart {target} {subtarget} --netdev user,id=wan "
-            "-netdev user,id=lan,net=192.168.1.0/24,dhcpstart=192.168.1.100,restrict=yes "
-            "-net nic,netdev=wan -net nic,netdev=lan -device virtio-rng-pci"
-        )
+
         self.child = pexpect.spawn(qemu_cmd, logfile=sys.stdout.buffer)
         self.child.expect("Please press Enter to activate this console.", timeout=80)
         self.child.expect("link becomes ready", timeout=90)
