@@ -38,6 +38,9 @@ class Qemu:
             self.child.expect(expect)
         self.child.expect(":/#")
 
+    def expect(self, expect):
+        self.child.expect(expect)
+
 
 @pytest.fixture
 def dut(pytestconfig):

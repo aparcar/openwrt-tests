@@ -33,7 +33,8 @@ pytest tests/ --target malta/be
 The framework uses `pexpect` to execute commands and evaluate the output. Test
 cases use a *Pytest Fixture* called `dut`. The object offers the function
 `dut.send_cmd(command, expect=None)`. It sends a command to the device and if
-`expect` is defined, checks for the specified output.
+`expect` is defined, checks for the specified output. It's also possible to
+expect multiple lines by calling `dut.expect(expect)` directly.
 
 An example below runs `uname -a` and checks that the device is running
 *GNU/Linux*
