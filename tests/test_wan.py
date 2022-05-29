@@ -30,7 +30,7 @@ def test_download(dut):
         "Download completed ",
     )
 
-    dut.send_cmd("rm index.html", "")
+    dut.send_cmd("rm index.html")
 
     check_https_download(
         dut,
@@ -38,13 +38,15 @@ def test_download(dut):
         "Download completed ",
     )
 
-    dut.send_cmd("rm index.html", "")
+    dut.send_cmd("rm index.html")
 
     check_https_download(
         dut,
         "https://www.mozilla.org/",
         "Download completed ",
     )
+
+    dut.send_cmd("rm en-US")
 
     check_https_download(
         dut,
