@@ -1,10 +1,16 @@
 name: QEMU test
 on:
-  - pull_request
+  pull_request:
+  push:
+  schedule:
+    - cron: '0 0 * * *'
+
+env:
+  PYTHONUNBUFFERED: "1"
 
 jobs:
   test:
-    name: Test OpenWrt QEMU script
+    name: Test OpenWrt QEMU
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -12,12 +18,15 @@ jobs:
         include:
           - target: malta/be
             file: openwrt-malta-be-vmlinux-initramfs.elf
+            qemu_bin: qemu-system-mips
 
           - target: x86/64
             file: openwrt-x86-64-generic-squashfs-combined.img.gz
+            qemu_bin: qemu-system-x86_64
 
-          - target: armvirt/64
-            file: openwrt-armvirt-64-Image-initramfs
+          - target: armsr/armv8
+            file: openwrt-armsr-armv8-generic-initramfs-kernel.bin
+            qemu_bin: qemu-system-aarch64
 
     steps:
       - name: Check out repository code
@@ -27,25 +36,29 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install \
-            python3-pexpect \
-            python3-pytest \
-            qemu-system-arm \
+            python3-pip \
+            qemu-system-aarch64 \
             qemu-system-mips \
             qemu-system-x86
 
-      - name: Setup qemustart
+      - name: Install project dependencies
         run: |
-          mkdir scripts/
-          wget https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/qemustart \
-            --output-document ./scripts/qemustart
-          chmod +x ./scripts/qemustart
-      
-      - name: Download file
-        run: |
-          mkdir -p bin/targets/${{ matrix.target }}
-          wget https://downloads.openwrt.org/snapshots/targets/${{ matrix.target }}/${{ matrix.file }} \
-            --output-document bin/targets/${{ matrix.target }}/${{ matrix.file }}
+          pip3 install poetry
+          poetry install
 
+      - name: Download test firmware
+        run: |
+          wget https://downloads.openwrt.org/snapshots/targets/${{ matrix.target }}/${{ matrix.file }} \
+            --output-document ${{ matrix.file }}
 
       - name: Run test
-        run: pytest-3 --target ${{ matrix.target }}
+        run: |
+          export LG_QEMU_BIN=$(which ${{ matrix.qemu_bin }})
+          
+          # unpack gzip image if exists
+          if [[ ${{ matrix.file }} == *.gz ]]; then
+            gunzip ${{ matrix.file }} || true
+          fi
+
+          target=${{ matrix.target }}
+          poetry run pytest --lg-env target_${target/\//-}.yaml

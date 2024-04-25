@@ -1,16 +1,8 @@
-import time
+def test_opkg_procd_installed(shell_command):
+    assert "procd" in "\n".join(shell_command.run("opkg list-installed")[0])
 
-def test_opkg(dut):
-    # Wait till network is really available
-    # Todo try to find a better way to detect that the WAN is working.
-    time.sleep(5)
 
-    dut.send_cmd("opkg update", "Signature check passed.")
-
-    dut.send_cmd("opkg list-installed", "procd ")
-
-    dut.send_cmd("opkg install iperf3", "Configuring iperf3")
-
-    dut.send_cmd("opkg list-installed", "iperf3 ")
-
-    dut.send_cmd("iperf3 -v", "cJSON")
+def test_opkg_install_tmate(shell_command):
+    shell_command.run("opkg update")
+    shell_command.run("opkg install tmate")
+    assert "tmate" in "\n".join(shell_command.run("opkg list-installed")[0])

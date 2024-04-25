@@ -1,16 +1,19 @@
-def test_echo(dut):
-    dut.send_cmd("echo test", "test")
-    dut.send_cmd("echo noch", "noch")
+from conftest import ubus_call
 
 
-def test_ip(dut):
-    dut.send_cmd("ip addr", "192.168.1.1/24")
+def test_shell(shell_command):
+    shell_command.run("true")
 
 
-def test_uci(dut):
-    dut.send_cmd("uci set network.lan.proto=dhcp")
-    dut.send_cmd("uci changes", "network.lan.proto='dhcp'")
+def test_echo(shell_command):
+    output = shell_command.run("echo 'hello world'")
+    assert output[0][0] == "hello world"
 
 
-def test_uname(dut):
-    dut.send_cmd("uname -a", "GNU/Linux")
+def test_uname(shell_command):
+    assert "GNU/Linux" in shell_command.run("uname -a")[0][0]
+
+
+def test_ubus_system_board(shell_command):
+    output = ubus_call(shell_command, "system", "board", {})
+    assert output["release"]["distribution"] == "OpenWrt"

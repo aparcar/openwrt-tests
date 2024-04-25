@@ -1,0 +1,35 @@
+targets:
+  main:
+    resources:
+      - NetworkService:
+          # The actual address will be filled in by the strategy
+          address: ''
+          port: 22
+          username: root
+
+    drivers:
+      - QEMUDriver:
+          qemu_bin: qemu_bin
+          machine: malta
+          cpu: 24Kc
+          memory: 128M
+          extra_args: "-nic user,model=pcnet"
+          nic: user,model=pcnet
+          kernel: kernel
+      - ShellDriver:
+          console_ready: Please press Enter to activate this console.
+          prompt: 'root@[\w()]+:[^ ]+ '
+          login_prompt: built-in shell (ash)
+          await_login_timeout: 15
+          username: root
+      - SSHDriver: {}
+      - QEMUNetworkStrategy: {}
+
+tools:
+  qemu_bin: !template '$LG_QEMU_BIN'
+
+images:
+  kernel: openwrt-malta-be-vmlinux-initramfs.elf
+
+imports:
+  - qemunetworkstrategy.py
