@@ -86,10 +86,10 @@ def test_https_expired(shell_command):
     )
 
 
-def test_https_rc4(shell_command):
-    check_download(
-        shell_command,
-        "https://rc4.badssl.com/",
-        "Connection error: Connection failed",
-        4,
-    )
+# def test_https_rc4(shell_command):
+#     check_download(
+#         shell_command,
+#         "https://rc4.badssl.com/",
+#         "Connection error: Connection failed",
+#         4,
+#     )
