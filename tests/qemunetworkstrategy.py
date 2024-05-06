@@ -45,17 +45,17 @@ class QEMUNetworkStrategy(Strategy):
 
     @step(result=True)
     def get_remote_address(self):
-        print(self.shell.get_ip_addresses())
         return str(self.shell.get_ip_addresses()[0].ip)
 
     @step()
     def update_network_service(self):
-
         self.shell.console.expect(r"(eth1: link up|filter on device eth1)")
         import time
+
         time.sleep(5)
 
         new_address = self.get_remote_address()
+        new_address = "192.168.1.1"
         networkservice = self.ssh.networkservice
 
         if networkservice.address != new_address:
@@ -74,6 +74,7 @@ class QEMUNetworkStrategy(Strategy):
                     local_port,
                     new_address,
                     self.__remote_port,
+                    "lan",
                 )
                 self.__port_forward = ("tcp", local_address, local_port)
 

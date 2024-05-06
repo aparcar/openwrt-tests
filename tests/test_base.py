@@ -17,3 +17,7 @@ def test_uname(shell_command):
 def test_ubus_system_board(shell_command):
     output = ubus_call(shell_command, "system", "board", {})
     assert output["release"]["distribution"] == "OpenWrt"
+
+
+def test_ssh(ssh_command):
+    ssh_command.run("true")
