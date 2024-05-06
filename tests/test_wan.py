@@ -1,20 +1,29 @@
 def check_download(
     command,
     url,
-    expect_output=None,
+    expect_stdout=None,
+    expect_stderr=None,
     expect_exitcode=0,
     expect_content=None,
     remove=True,
     filename="index.html",
 ):
-    output, _, exitcode = command.run(f"wget {url} -O {filename}")
-    if expect_output:
+    stdout, stderr, exitcode = command.run(f"wget {url} -O {filename}")
+    if expect_stdout:
         found = False
         for line in output:
-            if expect_output in line:
+            if expect_stdout in line:
                 found = True
                 break
-        assert found, f"Expected output '{expect_output}' not found in {output}"
+        assert found, f"Expected output '{expect_stdout}' not found in {stdout}"
+
+    if expect_stderr:
+        found = False
+        for line in stderr:
+            if expect_stderr in line:
+                found = True
+                break
+        assert found, f"Expected error '{expect_stderr}' not found in {stderr}"
 
     assert (
         expect_exitcode == exitcode
@@ -27,69 +36,69 @@ def check_download(
         command.run(f"rm {filename}")
 
 
-def test_https_download(shell_command):
+def test_https_download(ssh_command):
     check_download(
-        shell_command,
+        ssh_command,
         "https://downloads.openwrt.org/releases/21.02.2/targets/armvirt/64/config.buildinfo",
-        "Download completed",
+        expect_stderr="Download completed",
         filename="config.buildinfo",
         remove=False,
     )
 
     assert (
         "26b85383a138594b1197e581bd13c6825c0b6b5f23829870a6dbc5d37ccf6cd8  config.buildinfo"
-        in shell_command.run("sha256sum config.buildinfo")[0]
+        in ssh_command.run("sha256sum config.buildinfo")[0]
     )
-    shell_command.run("rm config.buildinfo")
+    ssh_command.run("rm config.buildinfo")
 
 
-def test_http_download(shell_command):
+def test_http_download(ssh_command):
     check_download(
-        shell_command,
+        ssh_command,
         "http://http.badssl.com",
-        "Download completed",
+        expect_stderr="Download completed",
     )
 
 
-def test_https_mozilla(shell_command):
+def test_https_mozilla(ssh_command):
     check_download(
-        shell_command,
+        ssh_command,
         "https://www.mozilla.org/",
-        "Download completed",
+        expect_stderr="Download completed",
     )
 
 
-def test_https_untrusted(shell_command):
+def test_https_untrusted(ssh_command):
     check_download(
-        shell_command,
+        ssh_command,
         "https://untrusted-root.badssl.com/",
-        "Connection error: Invalid SSL certificate",
-        5,
+        expect_stderr="Connection error: Invalid SSL certificate",
+        expect_exitcode=5,
     )
 
 
-def test_https_wrong(shell_command):
+def test_https_wrong(ssh_command):
     check_download(
-        shell_command,
+        ssh_command,
         "https://wrong.host.badssl.com/",
-        "Connection error: Server hostname does not match SSL certificate",
-        5,
+        expect_stderr="Connection error: Server hostname does not match SSL certificate",
+        expect_exitcode=5,
     )
 
 
-def test_https_expired(shell_command):
+def test_https_expired(ssh_command):
     check_download(
-        shell_command,
+        ssh_command,
         "https://expired.badssl.com/",
-        "Connection error: Invalid SSL certificate",
-        5,
+        expect_stderr="Connection error: Invalid SSL certificate",
+        expect_exitcode=5,
     )
 
 
-# def test_https_rc4(shell_command):
+# def test_https_rc4(ssh_command):
 #     check_download(
-#         shell_command,
+#         ssh_command,
 #         "https://rc4.badssl.com/",
-#         "Connection error: Connection failed",
+#         expect_stderr="Connection error: Connection failed",
 #         4,
 #     )
