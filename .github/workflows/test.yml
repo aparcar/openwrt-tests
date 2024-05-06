@@ -2,6 +2,8 @@ name: QEMU test
 on:
   pull_request:
   push:
+    branches:
+      - main
   schedule:
     - cron: '0 0 * * *'
 
@@ -17,15 +19,15 @@ jobs:
       matrix:
         include:
           - target: malta/be
-            file: openwrt-malta-be-vmlinux-initramfs.elf
+            firmware: openwrt-malta-be-vmlinux-initramfs.elf
             qemu_bin: qemu-system-mips
 
           - target: x86/64
-            file: openwrt-x86-64-generic-squashfs-combined.img.gz
+            firmware: openwrt-x86-64-generic-squashfs-combined.img.gz
             qemu_bin: qemu-system-x86_64
 
           - target: armsr/armv8
-            file: openwrt-armsr-armv8-generic-initramfs-kernel.bin
+            firmware: openwrt-armsr-armv8-generic-initramfs-kernel.bin
             qemu_bin: qemu-system-aarch64
 
     steps:
@@ -48,17 +50,28 @@ jobs:
 
       - name: Download test firmware
         run: |
-          wget https://downloads.openwrt.org/snapshots/targets/${{ matrix.target }}/${{ matrix.file }} \
-            --output-document ${{ matrix.file }}
+          wget https://downloads.openwrt.org/snapshots/targets/${{ matrix.target }}/${{ matrix.firmware }} \
+            --output-document ${{ matrix.firmware }}
 
       - name: Run test
         run: |
-          export LG_QEMU_BIN=$(which ${{ matrix.qemu_bin }})
+          export LG_QEMU_BIN=${{ matrix.qemu_bin }}
           
-          # unpack gzip image if exists
-          if [[ ${{ matrix.file }} == *.gz ]]; then
-            gunzip ${{ matrix.file }} || true
-          fi
+          gunzip ${{ matrix.firmware }} || true
 
+          firmware=${{ matrix.firmware }}
           target=${{ matrix.target }}
-          poetry run pytest --lg-env target_${target/\//-}.yaml
+          poetry run pytest \
+            --lg-env tests/qemu.yaml \
+            --target ${target/\//-} \
+            --lg-log \
+            --lg-colored-steps \
+            -v \
+            --firmware $GITHUB_WORKSPACE/${firmware/.gz/}
+
+      - name: Upload console logs
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: console
+          path: console_*

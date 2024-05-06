@@ -15,6 +15,12 @@
 import pytest
 import json
 
+
+def pytest_addoption(parser):
+    parser.addoption("--target", action="store", default="main")
+    parser.addoption("--firmware", action="store", default="firmware.bin")
+
+
 def ubus_call(command, namespace, method, params):
     output, _, exitcode = command.run(
         f"ubus call {namespace} {method} '{json.dumps(params)}'"
@@ -22,8 +28,26 @@ def ubus_call(command, namespace, method, params):
     assert exitcode == 0
     return json.loads("\n".join(output))
 
+
 @pytest.fixture
-def shell_command(target, strategy):
+def shell_command(env, pytestconfig):
+    env.config.data.setdefault("images", {})["firmware"] = pytestconfig.getoption(
+        "firmware"
+    )
+    target = env.get_target(role=pytestconfig.getoption("target"))
+    strategy = target.get_strategy()
     strategy.transition("shell")
     shell = target.get_driver("ShellDriver")
     return shell
+
+
+@pytest.fixture
+def ssh_command(env, pytestconfig):
+    env.config.data.setdefault("images", {})["firmware"] = pytestconfig.getoption(
+        "firmware"
+    )
+    target = env.get_target(role=pytestconfig.getoption("target"))
+    strategy = target.get_strategy()
+    strategy.transition("shell")
+    ssh = target.get_driver("SSHDriver")
+    return ssh
