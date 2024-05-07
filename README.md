@@ -1,23 +1,22 @@
 # OpenWrt Testing
 
-This allows to run automated tests in OpenWrt.
+> With great many support devices comes great many tests
 
-Currently uses existing firmware images and start them in QEMU. Later it should
-also be supported to run the tests on real hardware or in docker containers with
-OpenWrt.
+OpenWrt Testing is a framework to run tests on OpenWrt devices, emulated or
+real. Using [`labgrid`](https://labgrid.readthedocs.io/en/latest/) to control
+the devices, the framework offers a simple way to write tests and run them on
+different hardware.
 
 ## Requirements
 
-* An already build OpenWrt image
-* Python 3.8 or more recent
+* An OpenWrt firmware image
+* Python and [`poetry`](https://python-poetry.org/)
 
 ## Setup
 
-Link the folder containing tests into your OpenWrt source folder.
-
 ```shell
-cd path/to/openwrt.git/
-ln -s path/to/openwrt-tests/tests/ ./tests
+pip install -U poetry # optional
+poetry install
 ```
 
 ## Run tests
@@ -25,23 +24,24 @@ ln -s path/to/openwrt-tests/tests/ ./tests
 Use this command to run tests on `malta/be` image:
 
 ```shell
-pytest tests/ --target malta/be
+pytest tests/ \
+    --lg-env tests/qemu.yaml \
+    --lg-log \
+    --lg-colored-steps \
+    --target malta-be \
+    --firmware ../../openwrt/bin/targets/malta/be/openwrt-malta-be-vmlinux-initramfs.elf
 ```
-
 ## Adding tests
 
-The framework uses `pexpect` to execute commands and evaluate the output. Test
-cases use a *Pytest Fixture* called `dut`. The object offers the function
-`dut.send_cmd(command, expect=None)`. It sends a command to the device and if
-`expect` is defined, checks for the specified output. It's also possible to
-expect multiple lines by calling `dut.expect(expect)` directly.
+The framework uses `pytest` to execute commands and evaluate the output. Test
+cases use the two *fixture* `ssh_command` or `shell_command`. The object offers
+the function `run(cmd)` and returns *stdout*, *stderr* (SSH only) and the exit
+code.
 
-It's possible to use the fixture `dut` or `dut_separated`
-
-An example below runs `uname -a` and checks that the device is running
+The example below runs `uname -a` and checks that the device is running
 *GNU/Linux*
 
 ```python
-def test_echo(dut):
-    dut.send_cmd("uname -a", "GNU/Linux")
+def test_uname(shell_command):
+    assert "GNU/Linux" in shell_command.run("uname -a")[0][0]
 ```
