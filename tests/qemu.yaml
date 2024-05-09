@@ -9,7 +9,7 @@ targets:
 
     drivers:
       - QEMUDriver:
-          qemu_bin: qemu_bin
+          qemu_bin: qemu_bin_arm64
           machine: virt
           cpu: cortex-a57
           memory: 128M
@@ -35,7 +35,7 @@ targets:
 
     drivers:
       - QEMUDriver:
-          qemu_bin: qemu_bin
+          qemu_bin: qemu_bin_malta
           machine: malta
           cpu: 24Kc
           memory: 128M
@@ -61,7 +61,7 @@ targets:
 
     drivers:
       - QEMUDriver:
-          qemu_bin: qemu_bin
+          qemu_bin: qemu_bin_x86
           machine: pc
           cpu: max
           memory: 128M
@@ -80,7 +80,9 @@ targets:
       - QEMUNetworkStrategy: {}
 
 tools:
-  qemu_bin: !template '$LG_QEMU_BIN'
+  qemu_bin_x86: qemu-system-x86_64
+  qemu_bin_malta: qemu-system-mips
+  qemu_bin_arm64: qemu-system-aarch64
 
 imports:
   - qemunetworkstrategy.py

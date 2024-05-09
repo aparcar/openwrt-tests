@@ -20,15 +20,12 @@ jobs:
         include:
           - target: malta/be
             firmware: openwrt-malta-be-vmlinux-initramfs.elf
-            qemu_bin: qemu-system-mips
 
           - target: x86/64
             firmware: openwrt-x86-64-generic-squashfs-combined.img.gz
-            qemu_bin: qemu-system-x86_64
 
           - target: armsr/armv8
             firmware: openwrt-armsr-armv8-generic-initramfs-kernel.bin
-            qemu_bin: qemu-system-aarch64
 
     steps:
       - name: Check out repository code
@@ -55,8 +52,6 @@ jobs:
 
       - name: Run test
         run: |
-          export LG_QEMU_BIN=${{ matrix.qemu_bin }}
-          
           gunzip ${{ matrix.firmware }} || true
 
           firmware=${{ matrix.firmware }}
