@@ -1,3 +1,6 @@
+import pytest
+
+
 def check_download(
     command,
     url,
@@ -36,6 +39,7 @@ def check_download(
         command.run(f"rm {filename}")
 
 
+@pytest.mark.online
 def test_https_download(ssh_command):
     check_download(
         ssh_command,
@@ -52,6 +56,7 @@ def test_https_download(ssh_command):
     ssh_command.run("rm config.buildinfo")
 
 
+@pytest.mark.online
 def test_http_download(ssh_command):
     check_download(
         ssh_command,
@@ -60,6 +65,7 @@ def test_http_download(ssh_command):
     )
 
 
+@pytest.mark.online
 def test_https_mozilla(ssh_command):
     check_download(
         ssh_command,
@@ -68,6 +74,7 @@ def test_https_mozilla(ssh_command):
     )
 
 
+@pytest.mark.online
 def test_https_untrusted(ssh_command):
     check_download(
         ssh_command,
@@ -77,6 +84,7 @@ def test_https_untrusted(ssh_command):
     )
 
 
+@pytest.mark.online
 def test_https_wrong(ssh_command):
     check_download(
         ssh_command,
@@ -86,6 +94,7 @@ def test_https_wrong(ssh_command):
     )
 
 
+@pytest.mark.online
 def test_https_expired(ssh_command):
     check_download(
         ssh_command,
@@ -95,6 +104,7 @@ def test_https_expired(ssh_command):
     )
 
 
+# @pytest.mark.online
 # def test_https_rc4(ssh_command):
 #     check_download(
 #         ssh_command,
