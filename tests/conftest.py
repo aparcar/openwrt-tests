@@ -15,8 +15,6 @@
 import pytest
 import json
 
-import prysk
-
 
 def pytest_addoption(parser):
     parser.addoption("--target", action="store", default="main")
