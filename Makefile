@@ -1,7 +1,8 @@
 OPENWRT_CI_TESTS = \
 	test-x86-64 \
 	test-armsr-armv8 \
-	test-malta-be
+	test-malta-be \
+	test-shell
 
 test: $(OPENWRT_CI_TESTS)
 
@@ -52,3 +53,8 @@ test-malta-be:
 		$(pytest) \
 		--target malta-be \
 		--firmware $(FIRMWARE)
+
+test-shell:
+	[ -n "$$(command -v bats)" ] || (echo "Please install bats" && exit 1)
+	bats -r $(TESTSDIR)/tests/bats
+
