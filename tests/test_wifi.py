@@ -1,5 +1,3 @@
-import time
-
 import pytest
 
 
@@ -48,7 +46,11 @@ def test_wifi_hwsim_sae_mixed(ssh_command):
     )
 
     # Wait till the client associated
-    time.sleep(20)
+    assert "auth" in "\n".join(
+        ssh_command.run(
+            "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"auth\":' | while read line; do echo auth && killall ubus; done"
+        )[0]
+    )
 
     assert "Mode: Client  Channel: 11 (2.462 GHz)" in "\n".join(
         ssh_command.run("iwinfo")[0]
@@ -69,7 +71,11 @@ def test_wifi_hwsim_sae_mixed(ssh_command):
     ssh_command.run("service network reload")
 
     # Wait till the wifi client is removed
-    time.sleep(1)
+    assert "disassoc" in "\n".join(
+        ssh_command.run(
+            "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"disassoc\":' | while read line; do echo disassoc && killall ubus; done"
+        )[0]
+    )
 
     # wait till network reload finished
     assert "timed out" not in "\n".join(
@@ -81,7 +87,11 @@ def test_wifi_hwsim_sae_mixed(ssh_command):
     )
 
     # Wait till the client associated
-    time.sleep(20)
+    assert "auth" in "\n".join(
+        ssh_command.run(
+            "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"auth\":' | while read line; do echo auth && killall ubus; done"
+        )[0]
+    )
 
     assert "expected throughput" in "\n".join(
         ssh_command.run("iwinfo phy0-ap0 assoclist")[0]
