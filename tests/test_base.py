@@ -30,6 +30,10 @@ def test_free_memory(shell_command, results_bag):
     results_bag["used_memory"] = used_memory
 
 
+def test_port_22_open(shell_command):
+    assert shell_command.run("netstat -tlpn | grep 0.0.0.0:22")[2] == 0
+
+
 def test_ssh(ssh_command):
     ssh_command.run("true")
 
