@@ -21,7 +21,7 @@ def pytest_addoption(parser):
     parser.addoption("--firmware", action="store", default="firmware.bin")
 
 
-def ubus_call(command, namespace, method, params):
+def ubus_call(command, namespace, method, params={}):
     output, _, exitcode = command.run(
         f"ubus call {namespace} {method} '{json.dumps(params)}'"
     )

@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import enum
+from time import sleep
 
 import attr
+from conftest import ubus_call
 from labgrid import step, target_factory
 from labgrid.strategy import Strategy, StrategyError
 from labgrid.util import get_free_port
@@ -48,16 +50,14 @@ class QEMUNetworkStrategy(Strategy):
 
     @step()
     def update_network_service(self):
-        self.shell.console.expect(r"(eth1: link up|filter on device eth1)")
-        import time
+        self.shell.run("ubus wait_for network.interface.lan")
+        while not ubus_call(self.shell, "network.interface.lan", "status")["up"]:
+            sleep(1)
 
-        time.sleep(5)
-
-        new_address = self.get_remote_address()
-        new_address = "192.168.1.1"
+        lan_address = "192.168.1.1"
         networkservice = self.ssh.networkservice
 
-        if networkservice.address != new_address:
+        if networkservice.address != lan_address:
             self.target.deactivate(self.ssh)
 
             if "user" in self.qemu.nic.split(","):
@@ -71,7 +71,7 @@ class QEMUNetworkStrategy(Strategy):
                     "tcp",
                     local_address,
                     local_port,
-                    new_address,
+                    lan_address,
                     self.__remote_port,
                     "lan",
                 )
@@ -80,7 +80,7 @@ class QEMUNetworkStrategy(Strategy):
                 networkservice.address = local_address
                 networkservice.port = local_port
             else:
-                networkservice.address = new_address
+                networkservice.address = lan_address
                 networkservice.port = self.__remote_port
 
     @step(args=["state"])
