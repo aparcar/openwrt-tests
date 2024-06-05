@@ -20,12 +20,15 @@ jobs:
         include:
           - target: malta-be
             firmware: openwrt-malta-be-vmlinux-initramfs.elf
+            dependency: qemu-system-mips
 
           - target: x86-64
             firmware: openwrt-x86-64-generic-squashfs-combined.img.gz
+            dependency: qemu-system-x86
 
           - target: armsr-armv8
             firmware: openwrt-armsr-armv8-generic-initramfs-kernel.bin
+            dependency: qemu-system-aarch64
 
     steps:
       - name: Check out repository code
@@ -36,9 +39,7 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install \
             python3-pip \
-            qemu-system-aarch64 \
-            qemu-system-mips \
-            qemu-system-x86
+            ${{ matrix.dependency }}
 
       - name: Install project dependencies
         run: |
