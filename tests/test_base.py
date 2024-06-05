@@ -23,6 +23,13 @@ def test_ubus_system_board(shell_command):
     assert output["release"]["distribution"] == "OpenWrt"
 
 
+def test_free_memory(shell_command, results_bag):
+    used_memory = int(shell_command.run("free -m")[0][1].split()[2])
+
+    assert used_memory > 10000, "Used memory is more than 100MB"
+    results_bag["used_memory"] = used_memory
+
+
 def test_ssh(ssh_command):
     ssh_command.run("true")
 
