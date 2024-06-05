@@ -1,5 +1,6 @@
-from conftest import ubus_call
 import re
+
+from conftest import ubus_call
 
 
 def test_shell(shell_command):

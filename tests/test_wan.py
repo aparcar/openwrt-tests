@@ -14,7 +14,7 @@ def check_download(
     stdout, stderr, exitcode = command.run(f"wget {url} -O {filename}")
     if expect_stdout:
         found = False
-        for line in output:
+        for line in stdout:
             if expect_stdout in line:
                 found = True
                 break

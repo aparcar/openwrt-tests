@@ -15,8 +15,7 @@
 import enum
 
 import attr
-
-from labgrid import target_factory, step
+from labgrid import step, target_factory
 from labgrid.strategy import Strategy, StrategyError
 from labgrid.util import get_free_port
 
