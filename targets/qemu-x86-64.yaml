@@ -1,0 +1,37 @@
+features:
+  - online
+
+targets:
+  main:
+    resources:
+      - NetworkService:
+          # The actual address will be filled in by the strategy
+          address: ''
+          port: 22
+          username: root
+
+    drivers:
+      - QEMUDriver:
+          qemu_bin: qemu_bin_x86
+          machine: pc
+          cpu: max
+          memory: 128M
+          extra_args: "-device virtio-rng-pci -netdev user,id=wan -device virtio-net-pci,netdev=wan"
+          nic: user,model=virtio-net-pci,net=192.168.1.0/24,id=lan
+          disk: firmware
+      - ShellDriver:
+          console_ready: Please press Enter to activate this console.
+          prompt: 'root@[\w()]+:[^ ]+ '
+          login_prompt: built-in shell (ash)
+          await_login_timeout: 15
+          username: root
+      - SSHDriver:
+          username: root
+          explicit_scp_mode: True
+      - QEMUNetworkStrategy: {}
+
+tools:
+  qemu_bin_x86: qemu-system-x86_64
+
+imports:
+  - qemunetworkstrategy.py
