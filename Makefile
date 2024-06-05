@@ -11,9 +11,7 @@ TESTSDIR ?= $(shell dirname $(shell readlink -f $(TOPDIR)/Makefile.tests))
 define pytest
 	poetry -C $(TESTSDIR) run \
 		pytest $(TESTSDIR)/tests/ \
-		--lg-env $(TESTSDIR)/tests/qemu.yaml \
 		--lg-log \
-		-vv \
 		--lg-colored-steps
 endef
 
@@ -31,7 +29,7 @@ test-x86-64:
 
 	LG_QEMU_BIN=$(QEMU_BIN) \
 		$(pytest) \
-		--target x86-64 \
+		--lg-env $(TESTSDIR)/targets/qemu-x86-64.yaml \
 		--firmware $(FIRMWARE:.gz=)
 
 test-armsr-armv8: QEMU_BIN ?= qemu-system-aarch64
@@ -41,7 +39,7 @@ test-armsr-armv8:
 
 	LG_QEMU_BIN=$(QEMU_BIN) \
 		$(pytest) \
-		--target armsr-armv8 \
+		--lg-env $(TESTSDIR)/targets/qemu-armsr-armv8.yaml \
 		--firmware $(FIRMWARE)
 
 test-malta-be: QEMU_BIN ?= qemu-system-mips
@@ -51,7 +49,7 @@ test-malta-be:
 
 	LG_QEMU_BIN=$(QEMU_BIN) \
 		$(pytest) \
-		--target malta-be \
+		--lg-env $(TESTSDIR)/targets/qemu-malta-be.yaml \
 		--firmware $(FIRMWARE)
 
 test-shell:
