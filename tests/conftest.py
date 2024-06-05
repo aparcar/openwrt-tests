@@ -19,19 +19,6 @@ import json
 def pytest_addoption(parser):
     parser.addoption("--target", action="store", default="main")
     parser.addoption("--firmware", action="store", default="firmware.bin")
-    parser.addoption("--online", action="store_true")
-
-
-def pytest_collection_modifyitems(config, items):
-    if not config.getoption("--online"):
-        skip_online = pytest.mark.skip(reason="need --online option to run")
-        for item in items:
-            if "online" in item.keywords:
-                item.add_marker(skip_online)
-
-
-def pytest_configure(config):
-    config.addinivalue_line("markers", "online: Requires Internet uplink to work")
 
 
 def ubus_call(command, namespace, method, params):
