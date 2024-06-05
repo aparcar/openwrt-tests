@@ -18,13 +18,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: malta/be
+          - target: malta-be
             firmware: openwrt-malta-be-vmlinux-initramfs.elf
 
-          - target: x86/64
+          - target: x86-64
             firmware: openwrt-x86-64-generic-squashfs-combined.img.gz
 
-          - target: armsr/armv8
+          - target: armsr-armv8
             firmware: openwrt-armsr-armv8-generic-initramfs-kernel.bin
 
     steps:
@@ -46,8 +46,10 @@ jobs:
           poetry install
 
       - name: Download test firmware
+        env:
+          target: ${{ matrix.target }}
         run: |
-          wget https://downloads.openwrt.org/snapshots/targets/${{ matrix.target }}/${{ matrix.firmware }} \
+          wget https://downloads.openwrt.org/snapshots/targets/${target/-/\/}/${{ matrix.firmware }} \
             --output-document ${{ matrix.firmware }}
 
       - name: Run test
@@ -55,9 +57,8 @@ jobs:
           gunzip ${{ matrix.firmware }} || true
 
           firmware=${{ matrix.firmware }}
-          target=${{ matrix.target }}
           poetry run pytest tests/ \
-            --lg-env targets/qemu-${target/\//-}.yaml \
+            --lg-env targets/qemu-${{ matrix.target }}.yaml \
             --lg-log \
             --lg-colored-steps \
             -v \
@@ -67,5 +68,5 @@ jobs:
         uses: actions/upload-artifact@v2
         if: always()
         with:
-          name: console
+          name: console-${{ matrix.target }}
           path: console_*
