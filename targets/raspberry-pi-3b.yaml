@@ -1,0 +1,26 @@
+targets:
+  main:
+    resources:
+      RemotePlace:
+        name: !template '$LG_PLACE'
+      NetworkService:
+        address: "192.168.1.1"
+        port: 22
+        username: root
+    drivers:
+      NetworkPowerDriver: {}
+      SerialDriver:
+        txdelay: 0.05
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 120
+        post_login_settle_time: 5
+        username: root
+      USBSDMuxDriver: {}
+      ShellStrategy: {}
+      SSHDriver: {}
+
+
+# https://downloads.openwrt.org/snapshots/targets/bcm27xx/bcm2710/openwrt-bcm27xx-bcm2710-rpi-3-squashfs-factory.img.gz
