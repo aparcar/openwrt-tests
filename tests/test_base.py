@@ -1,5 +1,7 @@
 import re
+import tarfile
 
+import pytest
 from conftest import ubus_call
 
 
@@ -23,6 +25,26 @@ def test_ubus_system_board(shell_command):
 
 def test_ssh(ssh_command):
     ssh_command.run("true")
+
+
+@pytest.mark.lg_feature("rootfs")
+def test_sysupgrade_backup(ssh_command):
+    ssh_command.run("sysupgrade -b /tmp/backup.tar.gz")
+    ssh_command.get("/tmp/backup.tar.gz")
+
+    backup = tarfile.open("backup.tar.gz", "r")
+    assert "etc/config/dropbear" in backup.getnames()
+    ssh_command.run("rm -rf /tmp/backup.tar.gz")
+
+
+@pytest.mark.lg_feature("rootfs")
+def test_sysupgrade_backup_u(ssh_command):
+    ssh_command.run("sysupgrade -u -b /tmp/backup.tar.gz")
+    ssh_command.get("/tmp/backup.tar.gz")
+
+    backup = tarfile.open("backup.tar.gz", "r")
+    assert "etc/config/dropbear" not in backup.getnames()
+    ssh_command.run("rm -rf /tmp/backup.tar.gz")
 
 
 def test_kernel_errors(shell_command):
