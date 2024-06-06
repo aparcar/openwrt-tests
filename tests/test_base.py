@@ -18,9 +18,16 @@ def test_uname(shell_command):
     assert "GNU/Linux" in shell_command.run("uname -a")[0][0]
 
 
-def test_ubus_system_board(shell_command):
+def test_ubus_system_board(shell_command, results_bag):
     output = ubus_call(shell_command, "system", "board", {})
     assert output["release"]["distribution"] == "OpenWrt"
+
+    results_bag["board_name"] = output["board_name"]
+    results_bag["kernel"] = output["kernel"]
+    results_bag["revision"] = output["release"]["revision"]
+    results_bag["rootfs_type"] = output["rootfs_type"]
+    results_bag["target"] = output["release"]["target"]
+    results_bag["version"] = output["release"]["version"]
 
 
 def test_free_memory(shell_command, results_bag):

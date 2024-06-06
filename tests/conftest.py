@@ -13,12 +13,21 @@
 # limitations under the License.
 
 import json
+from pathlib import Path
 
 import pytest
+from pytest_harvest import get_fixture_store
 
 
 def pytest_addoption(parser):
     parser.addoption("--firmware", action="store", default="firmware.bin")
+
+
+def pytest_sessionfinish(session):
+    """Gather all results and save them to a JSON file."""
+
+    results = get_fixture_store(session)["results_bag"]
+    Path("results.json").write_text(json.dumps(results, indent=2))
 
 
 def ubus_call(command, namespace, method, params={}):
