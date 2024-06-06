@@ -26,7 +26,11 @@ def ubus_call(command, namespace, method, params={}):
         f"ubus call {namespace} {method} '{json.dumps(params)}'"
     )
     assert exitcode == 0
-    return json.loads("\n".join(output))
+
+    try:
+        return json.loads("\n".join(output))
+    except json.JSONDecodeError:
+        return {}
 
 
 @pytest.fixture
