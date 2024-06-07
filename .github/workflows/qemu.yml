@@ -13,7 +13,7 @@ env:
 jobs:
   test:
     name: Test OpenWrt QEMU
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -38,12 +38,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install \
-            python3-pip \
+            python3-poetry \
             ${{ matrix.dependency }}
 
       - name: Install project dependencies
         run: |
-          pip3 install poetry
           poetry install
 
       - name: Download test firmware
