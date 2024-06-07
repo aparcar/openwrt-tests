@@ -1,0 +1,65 @@
+name: Test Makefile
+on:
+  pull_request:
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  test-makefile:
+    name: Test Makefile
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+        with:
+          path: tests
+          depth: 1
+
+      - name: Check out openwrt.git
+        uses: actions/checkout@v2
+        with:
+          repository: openwrt/openwrt
+          path: openwrt
+          depth: 1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install \
+            python3-poetry \
+            qemu-system-mips \
+            qemu-system-x86 \
+            qemu-system-aarch64 \
+            make \
+            bats
+
+      - name: Link tests to openwrt.git
+        run: |
+          ln -s $GITHUB_WORKSPACE/tests $GITHUB_WORKSPACE/openwrt/tests
+
+      - name: Workaround to add tests Makefile
+        run: |
+          echo "include tests/Makefile" >> $GITHUB_WORKSPACE/openwrt/Makefile
+
+      - name: Check and install dependencies
+        run: |
+          cd $GITHUB_WORKSPACE/openwrt
+          make tests/setup V=s
+
+      - name: Download OpenWrt firmware for testing
+        run: |
+          cd $GITHUB_WORKSPACE/openwrt
+          mkdir -p bin/targets/x86/64
+          wget https://downloads.openwrt.org/releases/23.05.3/targets/x86/64/openwrt-23.05.3-x86-64-generic-squashfs-combined.img.gz \
+            --output-document bin/targets/x86/64/openwrt-x86-64-generic-squashfs-combined.img.gz
+
+      - name: Run QEMU test
+        run: |
+          cd $GITHUB_WORKSPACE/openwrt
+          make tests/x86-64 V=s
+
+      - name: Run shell test
+        run: |
+          cd $GITHUB_WORKSPACE/openwrt
+          make tests/shell V=s

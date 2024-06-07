@@ -11,11 +11,20 @@ different hardware.
 
 - An OpenWrt firmware image
 - Python and [`poetry`](https://python-poetry.org/)
+- QEMU
+- bats (>1.5.0)
 
 ## Setup
 
 ```shell
-pip install -U poetry # optional
+sudo apt-get update
+sudo apt-get -y install \
+    python3-poetry \
+    qemu-system-mips \
+    qemu-system-x86 \
+    qemu-system-aarch64 \
+    make \
+    bats
 poetry install
 ```
 
@@ -25,10 +34,9 @@ Use this command to run tests on `malta/be` image:
 
 ```shell
 pytest tests/ \
-    --lg-env tests/qemu.yaml \
+    --lg-env targets/qemu-malta-be.yaml \
     --lg-log \
     --lg-colored-steps \
-    --target malta-be \
     --firmware ../../openwrt/bin/targets/malta/be/openwrt-malta-be-vmlinux-initramfs.elf
 ```
 
@@ -36,23 +44,26 @@ pytest tests/ \
 
 The Makefile offers a simple way to run tests directly from the `openwrt.git` repository:
 
-First create a link of this repositories `Makefile` to the `openwrt.git` repository:
+First create a symlink of this repository inside the `openwrt.git` repository:
 
 ```shell
-ln -s $(pwd)/Makefile /path/to/openwrt.git/Makefile.tests
+ln -s $(pwd)/ /path/to/openwrt.git/tests
 ```
 
-Second, make sure that `Makefile.tests` is included in the `openwrt.git` repository. Add the following line to the top of `openwrt.git/Makefile`:
+Second, make sure that tests `Makefile` is included in the `openwrt.git`
+repository. Add the following line to the top of `openwrt.git/Makefile`:
 
-```
-include Makefile.tests
+> This step may not be necessary if it's added to the upstream Makefile
+
+```makefile
+include tests/Makefile
 ```
 
 Then run the tests:
 
 ```shell
 cd /path/to/openwrt.git
-make test-x86-64
+make tests/x86-64
 ```
 
 ## Adding tests
