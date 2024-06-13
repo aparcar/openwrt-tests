@@ -26,7 +26,12 @@ def pytest_addoption(parser):
 def pytest_sessionfinish(session):
     """Gather all results and save them to a JSON file."""
 
-    results = get_fixture_store(session)["results_bag"]
+    fixture_store = get_fixture_store(session)
+    if "results_bag" not in fixture_store:
+        return
+
+    results = fixture_store["results_bag"]
+
     Path("results.json").write_text(json.dumps(results, indent=2))
 
 
