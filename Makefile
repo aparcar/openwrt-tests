@@ -12,7 +12,7 @@ define pytest
 	poetry -C $(TESTSDIR) run \
 		pytest $(TESTSDIR)/tests/ \
 		--lg-log \
-		--lg-colored-steps
+		--lg-colored-steps $(if $(K),-k $(K),)
 endef
 
 test-x86-64: QEMU_BIN ?= qemu-system-x86_64
