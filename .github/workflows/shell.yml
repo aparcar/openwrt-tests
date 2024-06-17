@@ -1,0 +1,40 @@
+name: Test Shell
+on:
+  pull_request:
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  test-makefile:
+    name: Test Makefile
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+        with:
+          path: tests
+          depth: 1
+
+      - name: Check out openwrt.git
+        uses: actions/checkout@v2
+        with:
+          repository: openwrt/openwrt
+          path: openwrt
+          depth: 1
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install \
+            make \
+            bats
+
+      - name: Link tests to openwrt.git
+        run: |
+          ln -s $GITHUB_WORKSPACE/tests $GITHUB_WORKSPACE/openwrt/tests
+
+      - name: Run shell test
+        run: |
+          cd $GITHUB_WORKSPACE/openwrt
+          make tests/shell V=s

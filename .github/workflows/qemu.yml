@@ -22,6 +22,18 @@ jobs:
             firmware: openwrt-malta-be-vmlinux-initramfs.elf
             dependency: qemu-system-mips
 
+          - target: malta-le
+            firmware: openwrt-malta-le-vmlinux-initramfs.elf
+            dependency: qemu-system-mipsel
+
+          - target: malta-be64
+            firmware: openwrt-malta-be64-vmlinux-initramfs.elf
+            dependency: qemu-system-mips64
+
+          - target: malta-le64
+            firmware: openwrt-malta-le64-vmlinux-initramfs.elf
+            dependency: qemu-system-mips64el
+
           - target: x86-64
             firmware: openwrt-x86-64-generic-squashfs-combined.img.gz
             dependency: qemu-system-x86
@@ -33,6 +45,16 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
+        with:
+          path: tests
+          depth: 1
+
+      - name: Check out openwrt.git
+        uses: actions/checkout@v2
+        with:
+          repository: openwrt/openwrt
+          path: openwrt
+          depth: 1
 
       - name: Install dependencies
         run: |
@@ -41,8 +63,13 @@ jobs:
             python3-poetry \
             ${{ matrix.dependency }}
 
-      - name: Install project dependencies
+      - name: Link tests to openwrt.git
         run: |
+          ln -s $GITHUB_WORKSPACE/tests $GITHUB_WORKSPACE/openwrt/tests
+
+      - name: Poetry install
+        run: |
+          cd $GITHUB_WORKSPACE/tests
           poetry install
 
       - name: Download test firmware
@@ -50,20 +77,18 @@ jobs:
           target: ${{ matrix.target }}
         run: |
           wget https://downloads.openwrt.org/snapshots/targets/${target/-/\/}/${{ matrix.firmware }} \
-            --output-document ${{ matrix.firmware }}
+            --output-document $GITHUB_WORKSPACE/openwrt/${{ matrix.firmware }}
 
       - name: Run test
         run: |
+          cd $GITHUB_WORKSPACE/openwrt
+
           gunzip ${{ matrix.firmware }} || true
 
           firmware=${{ matrix.firmware }}
-          poetry run pytest tests/ \
-            --lg-env targets/qemu-${{ matrix.target }}.yaml \
-            --lg-log \
-            --lg-colored-steps \
-            -v \
-            -s \
-            --firmware $GITHUB_WORKSPACE/${firmware/.gz/}
+
+          make tests/${{ matrix.target }} \
+            FIRMWARE=$GITHUB_WORKSPACE/${firmware/.gz/}
 
       - name: Upload console logs
         uses: actions/upload-artifact@v2
