@@ -101,11 +101,6 @@ def test_wifi_hwsim_sae_mixed(ssh_command):
     ssh_command.run("uci set wireless.radio0.band=2g")
     ssh_command.run("uci delete wireless.radio0.disabled")
 
-    # mac80211 hwsim does not support some features, deactivate them
-    ssh_command.run("uci set wireless.radio0.ldpc=0")
-    ssh_command.run("uci set wireless.radio0.rx_stbc=0")
-    ssh_command.run("uci set wireless.radio0.max_amsdu=0")
-
     ssh_command.run("uci set wireless.default_radio0.encryption=sae-mixed")
     ssh_command.run("uci set wireless.default_radio0.key=testtest")
 
