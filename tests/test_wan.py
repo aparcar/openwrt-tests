@@ -28,13 +28,13 @@ def check_download(
                 break
         assert found, f"Expected error '{expect_stderr}' not found in {stderr}"
 
-    assert (
-        expect_exitcode == exitcode
-    ), f"Expected exit code {expect_exitcode} not found in {exitcode}"
+    assert expect_exitcode == exitcode, (
+        f"Expected exit code {expect_exitcode} not found in {exitcode}"
+    )
     if expect_content:
-        assert (
-            expect_content in command.run(f"cat {url.split('/')[-1]}")[0]
-        ), f"Expected content '{expect_content}' not found in {url.split('/')[-1]}"
+        assert expect_content in command.run(f"cat {url.split('/')[-1]}")[0], (
+            f"Expected content '{expect_content}' not found in {url.split('/')[-1]}"
+        )
     if remove:
         command.run(f"rm {filename}")
 
