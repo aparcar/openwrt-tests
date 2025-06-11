@@ -1,7 +1,6 @@
 targets:
   main:
     features:
-      - wifi
       - online
     resources:
       RemotePlace:
@@ -9,7 +8,7 @@ targets:
     drivers:
       NetworkPowerDriver: {}
       SerialDriver:
-        txdelay: 0.05
+        txdelay: 0.01
       ShellDriver:
         prompt: 'root@[\w()]+:[^ ]+ '
         login_prompt: Please press Enter to activate this console.
@@ -18,21 +17,14 @@ targets:
         post_login_settle_time: 5
         username: root
       UBootDriver:
-        prompt: "=> "
+        interrupt: "\\x0"
+        prompt: "MT7622>"
         init_commands:
-          - setenv kernel_addr_r 0x2000000
-          - setenv bootargs earlyprintk console=ttyS0,115200
-        boot_command: >
-          dhcp $kernel_addr_r turris-omnia/openwrt-mvebu-cortexa9-cznic_turris-omnia-initramfs-kernel.bin;
-          bootm $kernel_addr_r
-      TFTPProviderDriver: {}
+          - setenv bootfile linksys-e8450/openwrt-24.10.1-mediatek-mt7622-linksys_e8450-initramfs-kernel.bin
+          - dhcp
+        boot_command: bootm $loadaddr#$bootconf
       UBootStrategy: {}
-      SSHDriver:
-        username: root
+      SSHDriver: {}
 
 images:
   root: !template $LG_IMAGE
-
-options:
-  tftp_server_ip: "192.168.1.203"
-  tftp_dev_ip: "192.168.1.2"
