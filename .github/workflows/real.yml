@@ -50,8 +50,17 @@ jobs:
       - name: Set environment variables
         run: |
           echo "LG_COORDINATOR=[fd96:f53d:74f2:1dba:fd81:ed6b:3322:51b2]" >> $GITHUB_ENV
-          echo "LG_PLACE=${{ matrix.device }}" >> $GITHUB_ENV
           echo "LG_IMAGE=${{ matrix.firmware }}" >> $GITHUB_ENV
+
+      - name: Wait for free device
+        run: |
+          eval $(poetry run labgrid-client reserve --wait --shell device=${{ matrix.device }})
+          echo "LG_TOKEN=$LG_TOKEN" >> $GITHUB_ENV
+
+      - name: Wait for free device and lock
+        run: |
+          poetry run labgrid-client -p + lock
+          echo "LG_PLACE=+$LG_TOKEN" >> $GITHUB_ENV
 
       - name: Run test
         run: |
@@ -65,7 +74,14 @@ jobs:
             -v \
             -s
 
+      - name: Poweroff and unlock device
+        if: always()
+        run: |
+          poetry run labgrid-client -p + power off
+          poetry run labgrid-client -p + unlock
+
       - name: Show console
+        if: always()
         run: cat console_*
 
       - name: Upload console logs
