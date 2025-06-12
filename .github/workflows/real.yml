@@ -1,0 +1,83 @@
+name: Test OpenWrt on real devices
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test OpenWrt on ${{ matrix.device }}
+    runs-on: ${{ matrix.device }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: openwrt-one
+            target: mediatek-filogic
+            firmware: openwrt-mediatek-filogic-openwrt_one-initramfs.itb
+
+          - device: turris-omnia
+            target: mvebu-cortexa9
+            firmware: openwrt-mvebu-cortexa9-cznic_turris-omnia-initramfs-kernel.bin
+
+          - device: linksys-e8450
+            target: mediatek-mt7622
+            firmware: openwrt-mediatek-mt7622-linksys_e8450-initramfs-kernel.bin
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install project dependencies
+        run: |
+          poetry install
+
+      - name: Download test firmware
+        env:
+          target: ${{ matrix.target }}
+        run: |
+          wget https://downloads.openwrt.org/snapshots/targets/${target/-/\/}/${{ matrix.firmware }} \
+            --output-document ${{ matrix.firmware }}
+
+      - name: Set environment variables
+        run: |
+          echo "LG_COORDINATOR=[fd96:f53d:74f2:1dba:fd81:ed6b:3322:51b2]" >> $GITHUB_ENV
+          echo "LG_PLACE=${{ matrix.device }}" >> $GITHUB_ENV
+          echo "LG_IMAGE=${{ matrix.firmware }}" >> $GITHUB_ENV
+
+      - name: Run test
+        run: |
+          gunzip ${{ matrix.firmware }} || true
+
+          firmware=${{ matrix.firmware }}
+          poetry run pytest tests/ \
+            --lg-env targets/${{ matrix.device }}.yaml \
+            --lg-log \
+            --lg-colored-steps \
+            -v \
+            -s
+
+      - name: Show console
+        run: cat console_*
+
+      - name: Upload console logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: console-${{ matrix.target }}
+          path: console_*
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: results-${{ matrix.target }}
+          path: results.json
