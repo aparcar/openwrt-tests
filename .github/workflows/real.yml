@@ -10,7 +10,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   test:
@@ -64,9 +64,6 @@ jobs:
 
       - name: Run test
         run: |
-          gunzip ${{ matrix.firmware }} || true
-
-          firmware=${{ matrix.firmware }}
           poetry run pytest tests/ \
             --lg-env targets/${{ matrix.device }}.yaml \
             --lg-log \
