@@ -9,4 +9,4 @@ def test_apk_procd_installed(shell_command):
 @pytest.mark.lg_feature(["online", "apk"])
 def test_apk_add_ucert(ssh_command):
     ssh_command.run("apk add ucert")
-    assert "ucert" in "\n".join(ssh_command.run("apk list")[0])
+    assert "ucert" in "\n".join(ssh_command.run("apk list | grep ucert")[0])
