@@ -65,6 +65,7 @@ jobs:
       - name: Run test
         run: |
           poetry run pytest tests/ \
+            --json=report.json \
             --lg-env targets/${{ matrix.device }}.yaml \
             --lg-log \
             --lg-colored-steps \
@@ -94,3 +95,10 @@ jobs:
         with:
           name: results-${{ matrix.target }}
           path: results.json
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-${{ matrix.target }}
+          path: report.json
