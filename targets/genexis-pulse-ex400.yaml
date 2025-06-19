@@ -1,0 +1,32 @@
+targets:
+  main:
+    features:
+      - online
+      - apk
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      NetworkPowerDriver: {}
+      SerialDriver:
+        txdelay: 0.01
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 120
+        post_login_settle_time: 5
+        username: root
+      UBootDriver:
+        interrupt: "\\x0"
+        prompt: "ex400 ->"
+        init_commands:
+          - net_init
+          - setenv bootfile genexis-pulse-ex400/openwrt-ramips-mt7621-genexis_pulse-ex400-initramfs-kernel.bin
+          - dhcp
+        boot_command: bootm $loadaddr
+      UBootStrategy: {}
+      SSHDriver: {}
+
+images:
+  root: !template $LG_IMAGE
