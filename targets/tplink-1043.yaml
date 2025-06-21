@@ -1,0 +1,47 @@
+targets:
+  main:
+    resources:
+      RemotePlace:
+        name: lab-1043
+    drivers:
+      SerialDriver:
+        txdelay: 0.05
+      power_driver:
+        cls: GpioDigitalOutputDriver
+        name: power_driver
+        bindings:
+          gpio: power
+      reset_driver:
+        cls: GpioDigitalOutputDriver
+        name: reset_driver
+        bindings:
+          gpio: reset
+      DigitalOutputPowerDriver:
+        bindings:
+          output: power_driver
+      ShellDriver:
+        prompt: 'root@[\w-]+:[^ ]+ '
+        login_prompt: " login: "
+        username: "root"
+        console_ready: "Please press Enter to activate this console."
+      TFTPProviderDriver: {}
+      SmallUBootDriver:
+        init_commands:
+          - setenv ipaddr 192.168.1.200
+          - setenv serverip 192.168.1.99
+          - tftp 0x82000000 openwrt-24.10.1-ath79-generic-tplink_tl-wr1043nd-v3-initramfs-kernel.bin
+        prompt: "ap135>"
+        boot_expression: 'Autobooting in 1 seconds'
+        boot_secret: 'tpl'
+#      UBootStrategy: {}
+      UBootTFTPStrategy: {}
+      SSHDriver: {}
+#      TL1043Strategy:
+#        bindings:
+#          reset: reset_driver
+
+images:
+  root: !template $LG_IMAGE
+
+imports:
+  - ../strategies/tftpstrategy.py

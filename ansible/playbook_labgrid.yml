@@ -132,13 +132,30 @@
       notify:
         - Restart dnsmasq
 
-    - name: Configure dnsmasq
+    - name: Stat host specific dnsmasq configuration
+      ansible.builtin.stat:
+        path: files/exporter/dnsmasq-{{ ansible_hostname }}.conf
+      register: host_specific_dnsmasq_conf
+      delegate_to: localhost
+      run_once: true
+
+    - name: Configure dnsmasq using host specific config
+      template:
+        src: files/exporter/dnsmasq-{{ ansible_host }}.conf
+        dest: /etc/dnsmasq.conf
+      become: yes
+      notify:
+        - Restart dnsmasq
+      when: host_specific_dnsmasq_conf.stat.exists
+
+    - name: Configure dnsmasq using default config
       template:
         src: files/exporter/dnsmasq.conf
         dest: /etc/dnsmasq.conf
       become: yes
       notify:
         - Restart dnsmasq
+      when: not host_specific_dnsmasq_conf.stat.exists
 
     - name: Start and enable dnsmasq
       service:
