@@ -13,10 +13,14 @@
 # limitations under the License.
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
 from pytest_harvest import get_fixture_store
+
+
+logger = logging.getLogger(__name__)
 
 
 def pytest_addoption(parser):
@@ -46,16 +50,22 @@ def ubus_call(command, namespace, method, params={}):
     except json.JSONDecodeError:
         return {}
 
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_env(env, pytestconfig):
     env.config.data.setdefault("images", {})["firmware"] = pytestconfig.getoption(
         "firmware"
     )
 
+
 @pytest.fixture
 def shell_command(strategy):
-    strategy.transition("shell")
-    return strategy.shell
+    try:
+        strategy.transition("shell")
+        return strategy.shell
+    except Exception:
+        logger.exception("Failed to transition to state shell")
+        pytest.exit("Failed to transition to state shell", returncode=3)
 
 
 @pytest.fixture
