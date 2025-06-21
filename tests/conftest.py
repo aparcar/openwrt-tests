@@ -46,20 +46,19 @@ def ubus_call(command, namespace, method, params={}):
     except json.JSONDecodeError:
         return {}
 
-
-@pytest.fixture
-def shell_command(env, strategy, pytestconfig):
+@pytest.fixture(scope="session", autouse=True)
+def setup_env(env, pytestconfig):
     env.config.data.setdefault("images", {})["firmware"] = pytestconfig.getoption(
         "firmware"
     )
+
+@pytest.fixture
+def shell_command(strategy):
     strategy.transition("shell")
     return strategy.shell
 
 
 @pytest.fixture
-def ssh_command(env, shell_command, target, pytestconfig):
-    env.config.data.setdefault("images", {})["firmware"] = pytestconfig.getoption(
-        "firmware"
-    )
+def ssh_command(shell_command, target):
     ssh = target.get_driver("SSHDriver")
     return ssh
