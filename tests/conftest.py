@@ -57,11 +57,9 @@ def shell_command(env, strategy, pytestconfig):
 
 
 @pytest.fixture
-def ssh_command(env, target, pytestconfig):
+def ssh_command(env, shell_command, target, pytestconfig):
     env.config.data.setdefault("images", {})["firmware"] = pytestconfig.getoption(
         "firmware"
     )
-    strategy = target.get_strategy()
-    strategy.transition("shell")
     ssh = target.get_driver("SSHDriver")
     return ssh
