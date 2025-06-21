@@ -48,14 +48,12 @@ def ubus_call(command, namespace, method, params={}):
 
 
 @pytest.fixture
-def shell_command(env, target, pytestconfig):
+def shell_command(env, strategy, pytestconfig):
     env.config.data.setdefault("images", {})["firmware"] = pytestconfig.getoption(
         "firmware"
     )
-    strategy = target.get_strategy()
     strategy.transition("shell")
-    shell = target.get_driver("ShellDriver")
-    return shell
+    return strategy.shell
 
 
 @pytest.fixture
