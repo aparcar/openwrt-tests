@@ -12,7 +12,7 @@ test: $(OPENWRT_CI_TESTS)
 TESTSDIR ?= $(shell readlink -f $(TOPDIR)/tests)
 
 define pytest
-	uv run \
+	uv --project $(TESTSDIR) run \
 		pytest $(TESTSDIR)/tests/ \
 		--lg-log \
 		--log-cli-level=CONSOLE \
@@ -30,7 +30,7 @@ $(curdir)/setup:
 		(echo "Please install qemu-system-x86_64" && exit 1)
 	@[ -n "$$(command -v qemu-system-aarch64)" ] || \
 		(echo "Please install qemu-system-aarch64" && exit 1)
-	@uv sync
+	@uv --project $(TESTSDIR) sync
 
 
 $(curdir)/x86-64: QEMU_BIN ?= qemu-system-x86_64
