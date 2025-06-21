@@ -11,32 +11,34 @@ def check_download(
     remove=True,
     filename="index.html",
 ):
-    stdout, stderr, exitcode = command.run(f"wget {url} -O {filename}")
-    if expect_stdout:
-        found = False
-        for line in stdout:
-            if expect_stdout in line:
-                found = True
-                break
-        assert found, f"Expected output '{expect_stdout}' not found in {stdout}"
+    try:
+        stdout, stderr, exitcode = command.run(f"wget {url} -O {filename}")
+        if expect_stdout:
+            found = False
+            for line in stdout:
+                if expect_stdout in line:
+                    found = True
+                    break
+            assert found, f"Expected output '{expect_stdout}' not found in {stdout}"
 
-    if expect_stderr:
-        found = False
-        for line in stderr:
-            if expect_stderr in line:
-                found = True
-                break
-        assert found, f"Expected error '{expect_stderr}' not found in {stderr}"
+        if expect_stderr:
+            found = False
+            for line in stderr:
+                if expect_stderr in line:
+                    found = True
+                    break
+            assert found, f"Expected error '{expect_stderr}' not found in {stderr}"
 
-    assert expect_exitcode == exitcode, (
-        f"Expected exit code {expect_exitcode} not found in {exitcode}"
-    )
-    if expect_content:
-        assert expect_content in command.run(f"cat {url.split('/')[-1]}")[0], (
-            f"Expected content '{expect_content}' not found in {url.split('/')[-1]}"
+        assert expect_exitcode == exitcode, (
+            f"Expected exit code {expect_exitcode} not found in {exitcode}"
         )
-    if remove:
-        command.run(f"rm {filename}")
+        if expect_content:
+            assert expect_content in command.run(f"cat {url.split('/')[-1]}")[0], (
+                f"Expected content '{expect_content}' not found in {url.split('/')[-1]}"
+            )
+    finally:
+        if remove:
+            command.run(f"rm {filename}")
 
 
 @pytest.mark.lg_feature("online")
