@@ -72,10 +72,7 @@ def pytest_sessionfinish(session):
 
 
 def ubus_call(command, namespace, method, params={}):
-    output, _, exitcode = command.run(
-        f"ubus call {namespace} {method} '{json.dumps(params)}'"
-    )
-    assert exitcode == 0
+    output = command.run_check(f"ubus call {namespace} {method} '{json.dumps(params)}'")
 
     try:
         return json.loads("\n".join(output))

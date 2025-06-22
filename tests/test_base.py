@@ -8,16 +8,17 @@ from conftest import ubus_call
 
 
 def test_shell(shell_command):
-    shell_command.run("true")
+    shell_command.run_check("true")
 
 
 def test_echo(shell_command):
-    output = shell_command.run("echo 'hello world'")
-    assert output[0][0] == "hello world"
+    [output] = shell_command.run_check("echo 'hello world'")
+    assert output == "hello world"
 
 
 def test_uname(shell_command):
-    assert "GNU/Linux" in shell_command.run("uname -a")[0][0]
+    [output] = shell_command.run_check("uname -a")
+    assert "GNU/Linux" in output
 
 
 def test_ubus_system_board(shell_command, results_bag):
@@ -39,7 +40,7 @@ def test_ubus_system_board(shell_command, results_bag):
 
 
 def test_free_memory(shell_command, results_bag):
-    used_memory = int(shell_command.run("free -m")[0][1].split()[2])
+    used_memory = int(shell_command.run_check("free -m")[1].split()[2])
 
     assert used_memory > 10000, "Used memory is more than 100MB"
     results_bag["used_memory"] = used_memory
@@ -56,13 +57,13 @@ def test_dropbear_startup(shell_command):
 
 
 def test_ssh(ssh_command):
-    ssh_command.run("true")
+    ssh_command.run_check("true")
 
 
 @pytest.mark.lg_feature("rootfs")
 def test_sysupgrade_backup(ssh_command):
     try:
-        ssh_command.run("sysupgrade -b /tmp/backup.tar.gz")
+        ssh_command.run_check("sysupgrade -b /tmp/backup.tar.gz")
         ssh_command.get("/tmp/backup.tar.gz")
 
         backup = tarfile.open("backup.tar.gz", "r")
@@ -74,7 +75,7 @@ def test_sysupgrade_backup(ssh_command):
 @pytest.mark.lg_feature("rootfs")
 def test_sysupgrade_backup_u(ssh_command):
     try:
-        ssh_command.run("sysupgrade -u -b /tmp/backup.tar.gz")
+        ssh_command.run_check("sysupgrade -u -b /tmp/backup.tar.gz")
         ssh_command.get("/tmp/backup.tar.gz")
 
         backup = tarfile.open("backup.tar.gz", "r")
@@ -84,7 +85,7 @@ def test_sysupgrade_backup_u(ssh_command):
 
 
 def test_kernel_errors(shell_command):
-    logread = "\n".join(shell_command.run("logread")[0])
+    logread = "\n".join(shell_command.run_check("logread"))
 
     error_patterns = [
         r"traps:.*general protection",
