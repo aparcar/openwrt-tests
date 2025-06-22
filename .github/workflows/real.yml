@@ -1,5 +1,6 @@
 name: Test OpenWrt on real devices
 on:
+  pull_request:
   push:
     branches:
       - main
@@ -15,68 +16,64 @@ concurrency:
 jobs:
   test:
     name: Test OpenWrt on ${{ matrix.device }}
-    runs-on: ${{ matrix.device }}
+    runs-on: global-coordinator
     strategy:
       fail-fast: false
       matrix:
         include:
-          - device: openwrt-one
-            target: mediatek-filogic
-            firmware: openwrt-mediatek-filogic-openwrt_one-initramfs.itb
+          # - device: openwrt-one
+          #   target: mediatek-filogic
+          #   firmware: openwrt-mediatek-filogic-openwrt_one-initramfs.itb
 
-          # - device: turris-omnia
-          #   target: mvebu-cortexa9
-          #   firmware: openwrt-mvebu-cortexa9-cznic_turris-omnia-initramfs-kernel.bin
+          - device: turris-omnia
+            target: mvebu-cortexa9
+            firmware: openwrt-mvebu-cortexa9-cznic_turris-omnia-initramfs-kernel.bin
+            proxy: labgrid-bastian
 
-          - device: linksys-e8450
-            target: mediatek-mt7622
-            firmware: openwrt-mediatek-mt7622-linksys_e8450-initramfs-kernel.bin
+          # - device: linksys-e8450
+          #   target: mediatek-mt7622
+          #   firmware: openwrt-mediatek-mt7622-linksys_e8450-initramfs-kernel.bin
 
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Install project dependencies
-        run: |
-          poetry install
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Download test firmware
         env:
           target: ${{ matrix.target }}
         run: |
+          mkdir -p /tmp/tftp/${{ matrix.device }}
           wget https://downloads.openwrt.org/snapshots/targets/${target/-/\/}/${{ matrix.firmware }} \
-            --output-document /srv/tftp/${{ matrix.device }}/${{ matrix.firmware }}
+            --output-document /tmp/tftp/${{ matrix.device }}/${{ matrix.firmware }}
 
       - name: Set environment variables
         run: |
-          echo "LG_COORDINATOR=[fd96:f53d:74f2:1dba:fd81:ed6b:3322:51b2]" >> $GITHUB_ENV
-          echo "LG_IMAGE=${{ matrix.firmware }}" >> $GITHUB_ENV
+          echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/${{ matrix.firmware }}" >> $GITHUB_ENV
+          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
 
       - name: Wait for free device
         run: |
-          eval $(poetry run labgrid-client reserve --wait --shell device=${{ matrix.device }})
+          eval $(uv run labgrid-client reserve --wait --shell device=${{ matrix.device }})
           echo "LG_TOKEN=$LG_TOKEN" >> $GITHUB_ENV
-
-      - name: Wait for free device and lock
-        run: |
-          poetry run labgrid-client -p + lock
-          echo "LG_PLACE=+$LG_TOKEN" >> $GITHUB_ENV
+          echo "LG_PLACE=+" >> $GITHUB_ENV
+          uv run labgrid-client -p +$LG_TOKEN lock
 
       - name: Run test
         run: |
-          poetry run pytest tests/ \
-            --json=report.json \
+          uv run pytest tests/ \
             --lg-env targets/${{ matrix.device }}.yaml \
             --lg-log \
             --lg-colored-steps \
-            -v \
-            -s
+            --log-cli-level=CONSOLE
 
       - name: Poweroff and unlock device
         if: always()
         run: |
-          poetry run labgrid-client -p + power off
-          poetry run labgrid-client -p + unlock
+          uv run labgrid-client power off
+          uv run labgrid-client unlock
 
       - name: Show console
         if: always()
