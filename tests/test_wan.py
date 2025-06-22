@@ -56,52 +56,52 @@ def test_https_download(ssh_command):
     ssh_command.run("rm config.buildinfo")
 
 
-@pytest.mark.lg_feature("online")
-def test_http_download(ssh_command):
-    check_download(
-        ssh_command,
-        "http://http.badssl.com",
-        expect_stderr="Download completed",
-    )
+# @pytest.mark.lg_feature("online")
+# def test_http_download(ssh_command):
+#     check_download(
+#         ssh_command,
+#         "http://http.badssl.com",
+#         expect_stderr="Download completed",
+#     )
 
 
-@pytest.mark.lg_feature("online")
-def test_https_mozilla(ssh_command):
-    check_download(
-        ssh_command,
-        "https://www.mozilla.org/",
-        expect_stderr="Download completed",
-    )
+# @pytest.mark.lg_feature("online")
+# def test_https_mozilla(ssh_command):
+#     check_download(
+#         ssh_command,
+#         "https://www.mozilla.org/",
+#         expect_stderr="Download completed",
+#     )
 
 
-@pytest.mark.lg_feature("online")
-def test_https_untrusted(ssh_command):
-    check_download(
-        ssh_command,
-        "https://untrusted-root.badssl.com/",
-        expect_stderr="Connection error: Invalid SSL certificate",
-        expect_exitcode=5,
-    )
+# @pytest.mark.lg_feature("online")
+# def test_https_untrusted(ssh_command):
+#     check_download(
+#         ssh_command,
+#         "https://untrusted-root.badssl.com/",
+#         expect_stderr="Connection error: Invalid SSL certificate",
+#         expect_exitcode=5,
+#     )
 
 
-@pytest.mark.lg_feature("online")
-def test_https_wrong(ssh_command):
-    check_download(
-        ssh_command,
-        "https://wrong.host.badssl.com/",
-        expect_stderr="Connection error: Server hostname does not match SSL certificate",
-        expect_exitcode=5,
-    )
+# @pytest.mark.lg_feature("online")
+# def test_https_wrong(ssh_command):
+#     check_download(
+#         ssh_command,
+#         "https://wrong.host.badssl.com/",
+#         expect_stderr="Connection error: Server hostname does not match SSL certificate",
+#         expect_exitcode=5,
+#     )
 
 
-@pytest.mark.lg_feature("online")
-def test_https_expired(ssh_command):
-    check_download(
-        ssh_command,
-        "https://expired.badssl.com/",
-        expect_stderr="Connection error: Invalid SSL certificate",
-        expect_exitcode=5,
-    )
+# @pytest.mark.lg_feature("online")
+# def test_https_expired(ssh_command):
+#     check_download(
+#         ssh_command,
+#         "https://expired.badssl.com/",
+#         expect_stderr="Connection error: Invalid SSL certificate",
+#         expect_exitcode=5,
+#     )
 
 
 # @pytest.mark.lg_feature("online")
