@@ -22,9 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - device: openwrt-one
-          #   target: mediatek-filogic
-          #   firmware: openwrt-mediatek-filogic-openwrt_one-initramfs.itb
+          - device: openwrt-one
+            target: mediatek-filogic
+            firmware: openwrt-mediatek-filogic-openwrt_one-initramfs.itb
+            proxy: labgrid-aparcar
 
           - device: turris-omnia
             target: mvebu-cortexa9
@@ -34,7 +35,12 @@ jobs:
           # - device: linksys-e8450
           #   target: mediatek-mt7622
           #   firmware: openwrt-mediatek-mt7622-linksys_e8450-initramfs-kernel.bin
+          #   proxy: labgrid-aparcar
 
+          - device: genexis-pulse-ex400
+            target: ramips-mt7621
+            firmware: openwrt-ramips-mt7621-genexis_pulse-ex400-initramfs-kernel.bin
+            proxy: labgrid-aparcar
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
