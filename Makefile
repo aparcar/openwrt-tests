@@ -22,8 +22,6 @@ endef
 $(curdir)/setup:
 	@[ -n "$$(command -v uv)" ] || \
 		(echo "Please install uv. See https://docs.astral.sh/uv/" && exit 1)
-	@[ -n "$$(command -v bats)" ] || \
-		(echo "Please install bats. See https://bats-core.readthedocs.io/en/stable/installation.html" && exit 1)
 	@[ -n "$$(command -v qemu-system-mips)" ] || \
 		(echo "Please install qemu-system-mips" && exit 1)
 	@[ -n "$$(command -v qemu-system-x86_64)" ] || \
@@ -69,7 +67,3 @@ $(curdir)/malta-be:
 		$(pytest) \
 		--lg-env $(TESTSDIR)/targets/qemu-malta-be.yaml \
 		--firmware $(FIRMWARE)
-
-$(curdir)/shell:
-	[ -n "$$(command -v bats)" ] || (echo "Please install bats" && exit 1)
-	bats -r $(TESTSDIR)/tests/bats
