@@ -67,14 +67,15 @@ jobs:
           echo "LG_TOKEN=$LG_TOKEN" >> $GITHUB_ENV
           echo "LG_PLACE=+" >> $GITHUB_ENV
           uv run labgrid-client -p +$LG_TOKEN lock
+          echo "LG_ENV=targets/${{ matrix.device }}.yaml" >> $GITHUB_ENV
 
       - name: Run test
         run: |
           uv run pytest tests/ \
-            --lg-env targets/${{ matrix.device }}.yaml \
             --lg-log \
             --lg-colored-steps \
-            --log-cli-level=CONSOLE
+            --log-cli-level=CONSOLE \
+            --alluredir allure-results
 
       - name: Poweroff and unlock device
         if: always()
@@ -93,16 +94,48 @@ jobs:
           name: console-${{ matrix.target }}
           path: console_*
 
-      - name: Upload results
+      - name: Upload allure results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: results-${{ matrix.target }}
-          path: results.json
+          name: allure-results-${{ matrix.target }}
+          path: allure-results
 
-      - name: Upload report
-        uses: actions/upload-artifact@v4
+  allure:
+    name: Deploy Allure Report
+    runs-on: ubuntu-latest
+    if: always()
+    needs: test
+    steps:
+      - name: Download all Allure results
+        uses: actions/download-artifact@v4
+        with:
+          path: allure-results
+
+      - name: Copy all results in the same folder
+        continue-on-error: true
+        run: cp -fv allure-results/allure-results-*/* allure-results/
+
+      - name: Load test report history
+        uses: actions/checkout@v3
+        if: always()
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Build test report
+        uses: simple-elf/allure-report-action@v1.7
         if: always()
         with:
-          name: report-${{ matrix.target }}
-          path: report.json
+          gh_pages: gh-pages
+          allure_history: allure-history
+          allure_results: allure-results
+
+      - name: Publish test report
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history

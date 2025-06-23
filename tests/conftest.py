@@ -14,12 +14,25 @@
 
 import json
 import logging
+from os import getenv, path
 from pathlib import Path
 
+import allure
 import pytest
 from pytest_harvest import get_fixture_store
 
 logger = logging.getLogger(__name__)
+
+device = getenv("LG_ENV", "Unknown").split("/")[-1].split(".")[0]
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    result = outcome.get_result()
+
+    if result.when == "call":
+        allure.dynamic.parent_suite(device)
 
 
 def pytest_addoption(parser):
@@ -36,6 +49,25 @@ def pytest_sessionfinish(session):
     results = fixture_store["results_bag"]
 
     Path("results.json").write_text(json.dumps(results, indent=2))
+
+    alluredir = session.config.getoption("--alluredir")
+
+    if not alluredir or not path.isdir(alluredir):
+        return
+
+    # workaround for allure to accept multiple devices as suites
+    for json_file in Path(alluredir).glob("*.json"):
+        json_data = json.loads(json_file.read_text())
+        if "testCaseId" in json_data:
+            json_data["testCaseId"] = device + json_data["testCaseId"].split(".")[-1]
+            json_data["historyId"] = device + json_data["historyId"].split(".")[-1]
+        json_file.write_text(json.dumps(json_data))
+
+    allure_properties_file = Path(alluredir, "environment.properties")
+    allure_properties_file.write_text(
+        f"Version={results['tests/test_base.py::test_ubus_system_board']['version']}\n"
+        f"Revision={results['tests/test_base.py::test_ubus_system_board']['revision']}\n"
+    )
 
 
 def ubus_call(command, namespace, method, params={}):

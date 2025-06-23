@@ -1,6 +1,8 @@
 import re
 import tarfile
+import time
 
+import allure
 import pytest
 from conftest import ubus_call
 
@@ -29,6 +31,12 @@ def test_ubus_system_board(shell_command, results_bag):
     results_bag["target"] = output["release"]["target"]
     results_bag["version"] = output["release"]["version"]
 
+    allure.dynamic.label("board_name", output["board_name"])
+    allure.dynamic.label("kernel", output["kernel"])
+    allure.dynamic.label("revision", output["release"]["revision"])
+    allure.dynamic.label("target", output["release"]["target"])
+    allure.dynamic.label("version", output["release"]["version"])
+
 
 def test_free_memory(shell_command, results_bag):
     used_memory = int(shell_command.run("free -m")[0][1].split()[2])
@@ -37,7 +45,13 @@ def test_free_memory(shell_command, results_bag):
     results_bag["used_memory"] = used_memory
 
 
-def test_port_22_open(shell_command):
+def test_dropbear_startup(shell_command):
+    for i in range(60):
+        if shell_command.run("ls /etc/dropbear/dropbear_ed25519_host_key")[2] == 0:
+            break
+        time.sleep(1)
+
+    time.sleep(1)
     assert shell_command.run("netstat -tlpn | grep 0.0.0.0:22")[2] == 0
 
 
