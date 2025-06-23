@@ -1,0 +1,33 @@
+targets:
+  main:
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      NetworkPowerDriver: {}
+      TFTPProviderDriver: {}
+      SerialDriver:
+        txdelay: 0.01
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 120
+        post_login_settle_time: 5
+        username: root
+      SmallUBootDriver:
+        boot_expression: "Autobooting in 1 seconds"
+        prompt: "db12x>"
+        boot_secret: "tpl"
+        init_commands:
+          - setenv ipaddr 192.168.105.200
+          - setenv serverip 192.168.105.1
+          - tftp 0x82000000 tplink_tl-wdr3600-v1/openwrt-ath79-generic-tplink_tl-wdr3600-v1-initramfs-kernel.bin
+      UBootTFTPStrategy: {}
+      SSHDriver: {}
+
+images:
+  root: !template $LG_IMAGE
+
+imports:
+  - ../strategies/tftpstrategy.py
