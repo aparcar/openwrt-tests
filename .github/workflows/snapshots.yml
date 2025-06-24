@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * *"
+  pull_request:
+    branches:
+      - main
 
 env:
   PYTHONUNBUFFERED: "1"
@@ -42,6 +45,11 @@ jobs:
             target: ramips-mt7621
             firmware: openwrt-ramips-mt7621-genexis_pulse-ex400-initramfs-kernel.bin
             proxy: labgrid-aparcar
+
+          - device: hp-msm460
+            target: mpc85xx-p1020
+            firmware: openwrt-mpc85xx-p1020-hpe_msm460-initramfs-kernel.bin
+            proxy: labgrid-blocktrron
 
     steps:
       - name: Check out repository code
