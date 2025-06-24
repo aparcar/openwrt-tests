@@ -1,4 +1,4 @@
-name: Test OpenWrt on real devices
+name: Daily test for snapshots
 on:
   push:
     branches:
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
+  test-real:
     name: Test OpenWrt on ${{ matrix.device }}
     runs-on: global-coordinator
     strategy:
@@ -42,6 +42,7 @@ jobs:
             target: ramips-mt7621
             firmware: openwrt-ramips-mt7621-genexis_pulse-ex400-initramfs-kernel.bin
             proxy: labgrid-aparcar
+
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -84,9 +85,72 @@ jobs:
           uv run labgrid-client power off
           uv run labgrid-client unlock
 
-      - name: Show console
+      - name: Upload console logs
+        uses: actions/upload-artifact@v4
         if: always()
-        run: cat console_*
+        with:
+          name: console-${{ matrix.target }}
+          path: console_*
+
+      - name: Upload allure results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-${{ matrix.target }}
+          path: allure-results
+
+  test-qemu:
+    name: Run test on QEMU
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: malta-be
+            firmware: openwrt-malta-be-vmlinux-initramfs.elf
+            dependency: qemu-system-mips
+
+          - target: x86-64
+            firmware: openwrt-x86-64-generic-squashfs-combined.img.gz
+            dependency: qemu-system-x86
+
+          - target: armsr-armv8
+            firmware: openwrt-armsr-armv8-generic-initramfs-kernel.bin
+            dependency: qemu-system-aarch64
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install \
+            ${{ matrix.dependency }}
+
+          echo "LG_ENV=targets/qemu-${{ matrix.target }}.yaml" >> $GITHUB_ENV
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Download test firmware
+        env:
+          target: ${{ matrix.target }}
+        run: |
+          wget https://downloads.openwrt.org/snapshots/targets/${target/-/\/}/${{ matrix.firmware }} \
+            --output-document ${{ matrix.firmware }}
+
+      - name: Run test
+        run: |
+          gunzip ${{ matrix.firmware }} || true
+          firmware=${{ matrix.firmware }}
+
+          uv run pytest tests/ \
+            --lg-log \
+            --lg-colored-steps \
+            --log-cli-level=CONSOLE \
+            --alluredir allure-results \
+            --firmware $GITHUB_WORKSPACE/${firmware/.gz/}
 
       - name: Upload console logs
         uses: actions/upload-artifact@v4
@@ -106,7 +170,9 @@ jobs:
     name: Deploy Allure Report
     runs-on: ubuntu-latest
     if: always()
-    needs: test
+    needs:
+      - test-real
+      - test-qemu
     steps:
       - name: Download all Allure results
         uses: actions/download-artifact@v4
