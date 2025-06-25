@@ -50,6 +50,8 @@ class QEMUNetworkStrategy(Strategy):
 
     @step()
     def update_network_service(self):
+        sleep(5)  # wait for network to come up
+        self.shell.run("ip l; ip a; ps w; ubus -v list")
         self.shell.run("ubus wait_for network.interface.lan")
         while not ubus_call(self.shell, "network.interface.lan", "status").get(
             "ipv4-address"
