@@ -1,4 +1,4 @@
-name: Pull Requests tests with stable release
+name: Pull Requests
 
 on:
   pull_request:
@@ -6,7 +6,6 @@ on:
 env:
   PYTHONUNBUFFERED: "1"
   PYTEST_ADDOPTS: "--color=yes"
-  RELEASE: "24.10.2"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,22 +13,22 @@ concurrency:
 
 jobs:
   test-qemu:
-    name: Run test on QEMU
+    name: QEMU ${{ matrix.target }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: malta-be
-            firmware: openwrt-${{ env.RELEASE }}-malta-be-vmlinux-initramfs.elf
+            firmware: openwrt-24.10.2-malta-be-vmlinux-initramfs.elf
             dependency: qemu-system-mips
 
           - target: x86-64
-            firmware: openwrt-${{ env.RELEASE }}-x86-64-generic-squashfs-combined.img.gz
+            firmware: openwrt-24.10.2-x86-64-generic-squashfs-combined.img.gz
             dependency: qemu-system-x86
 
           - target: armsr-armv8
-            firmware: openwrt-${{ env.RELEASE }}-armsr-armv8-generic-initramfs-kernel.bin
+            firmware: openwrt-24.10.2-armsr-armv8-generic-initramfs-kernel.bin
             dependency: qemu-system-aarch64
 
     steps:
@@ -51,7 +50,7 @@ jobs:
         env:
           target: ${{ matrix.target }}
         run: |
-          wget https://downloads.openwrt.org/releases/${{ env.RELEASE }}/targets/${target/-/\/}/${{ matrix.firmware }} \
+          wget https://downloads.openwrt.org/releases/24.10.2/targets/${target/-/\/}/${{ matrix.firmware }} \
             --output-document ${{ matrix.firmware }}
 
       - name: Run test
@@ -73,31 +72,30 @@ jobs:
           path: console_*
 
   test-real:
-    name: Test OpenWrt on ${{ matrix.device }}
+    name: Device ${{ matrix.device }}
     runs-on: global-coordinator
-    needs: test-qemu
     strategy:
       fail-fast: false
       matrix:
         include:
           - device: openwrt-one
             target: mediatek-filogic
-            firmware: openwrt-${{ env.RELEASE }}-mediatek-filogic-openwrt_one-initramfs.itb
+            firmware: openwrt-24.10.2-mediatek-filogic-openwrt_one-initramfs.itb
             proxy: labgrid-aparcar
 
           - device: turris-omnia
             target: mvebu-cortexa9
-            firmware: openwrt-${{ env.RELEASE }}-mvebu-cortexa9-cznic_turris-omnia-initramfs-kernel.bin
+            firmware: openwrt-24.10.2-mvebu-cortexa9-cznic_turris-omnia-initramfs-kernel.bin
             proxy: labgrid-bastian
 
           - device: tplink_tl-wdr3600-v1
             target: ath79-generic
-            firmware: openwrt-${{ env.RELEASE }}-ath79-generic-tplink_tl-wdr3600-v1-initramfs-kernel.bin
+            firmware: openwrt-24.10.2-ath79-generic-tplink_tl-wdr3600-v1-initramfs-kernel.bin
             proxy: labgrid-aparcar
 
           - device: genexis-pulse-ex400
             target: ramips-mt7621
-            firmware: openwrt-${{ env.RELEASE }}-ramips-mt7621-genexis_pulse-ex400-initramfs-kernel.bin
+            firmware: openwrt-24.10.2-ramips-mt7621-genexis_pulse-ex400-initramfs-kernel.bin
             proxy: labgrid-aparcar
 
     steps:
@@ -112,7 +110,7 @@ jobs:
           target: ${{ matrix.target }}
         run: |
           mkdir -p /tmp/tftp/${{ matrix.device }}
-          wget https://downloads.openwrt.org/releases/${{ env.RELEASE }}/targets/${target/-/\/}/${{ matrix.firmware }} \
+          wget https://downloads.openwrt.org/releases/24.10.2/targets/${target/-/\/}/${{ matrix.firmware }} \
             --output-document /tmp/tftp/${{ matrix.device }}/${{ matrix.firmware }}
 
       - name: Set environment variables
