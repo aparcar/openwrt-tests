@@ -6,12 +6,51 @@ on:
 env:
   PYTHONUNBUFFERED: "1"
   PYTEST_ADDOPTS: "--color=yes"
+  UPSTREAM_URL: "https://downloads.openwrt.org/releases/24.10.2/targets"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  generate-matrix:
+    name: Generate labnet.yaml matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Generate matrix
+        id: set-matrix
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\
+              sudo chmod +x /usr/local/bin/yq
+
+          matrix=$(yq -o=json '
+            . as $root |
+            $root.labs as $labs |
+            $root.devices as $devices |
+            $labs
+            | to_entries
+            | map(
+                .key as $lab |
+                .value.devices
+                | map(
+                    select($devices[.] != null) |
+                    {
+                      "device": .,
+                      "proxy": $labs[$lab].proxy,
+                      "target": $devices[.].target,
+                      "firmware": $devices[.].firmware
+                    }
+                  )
+              )
+            | flatten
+          ' labnet.yaml)
+          echo "matrix=$(echo "$matrix" | jq -c '.')" >> $GITHUB_OUTPUT
+
   test-qemu:
     name: QEMU ${{ matrix.target }}
     runs-on: ubuntu-latest
@@ -50,7 +89,7 @@ jobs:
         env:
           target: ${{ matrix.target }}
         run: |
-          wget https://downloads.openwrt.org/releases/24.10.2/targets/${target/-/\/}/${{ matrix.firmware }} \
+          wget $UPSTREAM_URL/${target/-/\/}/${{ matrix.firmware }} \
             --output-document ${{ matrix.firmware }}
 
       - name: Run test
@@ -73,30 +112,12 @@ jobs:
 
   test-real:
     name: Device ${{ matrix.device }}
+    needs: generate-matrix
     runs-on: global-coordinator
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - device: openwrt-one
-            target: mediatek-filogic
-            firmware: openwrt-24.10.2-mediatek-filogic-openwrt_one-initramfs.itb
-            proxy: labgrid-aparcar
-
-          - device: turris-omnia
-            target: mvebu-cortexa9
-            firmware: openwrt-24.10.2-mvebu-cortexa9-cznic_turris-omnia-initramfs-kernel.bin
-            proxy: labgrid-bastian
-
-          - device: tplink_tl-wdr3600-v1
-            target: ath79-generic
-            firmware: openwrt-24.10.2-ath79-generic-tplink_tl-wdr3600-v1-initramfs-kernel.bin
-            proxy: labgrid-aparcar
-
-          - device: genexis-pulse-ex400
-            target: ramips-mt7621
-            firmware: openwrt-24.10.2-ramips-mt7621-genexis_pulse-ex400-initramfs-kernel.bin
-            proxy: labgrid-aparcar
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
 
     steps:
       - name: Check out repository code
@@ -105,18 +126,20 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
+      - name: Set environment variables
+        run: |
+          export firmware=openwrt-24.10.2-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
+          echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/$firmware" >> $GITHUB_ENV
+          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
+          echo "FIRMWARE_IMAGE=$firmware" >> $GITHUB_ENV
+
       - name: Download test firmware
         env:
           target: ${{ matrix.target }}
         run: |
           mkdir -p /tmp/tftp/${{ matrix.device }}
-          wget https://downloads.openwrt.org/releases/24.10.2/targets/${target/-/\/}/${{ matrix.firmware }} \
-            --output-document /tmp/tftp/${{ matrix.device }}/${{ matrix.firmware }}
-
-      - name: Set environment variables
-        run: |
-          echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/${{ matrix.firmware }}" >> $GITHUB_ENV
-          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
+          wget $UPSTREAM_URL/${target/-/\/}/$FIRMWARE_IMAGE \
+            --output-document /tmp/tftp/${{ matrix.device }}/$FIRMWARE_IMAGE
 
       - name: Wait for free device
         run: |
