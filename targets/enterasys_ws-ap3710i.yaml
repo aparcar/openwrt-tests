@@ -6,7 +6,7 @@ targets:
       RemotePlace:
         name: !template "$LG_PLACE"
     drivers:
-      NetworkPowerDriver: {}
+      PDUDaemonDriver: {}
       SerialDriver:
         txdelay: 0.05
       ShellDriver:
@@ -18,13 +18,10 @@ targets:
         username: root
       UBootDriver:
         autoboot: "or any other key to stop autoboot"
-        interrupt: "\n"
-        post_login_settle_time: 2
-        prompt: "Boot (PRI)->"
-        login_prompt: "login:"
-        login: "admin"
-        password: "new2day"
+        interrupt: "admin\n"
+        prompt: "Boot \\(PRI\\)->"
         password_prompt: "password:"
+        password: "new2day"
         init_commands:
           - tftp 0x1000000
         boot_command: >
