@@ -1,0 +1,195 @@
+name: Healthcheck
+
+on:
+  push:
+    branches: [main]
+  pull_request: # to be removed later
+  schedule:
+    - cron: "0 0 * * *"
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTEST_ADDOPTS: "--color=yes"
+  UPSTREAM_URL: "https://downloads.openwrt.org/releases/24.10.2/targets"
+
+jobs:
+  generate-matrix:
+    name: Generate labnet.yaml matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Generate matrix
+        id: set-matrix
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\
+              sudo chmod +x /usr/local/bin/yq
+
+          matrix=$(yq -o=json '
+            . as $root |
+            $root.labs as $labs |
+            $root.devices as $devices |
+            $labs
+            | to_entries
+            | map(
+                .key as $lab |
+                .value.devices
+                | map(
+                    select($devices[.] != null) |
+                    {
+                      "device": .,
+                      "proxy": $labs[$lab].proxy,
+                      "target": $devices[.].target,
+                      "firmware": $devices[.].firmware
+                    }
+                  )
+              )
+            | flatten
+          ' labnet.yaml)
+          echo "matrix=$(echo "$matrix" | jq -c '.')" >> $GITHUB_OUTPUT
+
+  test-real:
+    name: Device ${{ matrix.device }}
+    needs: generate-matrix
+    runs-on: global-coordinator
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set environment variables
+        run: |
+          export firmware=openwrt-24.10.2-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
+          echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/$firmware" >> $GITHUB_ENV
+          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
+          echo "FIRMWARE_IMAGE=$firmware" >> $GITHUB_ENV
+
+      - name: Download test firmware
+        env:
+          target: ${{ matrix.target }}
+        run: |
+          mkdir -p /tmp/tftp/${{ matrix.device }}
+          wget $UPSTREAM_URL/${target/-/\/}/$FIRMWARE_IMAGE \
+            --output-document /tmp/tftp/${{ matrix.device }}/$FIRMWARE_IMAGE
+
+      - name: Wait for free device
+        run: |
+          eval $(uv run labgrid-client reserve --wait --shell device=${{ matrix.device }})
+          echo "LG_TOKEN=$LG_TOKEN" >> $GITHUB_ENV
+          echo "LG_PLACE=+" >> $GITHUB_ENV
+          uv run labgrid-client -p +$LG_TOKEN lock
+          echo "LG_ENV=targets/${{ matrix.device }}.yaml" >> $GITHUB_ENV
+
+      - name: Run test
+        id: test
+        run: |
+          uv run pytest tests/ \
+            --lg-log \
+            --lg-colored-steps \
+            --log-cli-level=CONSOLE
+
+      - name: Poweroff and unlock device
+        if: always()
+        run: |
+          uv run labgrid-client power off
+          uv run labgrid-client unlock
+
+      - name: Upload console logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: console-${{ matrix.device }}
+          path: console_*
+
+      - name: Handle test failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueTitle = "Healthcheck ${{ matrix.proxy }}/${{ matrix.device }}";
+
+            // Search for existing issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+
+            let testIssue = issues.data.find(issue =>
+              issue.title === issueTitle &&
+              issue.user.type === "Bot"
+            );
+
+            if (testIssue) {
+                if (testIssue.state === "closed") {
+                  await github.rest.issues.update({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: testIssue.number,
+                    state: "open",
+                    body: "The automated healthcheck for device ${{ matrix.device }} has **failed**. Please check the logs for details. See the full run at https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                  });
+                }
+                console.log("Reopened existing issue due to test failure.");
+              } else {
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: issueTitle,
+                  body: "The automated healthcheck for device ${{ matrix.device }} has **failed**. Please check the logs for details. See the full run at https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                });
+                console.log("Created new issue due to test failure.");
+              }
+
+      - name: Handle test success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueTitle = "Healthcheck ${{ matrix.proxy }}/${{ matrix.device }}";
+
+            // Search for existing issue
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100,
+            });
+
+            let testIssue = issues.data.find(issue =>
+              issue.title === issueTitle &&
+              issue.user.type === "Bot"
+            );
+
+            if (!testIssue) {
+              testIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+              });
+              console.log("Created and will close the issue.");
+            }
+
+            // Close the issue
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: testIssue.number,
+              state: "closed",
+              body: "The automated test has **passed** successfully in https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+
+            });
+            console.log("Closed issue as test passed.");
