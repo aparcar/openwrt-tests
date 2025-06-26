@@ -28,10 +28,45 @@
 
 - hosts: labs
   tasks:
+    - name: Set hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+      become: yes
+
+    - name: Set /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: "^127.0.0.1"
+        line: "127.0.0.1 localhost"
+        state: present
+      become: yes
+
+    - name: Set /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: "^127.0.1.1"
+        line: "127.0.1.1 {{ inventory_hostname }}"
+        state: present
+      become: yes
+
     - name: Add public SSH key of coordinator
       authorized_key:
         user: "{{ ansible_user }}"
         key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP0ZVlD9TmfAXL53Vq7V9WKE3KPomOa1jINyflrPWAlJ"
+
+    - name: Generate SSH key pair for labgrid
+      community.crypto.openssh_keypair:
+        path: /home/{{ ansible_user }}/.ssh/labgrid
+        type: ed25519
+        comment: labgrid
+        state: present
+      register: labgrid_key
+
+    - name: Add public SSH key of labgrid
+      authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ labgrid_key.public_key }}"
+        state: present
 
     - name: Install required packages
       apt:
@@ -39,6 +74,7 @@
           - pipx
           - microcom
           - ser2net
+          - rsync
           - socat
           - iptables
           - iptables-persistent
@@ -60,12 +96,23 @@
         state: directory
       become: yes
 
-    - name: Create tftp folder with 777
+    - name: Create tftp folder
       file:
         path: /srv/tftp/
         state: directory
-        mode: "0777"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
       become: yes
+
+    - name: Create tftp subfolders
+      file:
+        path: /srv/tftp/{{ item }}
+        state: directory
+        mode: "0755"
+      loop: "{{ lookup('file', '../labnet.yaml') | from_yaml | json_query(json_query_str) | list }}"
+      vars:
+        json_query_str: 'labs."{{ inventory_hostname }}".devices'
 
     - name: Copy exporter configuration
       template:
@@ -117,6 +164,16 @@
         mode: 0755
       become: yes
 
+    - name: Add places.yaml based on labnet.yaml
+      template:
+        src: files/coordinator/places.yaml.j2
+        dest: /home/{{ ansible_user }}/labgrid-coordinator/places.yaml
+        mode: "0600"
+      vars:
+        labnet: "{{ lookup('file', '../labnet.yaml') | from_yaml }}"
+      notify:
+        - Restart labgrid-coordinator
+
     - name: Start and enable labgrid-coordinator
       service:
         name: labgrid-coordinator
@@ -142,7 +199,7 @@
     - name: Add developers group to sudoers for labgrid-bound-connect
       lineinfile:
         path: /etc/sudoers
-        line: "%ALL ALL = NOPASSWD: /usr/local/sbin/labgrid-bound-connect"
+        line: "ALL ALL = NOPASSWD: /usr/local/sbin/labgrid-bound-connect"
         validate: "visudo -cf %s"
       become: yes
 

@@ -1,0 +1,21 @@
+network:
+version: 2
+renderer: NetworkManager
+ethernets:
+  {{ ethernet_interface}}:
+    dhcp4: true
+wifis:
+  wlan0:
+    access-points:
+      "GPN-Open":
+        auth:
+          key-management: none
+    dhcp4: true
+vlans:
+{% for vlan in range(0, vlans) %}
+  vlan{{ vlan + 100 }}:
+    id: {{ vlan + 100 }}
+    link: {{ ethernet_interface}}
+    addresses:
+        - 192.168.{{ vlan + 100 }}.1/24
+{% endfor %}
