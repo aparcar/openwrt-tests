@@ -2,8 +2,8 @@ import pytest
 
 
 @pytest.mark.lg_feature("apk")
-def test_apk_procd_installed(shell_command):
-    assert "procd" in "\n".join(shell_command.run_check("apk list"))
+def test_apk_procd_installed(ssh_command):
+    assert "procd" in "\n".join(ssh_command.run_check("apk list"))
 
 
 @pytest.mark.lg_feature(["online", "apk"])

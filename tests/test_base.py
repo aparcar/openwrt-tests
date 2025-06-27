@@ -11,18 +11,32 @@ def test_shell(shell_command):
     shell_command.run_check("true")
 
 
-def test_echo(shell_command):
-    [output] = shell_command.run_check("echo 'hello world'")
+def test_dropbear_startup(shell_command):
+    for i in range(60):
+        if shell_command.run("ls /etc/dropbear/dropbear_ed25519_host_key")[2] == 0:
+            break
+        time.sleep(1)
+
+    time.sleep(1)
+    assert shell_command.run("netstat -tlpn | grep 0.0.0.0:22")[2] == 0
+
+
+def test_ssh(ssh_command):
+    ssh_command.run_check("true")
+
+
+def test_echo(ssh_command):
+    [output] = ssh_command.run_check("echo 'hello world'")
     assert output == "hello world"
 
 
-def test_uname(shell_command):
-    [output] = shell_command.run_check("uname -a")
+def test_uname(ssh_command):
+    [output] = ssh_command.run_check("uname -a")
     assert "GNU/Linux" in output
 
 
-def test_ubus_system_board(shell_command, results_bag):
-    output = ubus_call(shell_command, "system", "board", {})
+def test_ubus_system_board(ssh_command, results_bag):
+    output = ubus_call(ssh_command, "system", "board", {})
     assert output["release"]["distribution"] == "OpenWrt"
 
     results_bag["board_name"] = output["board_name"]
@@ -39,25 +53,11 @@ def test_ubus_system_board(shell_command, results_bag):
     allure.dynamic.label("version", output["release"]["version"])
 
 
-def test_free_memory(shell_command, results_bag):
-    used_memory = int(shell_command.run_check("free -m")[1].split()[2])
+def test_free_memory(ssh_command, results_bag):
+    used_memory = int(ssh_command.run_check("free -m")[1].split()[2])
 
     assert used_memory > 10000, "Used memory is more than 100MB"
     results_bag["used_memory"] = used_memory
-
-
-def test_dropbear_startup(shell_command):
-    for i in range(60):
-        if shell_command.run("ls /etc/dropbear/dropbear_ed25519_host_key")[2] == 0:
-            break
-        time.sleep(1)
-
-    time.sleep(1)
-    assert shell_command.run("netstat -tlpn | grep 0.0.0.0:22")[2] == 0
-
-
-def test_ssh(ssh_command):
-    ssh_command.run_check("true")
 
 
 @pytest.mark.lg_feature("rootfs")
@@ -84,8 +84,8 @@ def test_sysupgrade_backup_u(ssh_command):
         ssh_command.run("rm -rf /tmp/backup.tar.gz")
 
 
-def test_kernel_errors(shell_command):
-    logread = "\n".join(shell_command.run_check("logread"))
+def test_kernel_errors(ssh_command):
+    logread = "\n".join(ssh_command.run_check("logread"))
 
     error_patterns = [
         r"traps:.*general protection",
