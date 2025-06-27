@@ -5,6 +5,7 @@ on:
     branches: [main]
   schedule:
     - cron: "0 0 * * *"
+  pull_request:
 
 env:
   PYTHONUNBUFFERED: "1"
@@ -42,7 +43,8 @@ jobs:
                       "device": .,
                       "proxy": $labs[$lab].proxy,
                       "target": $devices[.].target,
-                      "firmware": $devices[.].firmware
+                      "firmware": $devices[.].firmware,
+                      "maintainers": $labs[$lab].maintainers
                     }
                   )
               )
@@ -110,15 +112,31 @@ jobs:
           name: console-${{ matrix.device }}
           path: console_*
 
-      - name: Handle test failure
-        if: failure()
+      - name: Handle test result
         uses: actions/github-script@v7
+        if: always()
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const issueTitle = "Healthcheck ${{ matrix.proxy }}/${{ matrix.device }}";
+            const runUrl = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}";
+            const isSuccess = "${{ job.status }}" === "success";
 
-            // Search for existing issue
+            const failureBody = `
+              ### ❌ Healthcheck Failed
+
+              The automated healthcheck for:
+
+              - **Proxy**: \`${{ matrix.proxy }}\`
+              - **Device**: \`${{ matrix.device }}\`
+              - **Maintainers**: ${{ matrix.maintainers }}
+
+              has **failed**. Please review the logs and investigate the issue.
+
+              🔗 [View the full workflow run](${runUrl})
+            `.trim();
+
+            // Fetch existing issues
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -131,64 +149,35 @@ jobs:
               issue.user.type === "Bot"
             );
 
-            if (testIssue) {
-                if (testIssue.state === "closed") {
-                  await github.rest.issues.update({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: testIssue.number,
-                    state: "open",
-                    body: "The automated healthcheck for device ${{ matrix.device }} has **failed**. Please check the logs for details. See the full run at https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-                  });
-                }
+            if (isSuccess) {
+              if (testIssue) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: testIssue.number,
+                  state: "closed",
+                });
+              }
+              console.log("Closed issue as test passed.");
+            } else {
+              if (testIssue) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: testIssue.number,
+                  state: "open",
+                  body: failureBody,
+                  labels: ["healthcheck"],
+                });
                 console.log("Reopened existing issue due to test failure.");
               } else {
                 await github.rest.issues.create({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   title: issueTitle,
-                  body: "The automated healthcheck for device ${{ matrix.device }} has **failed**. Please check the logs for details. See the full run at https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+                  body: failureBody,
+                  labels: ["healthcheck"],
                 });
                 console.log("Created new issue due to test failure.");
               }
-
-      - name: Handle test success
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const issueTitle = "Healthcheck ${{ matrix.proxy }}/${{ matrix.device }}";
-
-            // Search for existing issue
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'all',
-              per_page: 100,
-            });
-
-            let testIssue = issues.data.find(issue =>
-              issue.title === issueTitle &&
-              issue.user.type === "Bot"
-            );
-
-            if (!testIssue) {
-              testIssue = await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: issueTitle,
-              });
-              console.log("Created and will close the issue.");
             }
-
-            // Close the issue
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: testIssue.number,
-              state: "closed",
-              body: "The automated test has **passed** successfully in https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-
-            });
-            console.log("Closed issue as test passed.");
