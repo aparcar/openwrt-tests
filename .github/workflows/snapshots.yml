@@ -27,7 +27,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Generate matrix
-        id: set-matrix
         run: |
           sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\
               sudo chmod +x /usr/local/bin/yq
@@ -53,7 +52,25 @@ jobs:
               )
             | flatten
           ' labnet.yaml)
-          echo "matrix=$(echo "$matrix" | jq -c '.')" >> $GITHUB_OUTPUT
+          echo "matrix=$(echo "$matrix" | jq -c '.')" >> $GITHUB_ENV
+
+      - name: Filter out devices with open healthcheck issues
+        id: set-matrix
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get open issues with healthcheck label
+          issues=$(gh issue list --label "healthcheck" --state open --json title,labels --jq '.[] | .title')
+
+          # Filter out matrix entries where proxy/device combination has an open healthcheck issue
+          filtered_matrix=$(echo "$matrix" | jq --argjson issues "$(echo "$issues" | jq -R -s 'split("\n") | map(select(length > 0))')" '
+            map(select(
+              . as $entry |
+              ($issues | map(test("\($entry.proxy)/\($entry.device)")) | any) | not
+            ))
+          ')
+
+          echo "matrix=$(echo "$filtered_matrix" | jq -c '.')" >> $GITHUB_OUTPUT
 
   test-real:
     name: Device ${{ matrix.device }}
