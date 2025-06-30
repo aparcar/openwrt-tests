@@ -1,0 +1,35 @@
+[32mINFO   [0m      StepLogger:  → QEMUNetworkStrategy.transition(state='shell') 
+[32mINFO   [0m      StepLogger:  ↓ QEMUNetworkStrategy.transition() skipped=nothing to do
+[32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition()
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_ed25519_host_key') 
+CONSOLE SerialLogger.ma:   QemuDriver(main) > echo 'FNQO''YWXKNF'␤␍␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='FNQOYWXKNF\\s+root@[\\w()]+:[^ ]+ ') 
+CONSOLE SerialLogger.ma:    QemuDriver(main) < echo 'FNQO''YWXKNF'␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < FNQOYWXKNF␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'FNQO''YWXKNF'\r\n", <re.Match object; span=(21, 49), match=b'FNQOYWXKNF\r\nroot@OpenWrt:… [0.011s]
+CONSOLE SerialLogger.ma:   QemuDriver(main) > MARKER='OQPN''CSPUSP' run 'ls /etc/dropbear/dropbear_ed25519_host_key'␤␍␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='OQPNCSPUSP(.*)OQPNCSPUSP\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+CONSOLE SerialLogger.ma:    QemuDriver(main) < MARKER='OQPN''CSPUSP' run 'ls /etc/dropbear/dropbear_ed25519_hos␍␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < t_key'␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < OQPNCSPUSP/etc/dropbear/dropbear_ed25519_host_key␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < OQPNCSPUSP 0␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='OQPN''CSPUSP' run 'ls /etc/dropbear/dropbear_ed25519_hos\r\r\nt_key'\r\n", <re.Match o… [0.026s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['/etc/dropbear/dropbear_ed25519_host_key'], [], 0) [0.038s]
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='netstat -tlpn | grep 0.0.0.0:22') 
+CONSOLE SerialLogger.ma:   QemuDriver(main) > echo 'QXAV''AGMBOU'␤␍␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='QXAVAGMBOU\\s+root@[\\w()]+:[^ ]+ ') 
+CONSOLE SerialLogger.ma:    QemuDriver(main) < echo 'QXAV''AGMBOU'␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < QXAVAGMBOU␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'QXAV''AGMBOU'\r\n", <re.Match object; span=(21, 49), match=b'QXAVAGMBOU\r\nroot@OpenWrt:… [0.033s]
+CONSOLE SerialLogger.ma:   QemuDriver(main) > MARKER='VTJB''WUJGPK' run 'netstat -tlpn | grep 0.0.0.0:22'␤␍␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='VTJBWUJGPK(.*)VTJBWUJGPK\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+CONSOLE SerialLogger.ma:    QemuDriver(main) < MARKER='VTJB''WUJGPK' run 'netstat -tlpn | grep 0.0.0.0:22'␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < VTJBWUJGPKnetstat: showing only processes with your user ID␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1244/dropbear␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < VTJBWUJGPK 0␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='VTJB''WUJGPK' run 'netstat -tlpn | grep 0.0.0.0:22'\r\n", <re.Match object; span=(61, … [0.321s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['netstat: showing only processes with your user ID', 'tcp        0      0 0.0.0.0:22              … [0.356s]
