@@ -108,6 +108,8 @@ jobs:
         run: |
           wget $UPSTREAM_URL/${target/-/\/}/${{ matrix.firmware }} \
             --output-document ${{ matrix.firmware }}
+          FIRMWARE_VERSION=$(curl $UPSTREAM_URL/${target/-/\/}/version.buildinfo)
+          echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
 
       - name: Run test
         run: |

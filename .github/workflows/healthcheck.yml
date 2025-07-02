@@ -80,6 +80,8 @@ jobs:
           mkdir -p /tmp/tftp/${{ matrix.device }}
           wget $UPSTREAM_URL/${target/-/\/}/$FIRMWARE_IMAGE \
             --output-document /tmp/tftp/${{ matrix.device }}/$FIRMWARE_IMAGE
+          FIRMWARE_VERSION=$(curl $UPSTREAM_URL/${target/-/\/}/version.buildinfo)
+          echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
 
       - name: Wait for free device
         run: |
