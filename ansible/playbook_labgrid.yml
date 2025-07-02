@@ -78,6 +78,7 @@
           - socat
           - iptables
           - iptables-persistent
+          - git
         state: present
         update_cache: yes
       become: yes
@@ -85,7 +86,8 @@
     - name: Install labgrid packages
       community.general.pipx:
         name: labgrid
-        state: present
+        source: git+https://github.com/aparcar/labgrid.git@aparcar/staging
+        state: latest
       notify:
         - Restart labgrid-exporter
         - Restart labgrid-coordinator

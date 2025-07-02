@@ -1,8 +1,10 @@
 import enum
+import ipaddress
 
 import attr
 from labgrid.driver import TFTPProviderDriver
 from labgrid.factory import target_factory
+from labgrid.resource.remote import RemoteTFTPProvider
 from labgrid.strategy.common import Strategy, StrategyError
 
 
@@ -49,6 +51,9 @@ class UBootTFTPStrategy(Strategy):
             self.target.activate(self.console)
 
             staged_file = self.tftp.stage(self.target.env.config.get_image_path("root"))
+            tftp_server_ip = self.target.get_resource(
+                RemoteTFTPProvider, wait_avail=False
+            ).external_ip
 
             self.power.cycle()
             # interrupt uboot
@@ -56,6 +61,13 @@ class UBootTFTPStrategy(Strategy):
             self.uboot.init_commands = (
                 f"setenv bootfile {staged_file}",
             ) + self.uboot.init_commands
+
+            if tftp_server_ip:
+                tftp_dut_ip = ipaddress.ip_address(tftp_server_ip) + 1
+                self.uboot.init_commands = (
+                    f"setenv serverip {tftp_server_ip}",
+                    f"setenv ipaddr {tftp_dut_ip}",
+                ) + self.uboot.init_commands
 
             self.target.activate(self.uboot)
         elif status == Status.shell:
