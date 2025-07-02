@@ -5,14 +5,13 @@ Wants=network-online.target
 StartLimitIntervalSec=0
 
 [Service]
-User={{ ansible_user }}
-Group={{ ansible_user }}
+User=labgrid-dev
+Group=labgrid-dev
 Environment="PYTHONUNBUFFERED=1"
-ExecStart=/home/{{ ansible_user }}/.local/bin/labgrid-exporter --hostname "{{ inventory_hostname }}" /etc/labgrid/exporter.yaml
+ExecStart=labgrid-exporter --hostname "{{ inventory_hostname }}" /etc/labgrid/exporter.yaml
 Restart=always
 RestartSec=30
 DynamicUser=yes
-# Adjust to your distribution (most often "dialout" or "tty")
 SupplementaryGroups=dialout plugdev
 
 [Install]
