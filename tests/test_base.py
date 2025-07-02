@@ -25,7 +25,7 @@ def test_firmware_version(shell_command):
 
 def test_dropbear_startup(shell_command):
     for i in range(120):
-        if shell_command.run("ls /etc/dropbear/dropbear_ed25519_host_key")[2] == 0:
+        if shell_command.run("ls /etc/dropbear/dropbear_rsa_host_key")[2] == 0:
             break
         time.sleep(1)
 
