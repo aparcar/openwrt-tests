@@ -48,7 +48,7 @@ class QEMUNetworkStrategy(Strategy):
 
     @step()
     def update_network_service(self):
-        lan_address = "192.168.1.1"
+        lan_address = lan_status[0]["address"]
         networkservice = self.ssh.networkservice
 
         if networkservice.address != lan_address:
