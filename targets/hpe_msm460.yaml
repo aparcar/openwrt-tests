@@ -17,7 +17,11 @@ targets:
         username: root
       UBootDriver:
         prompt: "=>"
-        boot_command: setenv serverip 192.168.103.1; setenv ipaddr "192.168.103.100"; tftpboot; bootm $loadaddr
+        init_commands:
+          - setenv serverip 192.168.103.1
+          - setenv ipaddr "192.168.103.100"
+          - tftpboot
+        boot_command: bootm $loadaddr
       UBootTFTPStrategy: {}
       SSHDriver: {}
 

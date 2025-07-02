@@ -47,12 +47,17 @@ class UBootTFTPStrategy(Strategy):
             self.transition(Status.off)
             self.target.activate(self.tftp)
             self.target.activate(self.console)
-            # cycle power
-            p = self.tftp.stage(self.target.env.config.get_image_path("root"))
+
+            staged_file = self.tftp.stage(self.target.env.config.get_image_path("root"))
+
             self.power.cycle()
             # interrupt uboot
+
+            self.uboot.init_commands = (
+                f"setenv bootfile {staged_file}",
+            ) + self.uboot.init_commands
+
             self.target.activate(self.uboot)
-            self.uboot.run_check(f"setenv bootfile {p}")
         elif status == Status.shell:
             # transition to uboot
             self.transition(Status.uboot)
