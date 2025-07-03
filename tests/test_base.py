@@ -26,11 +26,11 @@ def test_firmware_version(shell_command):
 def test_dropbear_startup(shell_command):
     for i in range(120):
         if shell_command.run("ls /etc/dropbear/dropbear_rsa_host_key")[2] == 0:
-            break
+            if shell_command.run("netstat -tlpn | grep 0.0.0.0:22")[2] == 0:
+                return
         time.sleep(1)
 
-    time.sleep(1)
-    assert shell_command.run("netstat -tlpn | grep 0.0.0.0:22")[2] == 0
+    assert False, "Dropbear did not start up within 120 seconds"
 
 
 def test_ssh(ssh_command):
