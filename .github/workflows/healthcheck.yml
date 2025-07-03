@@ -8,7 +8,7 @@ on:
 env:
   PYTHONUNBUFFERED: "1"
   PYTEST_ADDOPTS: "--color=yes"
-  UPSTREAM_URL: "https://downloads.openwrt.org/releases/24.10.2/targets"
+  RELEASE: "24.10.2"
 
 jobs:
   generate-matrix:
@@ -68,10 +68,17 @@ jobs:
 
       - name: Set environment variables
         run: |
-          export firmware=openwrt-24.10.2-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
+          # workaround until 24.10.x is fixed on tplink_tl-wr1043nd-v3
+          if [ "${{ matrix.device }}" = "tplink_tl-wr1043nd-v3" ]; then
+            export RELEASE=23.05.5
+            echo "RELEASE=${RELEASE}" >> $GITHUB_ENV
+          fi
+
+          export firmware=openwrt-${RELEASE}-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
           echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/$firmware" >> $GITHUB_ENV
           echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
           echo "FIRMWARE_IMAGE=$firmware" >> $GITHUB_ENV
+          echo "UPSTREAM_URL=https://downloads.openwrt.org/releases/${RELEASE}/targets" >> $GITHUB_ENV
 
       - name: Download test firmware
         env:
