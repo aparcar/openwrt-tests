@@ -125,7 +125,7 @@ class TestSystemHealth:
             r"Kernel panic",
             r"BUG:",
             r"Unable to handle kernel",
-            r"Oops:",
+            r" Oops:",  # don't trigger on "ramoops"
             r"segfault",
             r"stack overflow",
             r"corruption",
