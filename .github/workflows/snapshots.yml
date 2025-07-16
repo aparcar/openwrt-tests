@@ -11,6 +11,7 @@ env:
   PYTHONUNBUFFERED: "1"
   PYTEST_ADDOPTS: "--color=yes"
   UPSTREAM_URL: "https://downloads.openwrt.org/snapshots/targets"
+  LG_FEATURE_APK: "true"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -144,6 +145,8 @@ jobs:
   test-qemu:
     name: QEMU ${{ matrix.target }}
     runs-on: ubuntu-latest
+    env:
+      LG_FEATURE_ONLINE: "true"
     strategy:
       fail-fast: false
       matrix:
