@@ -1,0 +1,35 @@
+[32mINFO   [0m      StepLogger:  → QEMUNetworkStrategy.transition(state='shell') 
+[32mINFO   [0m      StepLogger:  ↓ QEMUNetworkStrategy.transition() skipped=nothing to do
+[32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition()
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
+CONSOLE SerialLogger.ma:   QemuDriver(main) > echo 'MVMH''ZGHWMZ'␤␍␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='MVMHZGHWMZ\\s+root@[\\w()]+:[^ ]+ ') 
+CONSOLE SerialLogger.ma:    QemuDriver(main) < echo 'MVMH''ZGHWMZ'␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < MVMHZGHWMZ␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'MVMH''ZGHWMZ'\r\n", <re.Match object; span=(21, 49), match=b'MVMHZGHWMZ\r\nroot@OpenWrt:… [0.011s]
+CONSOLE SerialLogger.ma:   QemuDriver(main) > MARKER='YKGL''JNNGVC' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤␍␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='YKGLJNNGVC(.*)YKGLJNNGVC\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+CONSOLE SerialLogger.ma:    QemuDriver(main) < MARKER='YKGL''JNNGVC' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < y'␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < YKGLJNNGVC/etc/dropbear/dropbear_rsa_host_key␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < YKGLJNNGVC 0␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='YKGL''JNNGVC' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.029s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['/etc/dropbear/dropbear_rsa_host_key'], [], 0) [0.041s]
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='netstat -tlpn | grep 0.0.0.0:22') 
+CONSOLE SerialLogger.ma:   QemuDriver(main) > echo 'PSHY''MBKMXQ'␤␍␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='PSHYMBKMXQ\\s+root@[\\w()]+:[^ ]+ ') 
+CONSOLE SerialLogger.ma:    QemuDriver(main) < echo 'PSHY''MBKMXQ'␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < PSHYMBKMXQ␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'PSHY''MBKMXQ'\r\n", <re.Match object; span=(21, 49), match=b'PSHYMBKMXQ\r\nroot@OpenWrt:… [0.012s]
+CONSOLE SerialLogger.ma:   QemuDriver(main) > MARKER='ZFCZ''WBHHCW' run 'netstat -tlpn | grep 0.0.0.0:22'␤␍␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='ZFCZWBHHCW(.*)ZFCZWBHHCW\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+CONSOLE SerialLogger.ma:    QemuDriver(main) < MARKER='ZFCZ''WBHHCW' run 'netstat -tlpn | grep 0.0.0.0:22'␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < ZFCZWBHHCWnetstat: showing only processes with your user ID␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1244/dropbear␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < ZFCZWBHHCW 0␍␤
+CONSOLE SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='ZFCZ''WBHHCW' run 'netstat -tlpn | grep 0.0.0.0:22'\r\n", <re.Match object; span=(61, … [0.212s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['netstat: showing only processes with your user ID', 'tcp        0      0 0.0.0.0:22              … [0.225s]
