@@ -11,7 +11,7 @@ class TestApk:
         assert "procd" in "\n".join(ssh_command.run_check("apk list"))
 
     @pytest.mark.skipif(
-        os.getenv("LG_TEST_ONLINE") is None, reason="LG_TEST_ONLINE not defined"
+        os.getenv("LG_FEATURE_ONLINE") is None, reason="LG_FEATURE_ONLINE not defined"
     )
     def test_apk_add_ucert(self, ssh_command):
         try:
