@@ -176,6 +176,35 @@
       notify:
         - Restart dnsmasq
 
+    - name: Configure network with netplan
+      block:
+        - name: Check if netplan is available
+          ansible.builtin.raw: which netplan
+          register: which_res
+
+        - name: Stop if netplan not available
+          ansible.builtin.debug:
+            msg: "netplan is not available! Please switch your host to using netplan for network configuration"
+          when: "which_res.rc != 0"
+
+        - name: Stat host specific netplan configuration
+          ansible.builtin.stat:
+            path: files/exporter/netplan-{{ ansible_hostname }}.yaml
+          register: host_specific_netplan_conf
+          delegate_to: localhost
+          become: false
+
+        - name: Configure netplan using host specific config
+          ansible.builtin.template:
+            src: files/exporter/netplan-{{ ansible_host }}.yaml
+            dest: /etc/netplan/labnet.yaml
+          when: host_specific_netplan_conf.stat.exists
+
+        - name: Apply netplan config
+          ansible.builtin.command:
+            cmd: netplan apply
+          become: true
+
     - name: Stat host specific dnsmasq configuration
       ansible.builtin.stat:
         path: files/exporter/dnsmasq-{{ ansible_hostname }}.conf
