@@ -1,0 +1,35 @@
+targets:
+  main:
+    features:
+      - wifi
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      - NetworkPowerDriver: {}
+      - TFTPProviderDriver: {}
+      - SerialDriver:
+          txdelay: 0.01
+      - UBootDriver:
+          interrupt: "\\x0"
+          prompt: "MT7622>"
+          init_commands:
+            - dhcp
+          boot_command: bootm $loadaddr#$bootconf
+      - ShellDriver:
+          prompt: 'root@[\w()]+:[^ ]+ '
+          login_prompt: Please press Enter to activate this console.
+          await_login_timeout: 15
+          login_timeout: 120
+          post_login_settle_time: 5
+          username: root
+      - UBootTFTPStrategy: {}
+      - SSHDriver:
+          connection_timeout: 120.0
+          explicit_scp_mode: True
+
+images:
+  root: !template $LG_IMAGE
+
+imports:
+  - ../strategies/tftpstrategy.py
