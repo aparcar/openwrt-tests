@@ -114,6 +114,10 @@
           - iptables
           - iptables-persistent
           - git
+          - pkg-config
+          - libsystemd-dev
+          - build-essential
+          - python3-dev
         state: present
         update_cache: yes
 
@@ -167,6 +171,60 @@
 
       notify:
         - Restart labgrid-exporter
+
+    - name: Setup pdudaemon
+      block:
+        - name: Install pdudaemon via pipx
+          community.general.pipx:
+            name: pdudaemon
+            source: git+https://github.com/jonasjelonek/pdudaemon.git@main
+            state: latest
+          environment:
+            PIPX_HOME: /opt/pipx/
+            PIPX_BIN_DIR: /usr/local/bin
+          become: true
+
+        - name: Create pdudaemon directory
+          ansible.builtin.file:
+            path: /etc/pdudaemon
+            state: directory
+            mode: 0755
+
+        - name: Deploy pdudaemon systemd unit
+          ansible.builtin.template:
+            src: files/exporter/pdudaemon.service
+            dest: /etc/systemd/system/pdudaemon.service
+
+        - name: Start and enable pdudaemon
+          ansible.builtin.systemd_service:
+            name: pdudaemon
+            state: restarted
+            enabled: yes
+            daemon_reload: yes
+
+        - name: Stat host specific pdudaemon configuration
+          ansible.builtin.stat:
+            path: files/exporter/pdudaemon-{{ ansible_hostname }}.conf
+          register: host_specific_pdudaemon_conf
+          delegate_to: localhost
+          become: false
+
+        - name: Configure pdudaemon using host specific config
+          template:
+            src: files/exporter/pdudaemon-{{ ansible_host }}.conf
+            dest: /etc/pdudaemon/pdudaemon.conf
+          notify:
+            - Restart pdudaemon
+          when: host_specific_pdudaemon_conf.stat.exists
+
+        - name: Otherwise use general config
+          template:
+            src: files/exporter/pdudaemon.conf
+            dest: /etc/pdudaemon/pdudaemon.conf
+          notify:
+            - Restart pdudaemon
+          when: not host_specific_pdudaemon_conf.stat.exists
+
 
     - name: Install dnsmasq
       apt:
@@ -328,6 +386,12 @@
       systemd:
         daemon_reload: yes
         name: labgrid-coordinator
+        state: restarted
+
+    - name: Restart pdudaemon
+      systemd:
+        daemon_reload: yes
+        name: pdudaemon
         state: restarted
 
     - name: Restart dnsmasq

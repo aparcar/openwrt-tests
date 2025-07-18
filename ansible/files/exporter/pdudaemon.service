@@ -1,0 +1,13 @@
+[Unit]
+Description=Control and Queueing daemon for PDUs
+
+[Service]
+ExecStart=/usr/local/bin/pdudaemon --journal --conf=/etc/pdudaemon/pdudaemon.conf
+Type=simple
+DynamicUser=yes
+StateDirectory=pdudaemon
+ProtectHome=trueq
+Restart=on-abnormal
+
+[Install]
+WantedBy=multi-user.target
