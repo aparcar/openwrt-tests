@@ -1,0 +1,24 @@
+network:
+  version: 2
+  ethernets:
+{% for iface in labnet_interfaces %}
+    {{ iface }}: {}
+{% endfor %}
+  bridges:
+    br0:
+      dhcp4: no
+      interfaces:
+{% for iface in labnet_interfaces %}
+        - {{ iface }}
+{% endfor %}
+      addresses:
+        - 192.168.128.1/24
+  vlans:
+{% for vlan in range(1, vlans + 1) %}
+    vlan{{ vlan + 100 }}:
+      id: {{ vlan + 100 }}
+      link: br0
+      addresses:
+          - 192.168.{{ vlan + 100 }}.1/24
+          - 192.168.1.{{ vlan + 100 }}/24
+{% endfor %}
