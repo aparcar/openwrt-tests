@@ -67,6 +67,8 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Set environment
+        env:
+          target: ${{ matrix.target }}
         run: |
           # workaround until 24.10.x is fixed on tplink_tl-wr1043nd-v3
           if [ "${{ matrix.device }}" = "tplink_tl-wr1043nd-v3" ]; then
@@ -75,20 +77,18 @@ jobs:
           fi
 
           export firmware=openwrt-${RELEASE}-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
-          echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/$firmware" >> $GITHUB_ENV
-          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
-          echo "FIRMWARE_IMAGE=$firmware" >> $GITHUB_ENV
-          echo "UPSTREAM_URL=https://downloads.openwrt.org/releases/${RELEASE}/targets" >> $GITHUB_ENV
+          export upstream_url="https://downloads.openwrt.org/releases/${RELEASE}/targets"
 
-      - name: Download test firmware
-        env:
-          target: ${{ matrix.target }}
-        run: |
           mkdir -p /tmp/tftp/${{ matrix.device }}
-          wget $UPSTREAM_URL/${target/-/\/}/$FIRMWARE_IMAGE \
-            --output-document /tmp/tftp/${{ matrix.device }}/$FIRMWARE_IMAGE
-          FIRMWARE_VERSION=$(curl $UPSTREAM_URL/${target/-/\/}/version.buildinfo)
+          wget $upstream_url/${target/-/\/}/$firmware \
+            --output-document /tmp/tftp/${{ matrix.device }}/$firmware
+          (cd /tmp/tftp/ && gzip -d ${{ matrix.device }}/$firmware) || true
+
+          FIRMWARE_VERSION=$(curl $upstream_url/${target/-/\/}/version.buildinfo)
           echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
+
+          echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/${firmware/.gz/}" >> $GITHUB_ENV
+          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
 
       - name: Wait for free device
         run: |

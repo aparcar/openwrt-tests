@@ -94,21 +94,21 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Set environment
-        run: |
-          export firmware=openwrt-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
-          echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/$firmware" >> $GITHUB_ENV
-          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
-          echo "FIRMWARE_IMAGE=$firmware" >> $GITHUB_ENV
-
-      - name: Download test firmware
         env:
           target: ${{ matrix.target }}
         run: |
+          export firmware=openwrt-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
+
           mkdir -p /tmp/tftp/${{ matrix.device }}
-          wget $UPSTREAM_URL/${target/-/\/}/$FIRMWARE_IMAGE \
-            --output-document /tmp/tftp/${{ matrix.device }}/$FIRMWARE_IMAGE
+          wget $UPSTREAM_URL/${target/-/\/}/$firmware \
+            --output-document /tmp/tftp/${{ matrix.device }}/$firmware
+          (cd /tmp/tftp/ && gzip -d ${{ matrix.device }}/$firmware) || true
+
           FIRMWARE_VERSION=$(curl $UPSTREAM_URL/${target/-/\/}/version.buildinfo)
           echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
+
+          echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/${firmware/.gz/}" >> $GITHUB_ENV
+          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
 
       - name: Wait for free device
         run: |
