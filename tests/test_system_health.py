@@ -115,33 +115,6 @@ class TestSystemHealth:
             for zone, temp in temperatures.items():
                 assert temp < 85, f"Temperature in {zone} is critically high: {temp}°C"
 
-    def test_kernel_ring_buffer(self, ssh_command):
-        """Check kernel ring buffer for critical errors."""
-        dmesg_output = "\n".join(ssh_command.run_check("dmesg"))
-
-        # Critical error patterns to check
-        critical_patterns = [
-            r"Out of memory",
-            r"Kernel panic",
-            r"BUG:",
-            r"Unable to handle kernel",
-            r" Oops:",  # don't trigger on "ramoops"
-            r"segfault",
-            r"stack overflow",
-            r"corruption",
-            r"hung task",
-        ]
-
-        errors_found = []
-        for pattern in critical_patterns:
-            matches = re.findall(f".*{pattern}.*", dmesg_output, re.IGNORECASE)
-            if matches:
-                errors_found.extend(matches)
-
-        assert not errors_found, (
-            f"Critical errors found in kernel log: {errors_found[:5]}"
-        )  # Show first 5
-
     def test_process_count(self, ssh_command, results_bag):
         """Test number of running processes is reasonable."""
         proc_count = int(ssh_command.run_check("ps | wc -l")[0])

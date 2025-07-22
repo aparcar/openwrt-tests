@@ -103,18 +103,32 @@ def test_sysupgrade_backup_u(ssh_command):
 
 
 def test_kernel_errors(ssh_command):
-    logread = "\n".join(ssh_command.run_check("logread"))
+    dmesg_output = "\n".join(ssh_command.run_check("dmesg"))
 
     error_patterns = [
-        r"traps:.*general protection",
-        r"segfault at [[:digit:]]+ ip",
-        r"error.*in",
-        r"do_page_fault\(\): sending",
-        r"Unable to handle kernel.*address",
+        r" Oops:",  # don't trigger on "ramoops"
         r"(PC is at |pc : )([^+\[ ]+).*",
-        r"epc\s+:\s+\S+\s+([^+ ]+).*",
+        r"BUG:",
+        r"corruption",
+        r"do_page_fault\(\): sending",
         r"EIP: \[<.*>\] ([^+ ]+).*",
+        r"epc\s+:\s+\S+\s+([^+ ]+).*",
+        r"error.*in",
+        r"hung task",
+        r"Kernel panic",
+        r"Out of memory",
+        r"segfault",
+        r"stack overflow",
+        r"traps:.*general protection",
+        r"Unable to handle kernel",
     ]
 
+    errors_found = []
     for pattern in error_patterns:
-        assert re.search(pattern, logread) is None, f"Found kernel error: {pattern}"
+        matches = re.findall(f".*{pattern}.*", dmesg_output)
+        if matches:
+            errors_found.extend(matches)
+
+    assert not errors_found, (
+        f"Critical errors found in kernel log: {errors_found[:5]}"
+    )  # Show first 5
