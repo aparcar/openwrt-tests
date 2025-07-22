@@ -94,6 +94,7 @@
         append: true
         groups:
           - dialout
+          - plugdev
 
     - name: Add SSH keys to labgrid-dev based on labnet.yaml
       authorized_key:
@@ -167,6 +168,14 @@
       notify:
         - Restart labgrid-exporter
         - Restart labgrid-coordinator
+
+    - name: Install usbsdmux packages
+      community.general.pipx:
+        name: usbsdmux
+        state: latest
+      environment:
+        PIPX_HOME: /opt/pipx/
+        PIPX_BIN_DIR: /usr/local/bin
 
     - name: Create labgrid folder
       file:
@@ -397,6 +406,15 @@
         dest: /etc/sysctl.d/99-ip-forward.conf
         mode: "0644"
 
+    - name: Add udev rules for USB-SD-Mux
+      copy:
+        src: files/exporter/usbsdmux.rules
+        dest: /etc/udev/rules.d/99-usbsdmux.rules
+        mode: "0644"
+      notify: Reload udev rules
+      tags:
+        - udev
+
   handlers:
     - name: Restart labgrid-exporter
       systemd:
@@ -421,3 +439,6 @@
         daemon_reload: yes
         name: dnsmasq
         state: restarted
+
+    - name: Reload udev rules
+      command: udevadm control --reload-rules
