@@ -8,6 +8,12 @@ import pytest
 from conftest import ubus_call
 
 
+def test_kernel_log(shell_command):
+    allure.attach.file(
+        "console_main", name="kernel-log", attachment_type=allure.attachment_type.TEXT
+    )
+
+
 def test_shell(shell_command):
     shell_command.run_check("true")
 
