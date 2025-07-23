@@ -314,8 +314,7 @@
                         throw new Error("Failed to load devices.json");
                     }
 
-                    const data = await response.json();
-                    devicesData = data.devices;
+                    devicesData = await response.json();
 
                     // Load data for each device
                     const devicePromises = devicesData.map(async (device) => {
@@ -326,16 +325,14 @@
                             );
                             const reportText = await reportResponse.text();
                             device.report = parseTestReport(reportText);
-                            device.status = "online";
                         } catch (error) {
                             console.error(
                                 `Error loading data for ${device.device}:`,
                                 error,
                             );
-                            device.status = "offline";
                             device.report = null;
                         }
-
+                        console.log(device);
                         return device;
                     });
 
@@ -496,11 +493,17 @@
 
                 devicesData.forEach((device, index) => {
                     const card = createDeviceCard(device, index);
-                    container.innerHTML += card;
+                    console.log(card);
+                    if (card != undefined) {
+                        container.innerHTML += card;
+                    }
                 });
             }
 
             function createDeviceCard(device, index) {
+                if (device.report == null) {
+                    return;
+                }
                 const report = device.report;
                 const statusClass =
                     report.failures + report.errors == 0 ? "pass" : "failures";
@@ -548,7 +551,7 @@
                                 <div>
                                     <h5 class="card-title mb-1">${displayName}</h5>
                                     <p class="text-muted small mb-0">${device.device}</p>
-                                    <p class="text-muted small mb-0">${device.lab}</p>
+                                    <p class="text-muted small mb-0">${device.proxy}</p>
                                 </div>
                             </div>
 
