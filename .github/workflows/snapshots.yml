@@ -45,6 +45,7 @@ jobs:
                     select($devices[.] != null) |
                     {
                       "device": .,
+                      "name:": $devices[.].name,
                       "proxy": $labs[$lab].proxy,
                       "target": $devices[.].target,
                       "firmware": $devices[.].firmware
@@ -120,8 +121,10 @@ jobs:
 
       - name: Run test
         run: |
+          mkdir -p ${{ matrix.device }}/
           uv run pytest tests/ \
-            --lg-log \
+            --lg-log ${{ matrix.device }}/ \
+            --junitxml=${{ matrix.device }}/report.xml \
             --lg-colored-steps \
             --log-cli-level=CONSOLE \
             --alluredir allure-results
@@ -132,12 +135,12 @@ jobs:
           uv run labgrid-client power off || true
           uv run labgrid-client unlock
 
-      - name: Upload console logs
+      - name: Upload results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: console-${{ matrix.proxy }}-${{ matrix.device }}
-          path: console_*
+          name: results-${{ matrix.device }}
+          path: ${{ matrix.device }}/*
 
       - name: Upload allure results
         uses: actions/upload-artifact@v4
@@ -197,19 +200,22 @@ jobs:
           gunzip ${{ matrix.firmware }} || true
           firmware=${{ matrix.firmware }}
 
+          mkdir -p ${{ matrix.target }}
+
           uv run pytest tests/ \
-            --lg-log \
+            --lg-log ${{ matrix.target }}/ \
+            --junitxml=${{ matrix.target }}/report.xml \
             --lg-colored-steps \
             --log-cli-level=CONSOLE \
             --alluredir allure-results \
             --firmware $GITHUB_WORKSPACE/${firmware/.gz/}
 
-      - name: Upload console logs
+      - name: Upload results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: console-${{ matrix.target }}
-          path: console_*
+          name: report-${{ matrix.target }}
+          path: ${{ matrix.target }}/*
 
       - name: Upload allure results
         uses: actions/upload-artifact@v4
@@ -219,37 +225,29 @@ jobs:
           path: allure-results
 
   allure:
-    name: Deploy Allure Report
+    name: Deploy results page
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - generate-matrix
       - test-real
       - test-qemu
     steps:
-      - name: Download all Allure results
+      - name: Download all results
         uses: actions/download-artifact@v4
         with:
-          path: allure-results
+          path: page/data
 
-      - name: Copy all results in the same folder
-        continue-on-error: true
-        run: cp -fv allure-results/allure-results-*/* allure-results/
-
-      - name: Load test report history
+      - name: Check out repository code
         uses: actions/checkout@v4
-        if: always()
-        continue-on-error: true
         with:
-          ref: gh-pages
-          path: gh-pages
+          depth: 1
+          path: openwrt-tests/
 
-      - name: Build test report
-        uses: simple-elf/allure-report-action@v1.12
-        if: always()
-        with:
-          gh_pages: gh-pages
-          allure_history: allure-history
-          allure_results: allure-results
+      - name: Setup dashboard
+        run: |
+          cp openwrt-tests/contrib/index.html page/index.html
+          echo '${{ needs.generate-matrix.outputs.matrix }}' > page/devices.json
 
       - name: Publish test report
         uses: peaceiris/actions-gh-pages@v4
@@ -257,4 +255,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: allure-history
+          publish_dir: page/

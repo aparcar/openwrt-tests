@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>OpenWrt Test Dashboard</title>
+
+        <!-- Bootstrap CSS -->
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+        />
+        <!-- Bootstrap Icons -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
+        />
+
+        <style>
+            :root {
+                --primary-gradient: linear-gradient(
+                    135deg,
+                    #667eea 0%,
+                    #764ba2 100%
+                );
+                --success-gradient: linear-gradient(
+                    135deg,
+                    #84fab0 0%,
+                    #8fd3f4 100%
+                );
+                --warning-gradient: linear-gradient(
+                    135deg,
+                    #fa709a 0%,
+                    #fee140 100%
+                );
+                --danger-gradient: linear-gradient(
+                    135deg,
+                    #f093fb 0%,
+                    #f5576c 100%
+                );
+            }
+
+            body {
+                background-color: #f8f9fa;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, Cantarell, sans-serif;
+            }
+
+            .navbar {
+                background: var(--primary-gradient);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            .device-card {
+                border: none;
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                transition: all 0.3s ease;
+                overflow: hidden;
+                height: 100%;
+            }
+
+            .device-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            }
+
+            .device-card.status-pass {
+                border-left: 4px solid #28a745;
+            }
+
+            .device-card.status-failures {
+                border-left: 4px solid #dc3545;
+            }
+
+            .device-card.status-loading {
+                border-left: 4px solid #6c757d;
+            }
+
+            .status-badge {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.75rem;
+                border-radius: 50px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .status-badge.pass {
+                background-color: #d4edda;
+                color: #155724;
+            }
+
+            .status-badge.failures {
+                background-color: #f8d7da;
+                color: #721c24;
+            }
+
+            .status-badge.loading {
+                background-color: #e2e3e5;
+                color: #383d41;
+            }
+
+            .test-indicator {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                display: inline-block;
+                margin-right: 0.25rem;
+            }
+
+            .test-indicator.passed {
+                background-color: #28a745;
+            }
+
+            .test-indicator.skipped {
+                background-color: #ffc107;
+            }
+
+            .test-indicator.failed {
+                background-color: #dc3545;
+            }
+
+            .test-indicator.error {
+                background-color: #dc3545;
+            }
+
+            .stats-card {
+                border: none;
+                border-radius: 12px;
+                padding: 1.5rem;
+                text-align: center;
+                transition: all 0.3s ease;
+            }
+
+            .stats-card:hover {
+                transform: translateY(-2px);
+            }
+
+            .stats-card.total {
+                background: var(--primary-gradient);
+                color: white;
+            }
+
+            .stats-card.passed {
+                background: var(--success-gradient);
+                color: white;
+            }
+
+            .stats-card.skipped {
+                background: var(--warning-gradient);
+                color: white;
+            }
+
+            .stats-card.failed {
+                background: var(--danger-gradient);
+                color: white;
+            }
+
+            .log-viewer {
+                background-color: #1e1e1e;
+                color: #d4d4d4;
+                font-family: "Consolas", "Monaco", "Courier New", monospace;
+                font-size: 0.875rem;
+                line-height: 1.5;
+                padding: 1rem;
+                border-radius: 8px;
+                max-height: 500px;
+                overflow-y: auto;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+
+            .loading-spinner {
+                display: inline-block;
+                width: 1rem;
+                height: 1rem;
+                border: 2px solid #f3f3f3;
+                border-radius: 50%;
+                border-top: 2px solid #667eea;
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .modal-content {
+                border-radius: 12px;
+                border: none;
+            }
+
+            .modal-header {
+                background: var(--primary-gradient);
+                color: white;
+                border-radius: 12px 12px 0 0;
+            }
+
+            .test-results-table {
+                font-size: 0.9rem;
+            }
+
+            .test-results-table td {
+                vertical-align: middle;
+            }
+
+            .error-message {
+                background-color: #f8d7da;
+                border: 1px solid #f5c6cb;
+                color: #721c24;
+                padding: 0.75rem 1.25rem;
+                border-radius: 0.25rem;
+                margin-bottom: 1rem;
+            }
+
+            .btn-close-white {
+                filter: brightness(0) invert(1);
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Navigation -->
+        <nav class="navbar navbar-dark">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1">
+                    <i class="bi bi-router"></i> OpenWrt Test Dashboard
+                </span>
+                <button class="btn btn-light btn-sm" onclick="loadDevices()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Container -->
+        <div class="container-fluid mt-4">
+            <!-- Statistics Row -->
+            <div class="row mb-4" id="stats-container">
+                <!-- Stats will be loaded here -->
+            </div>
+
+            <!-- Error Container -->
+            <div id="error-container"></div>
+
+            <!-- Device Cards Container -->
+            <div class="row" id="device-container">
+                <div class="col-12 text-center py-5">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2 text-muted">Loading devices...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal for device details -->
+        <div
+            class="modal fade"
+            id="deviceModal"
+            tabindex="-1"
+            aria-hidden="true"
+        >
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalTitle">
+                            Device Details
+                        </h5>
+                        <button
+                            type="button"
+                            class="btn-close btn-close-white"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"
+                        ></button>
+                    </div>
+                    <div class="modal-body" id="modal-content">
+                        <!-- Content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bootstrap JS Bundle -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+        <script>
+            // Global storage for device data
+            let devicesData = [];
+
+            // Load devices on page load
+            document.addEventListener("DOMContentLoaded", function () {
+                loadDevices();
+            });
+
+            async function loadDevices() {
+                try {
+                    // Clear error messages
+                    document.getElementById("error-container").innerHTML = "";
+
+                    // Show loading state
+                    document.getElementById("device-container").innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <div class="loading-spinner"></div>
+                        <p class="mt-2 text-muted">Loading devices...</p>
+                    </div>
+                `;
+
+                    // Load devices.json
+                    const response = await fetch("devices.json");
+                    if (!response.ok) {
+                        throw new Error("Failed to load devices.json");
+                    }
+
+                    devicesData = await response.json();
+
+                    // Load data for each device
+                    const devicePromises = devicesData.map(async (device) => {
+                        try {
+                            // Load report_{device}.xml
+                            const reportResponse = await fetch(
+                                `data/results-${device.device}/report.xml`,
+                            );
+                            const reportText = await reportResponse.text();
+                            device.report = parseTestReport(reportText);
+                        } catch (error) {
+                            console.error(
+                                `Error loading data for ${device.device}:`,
+                                error,
+                            );
+                            device.report = null;
+                        }
+                        console.log(device);
+                        return device;
+                    });
+
+                    await Promise.all(devicePromises);
+
+                    // Update UI
+                    updateStats();
+                    renderDevices();
+                } catch (error) {
+                    console.error("Error loading devices:", error);
+                    showError(
+                        "Failed to load device data. Please ensure devices.json is accessible.",
+                    );
+                }
+            }
+
+            function parseTestReport(xmlText) {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+
+                const testsuite = xmlDoc.querySelector("testsuite");
+                if (!testsuite) {
+                    return null;
+                }
+
+                const report = {
+                    tests: parseInt(testsuite.getAttribute("tests") || "0"),
+                    failures: parseInt(
+                        testsuite.getAttribute("failures") || "0",
+                    ),
+                    errors: parseInt(testsuite.getAttribute("errors") || "0"),
+                    skipped: parseInt(testsuite.getAttribute("skipped") || "0"),
+                    time: parseFloat(testsuite.getAttribute("time") || "0"),
+                    timestamp: testsuite.getAttribute("timestamp"),
+                    testcases: [],
+                };
+
+                // Calculate passed tests
+                report.passed =
+                    report.tests -
+                    report.failures -
+                    report.errors -
+                    report.skipped;
+
+                // Parse individual test cases
+                const testcases = xmlDoc.querySelectorAll("testcase");
+                testcases.forEach((testcase) => {
+                    const tc = {
+                        classname: testcase.getAttribute("classname"),
+                        name: testcase.getAttribute("name"),
+                        time: parseFloat(testcase.getAttribute("time") || "0"),
+                        status: "passed",
+                    };
+
+                    if (testcase.querySelector("failure")) {
+                        tc.status = "failed";
+                        tc.message = testcase
+                            .querySelector("failure")
+                            .getAttribute("message");
+                    } else if (testcase.querySelector("error")) {
+                        tc.status = "error";
+                        tc.message = testcase
+                            .querySelector("error")
+                            .getAttribute("message");
+                    } else if (testcase.querySelector("skipped")) {
+                        tc.status = "skipped";
+                        tc.message = testcase
+                            .querySelector("skipped")
+                            .getAttribute("message");
+                    }
+
+                    report.testcases.push(tc);
+                });
+
+                return report;
+            }
+
+            function updateStats() {
+                const stats = {
+                    total: devicesData.length,
+                    online: devicesData.filter((d) => d.status === "online")
+                        .length,
+                    totalTests: 0,
+                    passed: 0,
+                    failed: 0,
+                    skipped: 0,
+                };
+
+                devicesData.forEach((device) => {
+                    if (device.report) {
+                        stats.totalTests += device.report.tests;
+                        stats.passed += device.report.passed;
+                        stats.failed +=
+                            device.report.failures + device.report.errors;
+                        stats.skipped += device.report.skipped;
+                    }
+                });
+
+                document.getElementById("stats-container").innerHTML = `
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card stats-card total">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h2 class="mb-0">${stats.total}</h2>
+                                    <p class="mb-0 small">Total Devices</p>
+                                </div>
+                                <i class="bi bi-router-fill fs-1 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card stats-card passed">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h2 class="mb-0">${stats.passed}</h2>
+                                    <p class="mb-0 small">Tests Passed</p>
+                                </div>
+                                <i class="bi bi-check-circle-fill fs-1 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card stats-card skipped">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h2 class="mb-0">${stats.skipped}</h2>
+                                    <p class="mb-0 small">Tests Skipped</p>
+                                </div>
+                                <i class="bi bi-skip-forward-fill fs-1 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card stats-card failed">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h2 class="mb-0">${stats.failed}</h2>
+                                    <p class="mb-0 small">Tests Failed</p>
+                                </div>
+                                <i class="bi bi-x-circle-fill fs-1 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            }
+
+            function renderDevices() {
+                const container = document.getElementById("device-container");
+                container.innerHTML = "";
+
+                devicesData.forEach((device, index) => {
+                    const card = createDeviceCard(device, index);
+                    console.log(card);
+                    if (card != undefined) {
+                        container.innerHTML += card;
+                    }
+                });
+            }
+
+            function createDeviceCard(device, index) {
+                if (device.report == null) {
+                    return;
+                }
+                const report = device.report;
+                const statusClass =
+                    report.failures + report.errors == 0 ? "pass" : "failures";
+
+                let testSummary = "";
+                if (report) {
+                    testSummary = `
+                    <div class="mb-3">
+                        <h6 class="text-muted small mb-2">Test Results</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-light text-dark">
+                                <span class="test-indicator passed"></span>
+                                ${report.passed} passed
+                            </span>
+                            <span class="badge bg-light text-dark">
+                                <span class="test-indicator failed"></span>
+                                ${report.failures + report.errors} failed
+                            </span>
+                            <span class="badge bg-light text-dark">
+                                <span class="test-indicator skipped"></span>
+                                ${report.skipped} skipped
+                            </span>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="bi bi-clock"></i> ${report.time.toFixed(2)}s
+                        </small>
+                    </div>
+                `;
+                } else {
+                    testSummary = `
+                    <div class="mb-3">
+                        <p class="text-muted small mb-0">No test results available</p>
+                    </div>
+                `;
+                }
+
+                return `
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card device-card status-${statusClass}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title mb-1">${device.name || device.device}</h5>
+                                    <p class="text-muted small mb-0">${device.device}</p>
+                                    <p class="text-muted small mb-0">${device.proxy}</p>
+                                </div>
+                            </div>
+
+                            ${testSummary}
+
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary flex-fill"
+                                        onclick="showTestDetails(${index})"
+                                        ${!report ? "disabled" : ""}>
+                                    <i class="bi bi-list-check"></i> Test Details
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary flex-fill"
+                                        onclick="showBootLog(${index})">
+                                    <i class="bi bi-terminal"></i> Boot Log
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            }
+
+            async function showTestDetails(deviceIndex) {
+                const device = devicesData[deviceIndex];
+                const modal = new bootstrap.Modal(
+                    document.getElementById("deviceModal"),
+                );
+
+                document.getElementById("modalTitle").textContent =
+                    `Test Results - ${device.name || device.device}`;
+                document.getElementById("modal-content").innerHTML =
+                    '<div class="text-center"><div class="loading-spinner"></div></div>';
+
+                modal.show();
+
+                if (!device.report) {
+                    document.getElementById("modal-content").innerHTML =
+                        "<p>No test results available</p>";
+                    return;
+                }
+
+                const report = device.report;
+                let testRows = "";
+
+                report.testcases.forEach((test) => {
+                    const statusIcon = {
+                        passed: '<span class="test-indicator passed"></span>',
+                        failed: '<span class="test-indicator failed"></span>',
+                        error: '<span class="test-indicator error"></span>',
+                        skipped: '<span class="test-indicator skipped"></span>',
+                    }[test.status];
+
+                    const className = test.classname.split(".").pop();
+
+                    testRows += `
+                    <tr>
+                        <td>${statusIcon} ${className}</td>
+                        <td>${test.name}</td>
+                        <td>${test.time.toFixed(3)}s</td>
+                        <td>
+                            <span class="badge bg-${test.status === "passed" ? "success" : test.status === "skipped" ? "warning" : "danger"}">
+                                ${test.status}
+                            </span>
+                        </td>
+                        <td>${test.message ? `<small class="text-muted">${test.message}</small>` : ""}</td>
+                    </tr>
+                `;
+                });
+
+                const content = `
+                <div class="mb-4">
+                    <h6>Summary</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Total Tests:</strong> ${report.tests}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Passed:</strong> <span class="text-success">${report.passed}</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Failed:</strong> <span class="text-danger">${report.failures + report.errors}</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Skipped:</strong> <span class="text-warning">${report.skipped}</span>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <strong>Duration:</strong> ${report.time.toFixed(2)} seconds
+                    </div>
+                    ${report.timestamp ? `<div><strong>Timestamp:</strong> ${new Date(report.timestamp).toLocaleString()}</div>` : ""}
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm test-results-table">
+                        <thead>
+                            <tr>
+                                <th>Class</th>
+                                <th>Test</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${testRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+                document.getElementById("modal-content").innerHTML = content;
+            }
+
+            async function showBootLog(deviceIndex) {
+                const device = devicesData[deviceIndex];
+                const modal = new bootstrap.Modal(
+                    document.getElementById("deviceModal"),
+                );
+
+                document.getElementById("modalTitle").textContent =
+                    `Boot Log - ${device.name || device.device}`;
+                document.getElementById("modal-content").innerHTML =
+                    '<div class="text-center"><div class="loading-spinner"></div></div>';
+
+                modal.show();
+
+                try {
+                    const response = await fetch(
+                        `data/results-${device.device}/console_main`,
+                    );
+
+                    if (!response.ok) {
+                        throw new Error("Failed to load boot log");
+                    }
+
+                    const logContent = await response.text();
+
+                    document.getElementById("modal-content").innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted">Boot log from ${device.name || device.device} (${device.device})</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard()">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+                    <div class="log-viewer" id="log-content">${escapeHtml(logContent)}</div>
+                `;
+                } catch (error) {
+                    console.error("Error loading boot log:", error);
+                    document.getElementById("modal-content").innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to load boot log: ${error.message}
+                    </div>
+                `;
+                }
+            }
+
+            function copyToClipboard() {
+                const logContent =
+                    document.getElementById("log-content").textContent;
+                navigator.clipboard.writeText(logContent).then(() => {
+                    // Show feedback
+                    const button = event.target.closest("button");
+                    const originalHtml = button.innerHTML;
+                    button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+                    button.classList.add("btn-success");
+                    button.classList.remove("btn-outline-secondary");
+
+                    setTimeout(() => {
+                        button.innerHTML = originalHtml;
+                        button.classList.remove("btn-success");
+                        button.classList.add("btn-outline-secondary");
+                    }, 2000);
+                });
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement("div");
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            function showError(message) {
+                document.getElementById("error-container").innerHTML = `
+                <div class="error-message">
+                    <i class="bi bi-exclamation-triangle-fill"></i> ${message}
+                </div>
+            `;
+            }
+        </script>
+    </body>
+</html>
