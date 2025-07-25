@@ -215,7 +215,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: report-${{ matrix.target }}
+          name: results-qemu_${{ matrix.target }}
           path: ${{ matrix.target }}/*
 
       - name: Upload allure results
@@ -249,6 +249,29 @@ jobs:
         run: |
           cp openwrt-tests/contrib/index.html page/index.html
           echo '${{ needs.generate-matrix.outputs.matrix }}' > page/devices.json
+
+          # Add QEMU targets to devices.json
+          qemu_targets='[
+            {
+              "device": "qemu_malta-be",
+              "name": "QEMU Malta BE",
+              "target": "malta-be",
+              "firmware": "vmlinux-initramfs.elf"
+            },
+            {
+              "device": "qemu_x86-64",
+              "name": "QEMU x86-64",
+              "target": "x86-64",
+              "firmware": "generic-squashfs-combined.img.gz"
+            },
+            {
+              "device": "qemu_armsr-armv8",
+              "name": "QEMU ARMsr ARMv8",
+              "target": "armsr-armv8",
+              "firmware": "generic-initramfs-kernel.bin"
+            }
+          ]'
+          echo "$(jq ". + $qemu_targets" page/devices.json)" > page/devices.json
 
       - name: Publish test report
         uses: peaceiris/actions-gh-pages@v4
