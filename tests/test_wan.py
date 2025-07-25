@@ -1,4 +1,5 @@
 import pytest
+from conftest import ubus_call
 
 
 def check_download(
@@ -39,6 +40,17 @@ def check_download(
     finally:
         if remove:
             command.run(f"rm {filename}")
+
+
+@pytest.mark.lg_feature("wan_port")
+def test_wan_wait_for_network(shell_command):
+    for i in range(60):
+        if ubus_call(shell_command, "network.interface.wan", "status").get(
+            "ipv4-address"
+        ):
+            return
+
+    assert False, "WAN interface did not come up within 60 seconds"
 
 
 @pytest.mark.lg_feature("online")

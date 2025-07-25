@@ -39,6 +39,12 @@ def pytest_addoption(parser):
     parser.addoption("--firmware", action="store", default="firmware.bin")
 
 
+def pytest_configure(config):
+    config._metadata = getattr(config, "_metadata", {})
+    config._metadata["version"] = "12.3.4"
+    config._metadata["environment"] = "staging"
+
+
 def pytest_sessionfinish(session):
     """Gather all results and save them to a JSON file."""
 
