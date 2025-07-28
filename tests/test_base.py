@@ -3,7 +3,6 @@ import re
 import tarfile
 import time
 
-import allure
 import pytest
 from conftest import ubus_call
 
@@ -58,12 +57,6 @@ def test_ubus_system_board(ssh_command, results_bag):
     results_bag["rootfs_type"] = output["rootfs_type"]
     results_bag["target"] = output["release"]["target"]
     results_bag["version"] = output["release"]["version"]
-
-    allure.dynamic.label("board_name", output["board_name"])
-    allure.dynamic.label("kernel", output["kernel"])
-    allure.dynamic.label("revision", output["release"]["revision"])
-    allure.dynamic.label("target", output["release"]["target"])
-    allure.dynamic.label("version", output["release"]["version"])
 
 
 def test_free_memory(ssh_command, results_bag):

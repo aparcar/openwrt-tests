@@ -127,8 +127,7 @@ jobs:
             --lg-log ${{ matrix.device }}/ \
             --junitxml=${{ matrix.device }}/report.xml \
             --lg-colored-steps \
-            --log-cli-level=CONSOLE \
-            --alluredir allure-results
+            --log-cli-level=CONSOLE
 
       - name: Poweroff and unlock device
         if: always()
@@ -142,13 +141,6 @@ jobs:
         with:
           name: results-${{ matrix.device }}
           path: ${{ matrix.device }}/*
-
-      - name: Upload allure results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: allure-results-${{ matrix.device }}
-          path: allure-results
 
   test-qemu:
     name: QEMU ${{ matrix.target }}
@@ -208,7 +200,6 @@ jobs:
             --junitxml=${{ matrix.target }}/report.xml \
             --lg-colored-steps \
             --log-cli-level=CONSOLE \
-            --alluredir allure-results \
             --firmware $GITHUB_WORKSPACE/${firmware/.gz/}
 
       - name: Upload results
@@ -218,14 +209,7 @@ jobs:
           name: results-qemu_${{ matrix.target }}
           path: ${{ matrix.target }}/*
 
-      - name: Upload allure results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: allure-results-${{ matrix.target }}
-          path: allure-results
-
-  allure:
+  results:
     name: Deploy results page
     runs-on: ubuntu-latest
     if: always()
