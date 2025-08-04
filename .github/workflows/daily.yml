@@ -1,0 +1,580 @@
+name: Daily test for snapshots and stable releases
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTEST_ADDOPTS: "--color=yes"
+  LG_CONSOLE: "internal"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate-matrix:
+    name: Generate labnet.yaml matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      qemu-matrix: ${{ steps.set-matrix.outputs.qemu-matrix }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Generate matrix
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\
+              sudo chmod +x /usr/local/bin/yq
+
+          # Get versions (reuse from previous step to avoid repeated API calls)
+          versions_json=$(curl -s https://downloads.openwrt.org/.versions.json)
+          stable_version=$(echo "$versions_json" | jq -r '.stable_version')
+          oldstable_version=$(echo "$versions_json" | jq -r '.oldstable_version')
+          stable_branch=$(echo "$stable_version" | cut -d. -f1,2)
+          oldstable_branch=$(echo "$oldstable_version" | cut -d. -f1,2)
+
+          versions="[
+            {\"type\": \"snapshot\", \"name\": \"snapshot\", \"version_url\": \"https://mirror-03.infra.openwrt.org/snapshots/targets\"},
+            {\"type\": \"stable\", \"name\": \"$stable_branch\", \"version\": \"$stable_version\", \"version_url\": \"https://mirror-03.infra.openwrt.org/releases/$stable_branch-SNAPSHOT/targets\"},
+            {\"type\": \"stable\", \"name\": \"$oldstable_branch\", \"version\": \"$oldstable_version\", \"version_url\": \"https://mirror-03.infra.openwrt.org/releases/$oldstable_branch-SNAPSHOT/targets\"}
+          ]"
+
+          device_matrix=$(yq -o=json '
+            . as $root |
+            $root.labs as $labs |
+            $root.devices as $devices |
+            $labs
+            | to_entries
+            | map(
+                .key as $lab |
+                .value.devices
+                | map(
+                    select($devices[.] != null) |
+                    {
+                      "device": .,
+                      "name": $devices[.].name,
+                      "proxy": $labs[$lab].proxy,
+                      "target": $devices[.].target,
+                      "firmware": $devices[.].firmware
+                    }
+                  )
+              )
+            | flatten
+          ' labnet.yaml)
+
+          # Combine devices with versions to create full matrix
+          matrix=$(echo "$device_matrix" | jq --argjson versions "$versions" '
+            [.[] as $device | $versions[] as $version | $device + {"version_url": $version.version_url, "version_name": $version.name}]
+          ')
+          echo "matrix=$(echo "$matrix" | jq -c '.')" >> $GITHUB_ENV
+
+          # Create QEMU matrix
+          qemu_base='[
+            {"target": "malta-be", "firmware": "vmlinux-initramfs.elf", "dependency": "qemu-system-mips"},
+            {"target": "x86-64", "firmware": "generic-squashfs-combined.img.gz", "dependency": "qemu-system-x86"},
+            {"target": "armsr-armv8", "firmware": "generic-initramfs-kernel.bin", "dependency": "qemu-system-aarch64"}
+          ]'
+          qemu_matrix=$(echo "$qemu_base" | jq --argjson versions "$versions" '
+            [.[] as $qemu | $versions[] as $version | $qemu + {"version_url": $version.version_url, "version_name": $version.name}]
+          ')
+          echo "qemu_matrix=$(echo "$qemu_matrix" | jq -c '.')" >> $GITHUB_ENV
+
+      - name: Filter out devices with open healthcheck issues
+        id: set-matrix
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get open issues with healthcheck label
+          issues=$(gh issue list --label "healthcheck" --state open --json title,labels --jq '.[] | .title')
+
+          # Filter out matrix entries where proxy/device combination has an open healthcheck issue
+          filtered_matrix=$(echo "$matrix" | jq --argjson issues "$(echo "$issues" | jq -R -s 'split("\n") | map(select(length > 0))')" '
+            map(select(
+              . as $entry |
+              ($issues | map(test("\($entry.proxy)/\($entry.device)")) | any) | not
+            ))
+          ')
+
+          deduplicated_matrix=$(echo "$filtered_matrix" | jq '
+            group_by(.device,.version_name) | map(.[0])
+          ')
+
+          echo "matrix=$matrix"
+          echo "deduplicated_matrix=$deduplicated_matrix"
+          echo "qemu_matrix=$qemu_matrix"
+
+          echo "matrix=$(echo "$deduplicated_matrix" | jq -c '.')" >> $GITHUB_OUTPUT
+          echo "qemu-matrix=$(echo "$qemu_matrix" | jq -c '.')" >> $GITHUB_OUTPUT
+
+  test-real:
+    name: ${{ matrix.name }} (${{ matrix.version_name }})
+    needs: generate-matrix
+    runs-on: global-coordinator
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set environment
+        env:
+          target: ${{ matrix.target }}
+          VERSION_NAME: ${{ matrix.version_name }}
+          UPSTREAM_URL: ${{ matrix.version_url }}
+        run: |
+          if [ "$VERSION_NAME" = "snapshot" ]; then
+            # Define labgrid features
+            echo "LG_FEATURE_APK=true" >> $GITHUB_ENV
+
+            # Snapshot logic (existing)
+            export firmware=openwrt-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
+
+            mkdir -p /tmp/tftp/${{ matrix.device }}
+            if ! wget $UPSTREAM_URL/${target/-/\/}/$firmware \
+              --output-document /tmp/tftp/${{ matrix.device }}/$firmware; then
+              echo "::warning::Failed to download firmware $firmware. Skipping CI test."
+              echo "SKIP_TEST=true" >> $GITHUB_ENV
+              exit 0
+            fi
+            (cd /tmp/tftp/ && gzip -df ${{ matrix.device }}/$firmware) || true
+
+            FIRMWARE_VERSION=$(curl $UPSTREAM_URL/${target/-/\/}/version.buildinfo)
+            echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
+            echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/${firmware/.gz/}" >> $GITHUB_ENV
+          else
+            # Stable release logic
+
+            # Fetch profiles.json to get real firmware filename
+            profiles_url="$UPSTREAM_URL/${target/-/\/}/profiles.json"
+            profiles_json=$(curl -s "$profiles_url")
+
+            # Check if profiles.json was successfully downloaded
+            if [ -z "$profiles_json" ] || [ "$profiles_json" = "{}" ] || ! echo "$profiles_json" | jq empty 2>/dev/null; then
+              echo "::warning::Could not download or parse profiles.json from $profiles_url. Skipping CI test."
+              echo "SKIP_TEST=true" >> $GITHUB_ENV
+              exit 0
+            fi
+
+            # Find the kernel image for the device
+            if [ "${{ matrix.device }}" = "generic" ]; then
+              profile_key="generic"
+            else
+              # For non-generic devices, we might need to search through profiles
+              profile_key="${{ matrix.device }}"
+            fi
+
+            # Check if the profile exists in profiles.json
+            profile_exists=$(echo "$profiles_json" | jq -r --arg profile "$profile_key" '.profiles | has($profile)')
+            if [ "$profile_exists" != "true" ]; then
+              echo "::warning::Profile '$profile_key' not found in profiles.json. Skipping CI test."
+              echo "SKIP_TEST=true" >> $GITHUB_ENV
+              exit 0
+            fi
+
+            # Extract the kernel/combined image filename based on firmware type
+            case "${{ matrix.firmware }}" in
+              *squashfs-combined*)
+                image_type="combined"
+                filesystem="squashfs"
+                ;;
+              *ext4-combined*)
+                image_type="combined"
+                filesystem="ext4"
+                ;;
+              *initramfs*)
+                image_type="kernel"
+                filesystem=""
+                ;;
+              *vmlinux*)
+                image_type="kernel"
+                filesystem=""
+                ;;
+              *)
+                image_type="combined"
+                filesystem="squashfs"
+                ;;
+            esac
+
+            if [ -n "$filesystem" ]; then
+              firmware_filename=$(echo "$profiles_json" | jq -r --arg profile "$profile_key" --arg type "$image_type" --arg fs "$filesystem" '
+                .profiles[$profile].images[] | select(.type == $type and .filesystem == $fs) | .name
+              ')
+            else
+              firmware_filename=$(echo "$profiles_json" | jq -r --arg profile "$profile_key" --arg type "$image_type" '
+                .profiles[$profile].images[] | select(.type == $type) | .name
+              ')
+            fi
+
+            if [ -z "$firmware_filename" ] || [ "$firmware_filename" = "null" ]; then
+              echo "Could not find firmware filename for device ${{ matrix.device }}, falling back to constructed name"
+              # Fallback to constructed filename
+              image_prefix=$(echo "$profiles_json" | jq -r --arg profile "$profile_key" '.profiles[$profile].image_prefix')
+              firmware_filename="$image_prefix-${{ matrix.firmware }}"
+            fi
+
+            echo "Using firmware: $firmware_filename"
+
+            mkdir -p /tmp/tftp/${{ matrix.device }}
+            if ! wget "$UPSTREAM_URL/${target/-/\/}/$firmware_filename" \
+              --output-document /tmp/tftp/${{ matrix.device }}/$firmware_filename; then
+              echo "::warning::Failed to download firmware $firmware_filename. Skipping CI test."
+              echo "SKIP_TEST=true" >> $GITHUB_ENV
+              exit 0
+            fi
+            (cd /tmp/tftp/ && gzip -df ${{ matrix.device }}/$firmware_filename) || true
+
+            FIRMWARE_VERSION=$(echo "$profiles_json" | jq -r '.version_code')
+            echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
+            echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/${firmware_filename/.gz/}" >> $GITHUB_ENV
+          fi
+
+          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
+
+      - name: Wait for free device
+        run: |
+          eval $(uv run labgrid-client reserve --wait --shell device=${{ matrix.device }})
+          echo "LG_TOKEN=$LG_TOKEN" >> $GITHUB_ENV
+          echo "LG_PLACE=+" >> $GITHUB_ENV
+          if [ "$SKIP_TEST" != "true" ]; then
+            uv run labgrid-client -p +$LG_TOKEN lock
+          fi
+          echo "LG_ENV=targets/${{ matrix.device }}.yaml" >> $GITHUB_ENV
+
+      - name: Skip test notification
+        if: env.SKIP_TEST == 'true'
+        run: |
+          echo "::notice::Skipping CI test for ${{ matrix.device }} (${{ matrix.version_name }}) due to profiles.json issues"
+
+      - name: Run test
+        if: env.SKIP_TEST != 'true'
+        run: |
+          mkdir -p ${{ matrix.device }}-${{ matrix.version_name }}/
+          uv run pytest tests/ \
+            --lg-log ${{ matrix.device }}-${{ matrix.version_name }}/ \
+            --junitxml=${{ matrix.device }}-${{ matrix.version_name }}/report.xml \
+            --lg-colored-steps \
+            --log-cli-level=CONSOLE
+
+      - name: Poweroff and unlock device
+        if: always() && env.SKIP_TEST != 'true'
+        run: |
+          uv run labgrid-client power off || true
+          uv run labgrid-client -p +$LG_TOKEN unlock
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always() && env.SKIP_TEST != 'true'
+        with:
+          name: results-${{ matrix.device }}-${{ matrix.version_name }}
+          path: ${{ matrix.device }}-${{ matrix.version_name }}/*
+
+  test-qemu:
+    name: ${{ matrix.target }} (${{ matrix.version_name }})
+    needs: generate-matrix
+    runs-on: ubuntu-latest
+    env:
+      LG_FEATURE_ONLINE: "true"
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.qemu-matrix) }}
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install \
+            nmap \
+            ${{ matrix.dependency }}
+
+          echo "LG_ENV=targets/qemu-${{ matrix.target }}.yaml" >> $GITHUB_ENV
+          echo "VERSION_NAME=${{ matrix.version_name }}" >> $GITHUB_ENV
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Download test firmware
+        env:
+          target: ${{ matrix.target }}
+          VERSION_NAME: ${{ matrix.version_name }}
+          UPSTREAM_URL: ${{ matrix.version_url }}
+        run: |
+          if [ "$VERSION_NAME" = "snapshot" ]; then
+            # Define labgrid features
+            echo "LG_FEATURE_APK=true" >> $GITHUB_ENV
+
+            # Snapshot logic
+            firmware_name="openwrt-$target-${{ matrix.firmware }}"
+            if ! wget "$UPSTREAM_URL/${target/-/\/}/$firmware_name" \
+              --output-document "$firmware_name"; then
+              echo "::warning::Failed to download firmware $firmware_name. Skipping CI test."
+              echo "SKIP_TEST=true" >> $GITHUB_ENV
+              exit 0
+            fi
+            FIRMWARE_VERSION=$(curl "$UPSTREAM_URL/${target/-/\/}/version.buildinfo")
+          else
+            # Stable release logic
+            profiles_url="$UPSTREAM_URL/${target/-/\/}/profiles.json"
+            profiles_json=$(curl -s "$profiles_url")
+
+            # Check if profiles.json was successfully downloaded
+            if [ -z "$profiles_json" ] || [ "$profiles_json" = "{}" ] || ! echo "$profiles_json" | jq empty 2>/dev/null; then
+              echo "::warning::Could not download or parse profiles.json from $profiles_url. Skipping CI test."
+              echo "SKIP_TEST=true" >> $GITHUB_ENV
+              exit 0
+            fi
+
+            # Check if the generic profile exists in profiles.json
+            profile_exists=$(echo "$profiles_json" | jq -r '.profiles | has("generic")')
+            if [ "$profile_exists" != "true" ]; then
+              echo "::warning::Profile 'generic' not found in profiles.json. Skipping CI test."
+              echo "SKIP_TEST=true" >> $GITHUB_ENV
+              exit 0
+            fi
+
+            # Find the appropriate image for QEMU
+            case "${{ matrix.firmware }}" in
+              *squashfs-combined*)
+                image_type="combined"
+                filesystem="squashfs"
+                ;;
+              *ext4-combined*)
+                image_type="combined"
+                filesystem="ext4"
+                ;;
+              *initramfs*)
+                image_type="kernel"
+                filesystem=""
+                ;;
+              *vmlinux*)
+                image_type="kernel"
+                filesystem=""
+                ;;
+              *)
+                image_type="combined"
+                filesystem="squashfs"
+                ;;
+            esac
+
+            if [ -n "$filesystem" ]; then
+              firmware_name=$(echo "$profiles_json" | jq -r --arg type "$image_type" --arg fs "$filesystem" '
+                .profiles.generic.images[] | select(.type == $type and .filesystem == $fs) | .name
+              ')
+            else
+              firmware_name=$(echo "$profiles_json" | jq -r --arg type "$image_type" '
+                .profiles.generic.images[] | select(.type == $type) | .name
+              ')
+            fi
+
+            if [ -z "$firmware_name" ] || [ "$firmware_name" = "null" ]; then
+              echo "Could not find firmware, falling back to constructed name"
+              image_prefix=$(echo "$profiles_json" | jq -r '.profiles.generic.image_prefix')
+              firmware_name="$image_prefix-${{ matrix.firmware }}"
+            fi
+
+            echo "Using firmware: $firmware_name"
+            if ! wget "$UPSTREAM_URL/${target/-/\/}/$firmware_name" \
+              --output-document "$firmware_name"; then
+              echo "::warning::Failed to download firmware $firmware_name. Skipping CI test."
+              echo "SKIP_TEST=true" >> $GITHUB_ENV
+              exit 0
+            fi
+            FIRMWARE_VERSION=$(echo "$profiles_json" | jq -r '.version_code')
+          fi
+
+          echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
+          echo "FIRMWARE_FILE=$firmware_name" >> $GITHUB_ENV
+
+      - name: Skip test notification
+        if: env.SKIP_TEST == 'true'
+        run: |
+          echo "::notice::Skipping CI test for ${{ matrix.target }} (${{ matrix.version_name }}) due to profiles.json issues"
+
+      - name: Run test
+        if: env.SKIP_TEST != 'true'
+        run: |
+          gunzip $FIRMWARE_FILE || true
+          firmware_file=${FIRMWARE_FILE/.gz/}
+
+          mkdir -p ${{ matrix.target }}-${{ matrix.version_name }}
+
+          uv run pytest tests/ \
+            --lg-log ${{ matrix.target }}-${{ matrix.version_name }}/ \
+            --junitxml=${{ matrix.target }}-${{ matrix.version_name }}/report.xml \
+            --lg-colored-steps \
+            --log-cli-level=CONSOLE \
+            --firmware $GITHUB_WORKSPACE/$firmware_file
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always() && env.SKIP_TEST != 'true'
+        with:
+          name: qemu-results-${{ matrix.target }}-${{ matrix.version_name }}
+          path: ${{ matrix.target }}-${{ matrix.version_name }}/*
+
+  results:
+    name: Deploy results page
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - generate-matrix
+      - test-real
+      - test-qemu
+    steps:
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          path: page/data
+
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          depth: 1
+          path: openwrt-tests/
+
+      - name: Setup dashboard
+        run: |
+          cp openwrt-tests/contrib/index.html page/index.html
+
+          # Create version-specific directories and organize artifacts
+          mkdir -p page/snapshot page/stable page/oldstable
+
+          # Get current version info for better classification
+          versions_json=$(curl -s https://downloads.openwrt.org/.versions.json)
+          stable_branch=$(echo "$versions_json" | jq -r '.stable_version' | cut -d. -f1,2)
+          oldstable_branch=$(echo "$versions_json" | jq -r '.oldstable_version' | cut -d. -f1,2)
+
+          # Move artifacts to appropriate version folders
+          for artifact_dir in page/data/*/; do
+            artifact_name=$(basename "$artifact_dir")
+
+            if [[ "$artifact_name" == *"-snapshot" ]]; then
+              mv "$artifact_dir" page/snapshot/
+            elif [[ "$artifact_name" == *"-$stable_branch" ]]; then
+              mv "$artifact_dir" page/stable/
+            elif [[ "$artifact_name" == *"-$oldstable_branch" ]]; then
+              mv "$artifact_dir" page/oldstable/
+            fi
+          done
+
+          # Create devices.json with version-aware structure
+          device_matrix='${{ needs.generate-matrix.outputs.matrix }}'
+          qemu_matrix='${{ needs.generate-matrix.outputs.qemu-matrix }}'
+
+          # Group devices by version using dynamic branch detection
+          snapshot_devices=$(echo "$device_matrix" | jq '[.[] | select(.version_name == "snapshot")]')
+          stable_devices=$(echo "$device_matrix" | jq --arg branch "$stable_branch" '[.[] | select(.version_name == $branch)]')
+          oldstable_devices=$(echo "$device_matrix" | jq --arg branch "$oldstable_branch" '[.[] | select(.version_name == $branch)]')
+
+          # Group QEMU targets by version
+          snapshot_qemu=$(echo "$qemu_matrix" | jq '[.[] | select(.version_name == "snapshot")] | map({
+            "device": ("qemu_" + .target),
+            "name": ("QEMU " + .target),
+            "target": .target,
+            "firmware": .firmware,
+            "version_name": .version_name
+          })')
+
+          stable_qemu=$(echo "$qemu_matrix" | jq --arg branch "$stable_branch" '[.[] | select(.version_name == $branch)] | map({
+            "device": ("qemu_" + .target),
+            "name": ("QEMU " + .target),
+            "target": .target,
+            "firmware": .firmware,
+            "version_name": .version_name
+          })')
+
+          oldstable_qemu=$(echo "$qemu_matrix" | jq --arg branch "$oldstable_branch" '[.[] | select(.version_name == $branch)] | map({
+            "device": ("qemu_" + .target),
+            "name": ("QEMU " + .target),
+            "target": .target,
+            "firmware": .firmware,
+            "version_name": .version_name
+          })')
+
+          # Create version-specific device files
+          echo "$(echo "$snapshot_devices $snapshot_qemu" | jq -s 'add')" > page/snapshot/devices.json
+          echo "$(echo "$stable_devices $stable_qemu" | jq -s 'add')" > page/stable/devices.json
+          echo "$(echo "$oldstable_devices $oldstable_qemu" | jq -s 'add')" > page/oldstable/devices.json
+
+          # Create version metadata files
+          cat > page/snapshot/version.json << EOF
+          {
+            "version_type": "snapshot",
+            "version_name": "snapshot",
+            "version_title": "Development Snapshots",
+            "description": "Latest development builds",
+            "version_url": "https://mirror-03.infra.openwrt.org/snapshots/targets",
+            "generated_at": "$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")"
+          }
+          EOF
+
+          cat > page/stable/version.json << EOF
+          {
+            "version_type": "stable",
+            "version_name": "$stable_branch",
+            "version_title": "Current Stable Release",
+            "description": "Daily rebuilds of current stable release ($stable_branch)",
+            "version_url": "https://mirror-03.infra.openwrt.org/releases/$stable_branch-SNAPSHOT/targets",
+            "generated_at": "$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")"
+          }
+          EOF
+
+          cat > page/oldstable/version.json << EOF
+          {
+            "version_type": "stable",
+            "version_name": "$oldstable_branch",
+            "version_title": "Previous Stable Release",
+            "description": "Daily rebuilds of previous stable release ($oldstable_branch)",
+            "version_url": "https://mirror-03.infra.openwrt.org/releases/$oldstable_branch-SNAPSHOT/targets",
+            "generated_at": "$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")"
+          }
+          EOF
+
+          # Create main index with version overview
+          cat > page/versions.json << EOF
+          {
+            "versions": [
+              {
+                "name": "snapshot",
+                "title": "Development Snapshots",
+                "description": "Latest development builds",
+                "path": "snapshot/"
+              },
+              {
+                "name": "stable",
+                "title": "Current Stable",
+                "description": "Daily rebuilds of current stable release",
+                "path": "stable/"
+              },
+              {
+                "name": "oldstable",
+                "title": "Previous Stable",
+                "description": "Daily rebuilds of previous stable release",
+                "path": "oldstable/"
+              }
+            ]
+          }
+          EOF
+
+      - name: Publish test report
+        uses: peaceiris/actions-gh-pages@v4
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: page/
