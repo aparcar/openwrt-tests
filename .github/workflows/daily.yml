@@ -141,18 +141,18 @@ jobs:
             # Snapshot logic (existing)
             export firmware=openwrt-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
 
-            mkdir -p /tmp/tftp/${{ matrix.device }}
+            mkdir -p $GITHUB_WORKSPACE/tftp/${{ matrix.device }}
             if ! wget $UPSTREAM_URL/${target/-/\/}/$firmware \
-              --output-document /tmp/tftp/${{ matrix.device }}/$firmware; then
+              --output-document $GITHUB_WORKSPACE/tftp/${{ matrix.device }}/$firmware; then
               echo "::warning::Failed to download firmware $firmware. Skipping CI test."
               echo "SKIP_TEST=true" >> $GITHUB_ENV
               exit 0
             fi
-            (cd /tmp/tftp/ && gzip -df ${{ matrix.device }}/$firmware) || true
+            (cd $GITHUB_WORKSPACE/tftp/ && gzip -df ${{ matrix.device }}/$firmware) || true
 
             FIRMWARE_VERSION=$(curl $UPSTREAM_URL/${target/-/\/}/version.buildinfo)
             echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
-            echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/${firmware/.gz/}" >> $GITHUB_ENV
+            echo "LG_IMAGE=$GITHUB_WORKSPACE/tftp/${{ matrix.device }}/${firmware/.gz/}" >> $GITHUB_ENV
           else
             # Stable release logic
 
@@ -226,18 +226,18 @@ jobs:
 
             echo "Using firmware: $firmware_filename"
 
-            mkdir -p /tmp/tftp/${{ matrix.device }}
+            mkdir -p $GITHUB_WORKSPACE/tftp/${{ matrix.device }}
             if ! wget "$UPSTREAM_URL/${target/-/\/}/$firmware_filename" \
-              --output-document /tmp/tftp/${{ matrix.device }}/$firmware_filename; then
+              --output-document $GITHUB_WORKSPACE/tftp/${{ matrix.device }}/$firmware_filename; then
               echo "::warning::Failed to download firmware $firmware_filename. Skipping CI test."
               echo "SKIP_TEST=true" >> $GITHUB_ENV
               exit 0
             fi
-            (cd /tmp/tftp/ && gzip -df ${{ matrix.device }}/$firmware_filename) || true
+            (cd $GITHUB_WORKSPACE/tftp/ && gzip -df ${{ matrix.device }}/$firmware_filename) || true
 
             FIRMWARE_VERSION=$(echo "$profiles_json" | jq -r '.version_code')
             echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
-            echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/${firmware_filename/.gz/}" >> $GITHUB_ENV
+            echo "LG_IMAGE=$GITHUB_WORKSPACE/tftp/${{ matrix.device }}/${firmware_filename/.gz/}" >> $GITHUB_ENV
           fi
 
           echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV

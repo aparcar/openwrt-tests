@@ -80,15 +80,15 @@ jobs:
           export firmware=openwrt-${RELEASE}-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
           export upstream_url="https://mirror-03.infra.openwrt.org/releases/${RELEASE}/targets"
 
-          mkdir -p /tmp/tftp/${{ matrix.device }}
+          mkdir -p $GITHUB_WORKSPACE/tftp/${{ matrix.device }}
           wget $upstream_url/${target/-/\/}/$firmware \
-            --output-document /tmp/tftp/${{ matrix.device }}/$firmware
-          (cd /tmp/tftp/ && gzip -d ${{ matrix.device }}/$firmware) || true
+            --output-document $GITHUB_WORKSPACE/tftp/${{ matrix.device }}/$firmware
+            (cd $GITHUB_WORKSPACE/tftp/ && gzip -d ${{ matrix.device }}/$firmware) || true
 
           FIRMWARE_VERSION=$(curl $upstream_url/${target/-/\/}/version.buildinfo)
           echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
 
-          echo "LG_IMAGE=/tmp/tftp/${{ matrix.device }}/${firmware/.gz/}" >> $GITHUB_ENV
+          echo "LG_IMAGE=$GITHUB_WORKSPACE/tftp/${{ matrix.device }}/${firmware/.gz/}" >> $GITHUB_ENV
           echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
 
       - name: Wait for free device
