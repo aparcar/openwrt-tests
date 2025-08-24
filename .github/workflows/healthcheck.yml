@@ -37,13 +37,14 @@ jobs:
                 .key as $lab |
                 .value.devices
                 | map(
-                    select($devices[.] != null) |
+                    select($devices[.] != null and $devices[.].snapshots_only != true) |
                     {
                       "device": .,
                       "proxy": $labs[$lab].proxy,
                       "target": $devices[.].target,
                       "firmware": $devices[.].firmware,
-                      "maintainers": $labs[$lab].maintainers
+                      "maintainers": $labs[$lab].maintainers,
+                      "snapshots_only": ($devices[.].snapshots_only // false)
                     }
                   )
               )

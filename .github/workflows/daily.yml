@@ -56,12 +56,15 @@ jobs:
                 .value.devices
                 | map(
                     select($devices[.] != null) |
+                    select($devices[.].snapshots_only != true) |
                     {
                       "device": .,
                       "name": $devices[.].name,
                       "proxy": $labs[$lab].proxy,
                       "target": $devices[.].target,
-                      "firmware": $devices[.].firmware
+                      "firmware": $devices[.].firmware,
+                      "maintainers": $labs[$lab].maintainers,
+                      "snapshots_only": ($devices[.].snapshots_only // false)
                     }
                   )
               )
@@ -93,11 +96,15 @@ jobs:
           # Get open issues with healthcheck label
           issues=$(gh issue list --label "healthcheck" --state open --json title,labels --jq '.[] | .title')
 
-          # Filter out matrix entries where proxy/device combination has an open healthcheck issue
+          # Filter out matrix entries where proxy/device combination has an open healthcheck issue,
+          # but always include devices/labs with snapshots_only: true
           filtered_matrix=$(echo "$matrix" | jq --argjson issues "$(echo "$issues" | jq -R -s 'split("\n") | map(select(length > 0))')" '
             map(select(
-              . as $entry |
-              ($issues | map(test("\($entry.proxy)/\($entry.device)")) | any) | not
+              (.snapshots_only == true) or
+              (
+                . as $entry |
+                ($issues | map(test("\($entry.proxy)/\($entry.device)")) | any) | not
+              )
             ))
           ')
 
