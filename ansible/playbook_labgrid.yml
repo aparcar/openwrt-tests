@@ -202,7 +202,7 @@
 
     - name: Copy exporter configuration
       template:
-        src: files/exporter/{{ ansible_host }}.yaml
+        src: files/exporter/{{ inventory_hostname }}.yaml
         dest: /etc/labgrid/exporter.yaml
       notify:
         - Restart labgrid-exporter
@@ -241,14 +241,14 @@
 
         - name: Stat host specific pdudaemon configuration
           ansible.builtin.stat:
-            path: files/exporter/pdudaemon-{{ ansible_hostname }}.conf
+            path: files/exporter/pdudaemon-{{ inventory_hostname }}.conf
           register: host_specific_pdudaemon_conf
           delegate_to: localhost
           become: false
 
         - name: Configure pdudaemon using host specific config
           template:
-            src: files/exporter/pdudaemon-{{ ansible_host }}.conf
+            src: files/exporter/pdudaemon-{{ inventory_hostname }}.conf
             dest: /etc/pdudaemon/pdudaemon.conf
           notify:
             - Restart pdudaemon
@@ -276,14 +276,14 @@
       block:
         - name: Stat host specific netplan configuration
           ansible.builtin.stat:
-            path: files/exporter/netplan-{{ ansible_hostname }}.yaml
+            path: files/exporter/netplan-{{ inventory_hostname }}.yaml
           register: host_specific_netplan_conf
           delegate_to: localhost
           become: false
 
         - name: Configure netplan using host specific config
           ansible.builtin.template:
-            src: files/exporter/netplan-{{ ansible_host }}.yaml
+            src: files/exporter/netplan-{{ inventory_hostname }}.yaml
             dest: /etc/netplan/labnet.yaml
           when: host_specific_netplan_conf.stat.exists
 
@@ -295,14 +295,14 @@
 
     - name: Stat host specific dnsmasq configuration
       ansible.builtin.stat:
-        path: files/exporter/dnsmasq-{{ ansible_hostname }}.conf
+        path: files/exporter/dnsmasq-{{ inventory_hostname}}.conf
       register: host_specific_dnsmasq_conf
       delegate_to: localhost
       become: false
 
     - name: Configure dnsmasq using host specific config
       template:
-        src: files/exporter/dnsmasq-{{ ansible_host }}.conf
+        src: files/exporter/dnsmasq-{{ inventory_hostname }}.conf
         dest: /etc/dnsmasq.conf
 
       notify:
