@@ -1,0 +1,48 @@
+targets:
+  main:
+    features:
+      - wan_port
+      - wifi
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      TFTPProviderDriver: {}
+      SerialDriver:
+        txdelay: 0.05
+      power_driver:
+        cls: GpioDigitalOutputDriver
+        name: power_driver
+        bindings:
+          gpio: power
+      reset_driver:
+        cls: GpioDigitalOutputDriver
+        name: reset_driver
+        bindings:
+          gpio: reset
+      DigitalOutputPowerDriver:
+        bindings:
+          output: power_driver
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 120
+        post_login_settle_time: 5
+        username: root
+      SmallUBootDriver:
+        boot_expression: "Autobooting in 1 seconds"
+        boot_secret: "tpl"
+        prompt: "ap151>"
+        init_commands:
+          - tftp 0x82000000
+      UBootTFTPStrategy: {}
+      SSHDriver:
+        connection_timeout: 120.0
+        explicit_scp_mode: True
+
+images:
+  root: !template $LG_IMAGE
+
+imports:
+  - ../strategies/tftpstrategy.py
