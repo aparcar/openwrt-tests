@@ -10,6 +10,55 @@ The `self-hosted-runner.yml` workflow automates the process of:
 2. **Running** the build/test matrix using those runners
 3. **Cleaning up** the runners after completion (or allowing them to self-remove if configured as ephemeral)
 
+### Workflow Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     GitHub Actions Workflow                      │
+│                 (self-hosted-runner.yml)                         │
+└────────┬────────────────────────────────────────────────────────┘
+         │
+         ├─► Job 1: Generate Matrix
+         │   └─► Parse labnet.yaml → Create device matrix
+         │
+         ├─► Job 2: Setup Runners
+         │   ├─► Get runner registration token
+         │   ├─► Generate setup script
+         │   └─► Upload script as artifact
+         │
+         ├─► Job 3: Test Matrix (runs on self-hosted)
+         │   ├─► Download firmware
+         │   ├─► Reserve labgrid device
+         │   ├─► Run pytest tests
+         │   └─► Upload results
+         │
+         └─► Job 4: Cleanup Runners
+             ├─► Get runner removal token
+             ├─► Generate cleanup script
+             └─► Upload script as artifact
+
+┌─────────────────────────────────────────────────────────────────┐
+│                      Lab Host (e.g., labgrid-aparcar)           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ Runner 1     │  │ Runner 2     │  │ Runner N     │          │
+│  │ (ephemeral)  │  │ (ephemeral)  │  │ (ephemeral)  │          │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
+│         │                  │                  │                   │
+│         └──────────────────┴──────────────────┘                  │
+│                            │                                      │
+│                    ┌───────▼────────┐                            │
+│                    │ Labgrid Client │                            │
+│                    │ Device Control │                            │
+│                    └───────┬────────┘                            │
+│                            │                                      │
+│         ┌──────────────────┼──────────────────┐                 │
+│         │                  │                  │                  │
+│    ┌────▼────┐      ┌─────▼──────┐    ┌─────▼──────┐           │
+│    │ Device1 │      │  Device2   │    │  Device3   │           │
+│    └─────────┘      └────────────┘    └────────────┘           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## Usage
 
 ### Triggering the Workflow
