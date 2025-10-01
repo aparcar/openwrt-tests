@@ -145,3 +145,23 @@ Lastly, unlock your device when you're done:
 ```shell
 uv run labgrid-client unlock
 ```
+
+## Self-Hosted Runner Management
+
+The repository includes a workflow for automatically managing self-hosted GitHub Actions runners on lab hosts. This allows for:
+
+- Dynamic provisioning of runners on specific lab hosts
+- Running build/test matrices with parallel execution
+- Automatic cleanup of runners after job completion
+
+For detailed information on using self-hosted runners, see [docs/self-hosted-runners.md](docs/self-hosted-runners.md).
+
+### Quick Start
+
+1. Navigate to the Actions tab in GitHub
+2. Select "Self-Hosted Runner Matrix Tests"
+3. Click "Run workflow" and select your target host
+4. Download the generated setup and cleanup scripts from workflow artifacts
+5. Execute the scripts on your lab host to manage runners
+
+Runners are configured as ephemeral by default, automatically removing themselves after completing one job.

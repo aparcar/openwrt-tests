@@ -1,0 +1,368 @@
+name: Self-Hosted Runner Matrix Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: 'Host to run self-hosted runners on (lab name)'
+        required: true
+        default: 'labgrid-aparcar'
+        type: choice
+        options:
+          - labgrid-aparcar
+          - labgrid-bastian
+          - labgrid-blocktrron
+          - labgrid-leinelab
+          - labgrid-hsn
+          - labgrid-wigyori
+          - labgrid-hauke
+      runner_count:
+        description: 'Number of parallel runners to spawn'
+        required: false
+        default: '2'
+        type: string
+  schedule:
+    - cron: "0 2 * * 1"  # Weekly on Monday at 2 AM
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTEST_ADDOPTS: "--color=yes"
+  LG_CONSOLE: "internal"
+
+concurrency:
+  group: self-hosted-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate-matrix:
+    name: Generate Test Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate-matrix.outputs.matrix }}
+      host: ${{ steps.generate-matrix.outputs.host }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v5
+
+      - name: Generate test matrix
+        id: generate-matrix
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\
+              sudo chmod +x /usr/local/bin/yq
+
+          # Get devices for the specified host
+          HOST="${{ inputs.host || 'labgrid-aparcar' }}"
+          matrix=$(yq -o=json labnet.yaml | jq --arg host "$HOST" '
+            . as $root |
+            $root.labs as $labs |
+            $root.devices as $devices |
+            $labs[$host].devices
+            | map(
+                select($devices[.] != null) |
+                {
+                  "device": .,
+                  "name": $devices[.].name,
+                  "proxy": $labs[$host].proxy,
+                  "target": $devices[.].target,
+                  "firmware": $devices[.].firmware
+                }
+              )
+          ')
+          
+          echo "Test matrix for $HOST:"
+          echo "$matrix" | jq '.'
+          
+          echo "matrix=$(echo "$matrix" | jq -c '.')" >> $GITHUB_OUTPUT
+          echo "host=$HOST" >> $GITHUB_OUTPUT
+
+  setup-runners:
+    name: Setup Self-Hosted Runners
+    needs: generate-matrix
+    runs-on: ubuntu-latest
+    outputs:
+      runner-label: ${{ steps.setup.outputs.runner-label }}
+    steps:
+      - name: Get runner registration token
+        id: get-token
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get a runner registration token for this repository
+          TOKEN=$(gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/${{ github.repository }}/actions/runners/registration-token \
+            --jq .token)
+          
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Create runner setup script
+        id: setup
+        env:
+          RUNNER_TOKEN: ${{ steps.get-token.outputs.token }}
+        run: |
+          RUN_ID="${{ github.run_id }}"
+          RUNNER_COUNT="${{ inputs.runner_count || 2 }}"
+          RUNNER_LABEL="runner-$RUN_ID"
+          HOST="${{ needs.generate-matrix.outputs.host }}"
+          
+          echo "runner-label=$RUNNER_LABEL" >> $GITHUB_OUTPUT
+          
+          # Create a setup script that can be executed on the target host
+          cat > setup-runners.sh << 'EOFSCRIPT'
+          #!/bin/bash
+          set -e
+          
+          RUN_ID="$1"
+          RUNNER_COUNT="$2"
+          RUNNER_TOKEN="$3"
+          REPO_URL="$4"
+          
+          BASE_DIR="$HOME/github-runners"
+          mkdir -p "$BASE_DIR"
+          
+          # Download runner package if not present
+          RUNNER_VERSION="2.321.0"
+          RUNNER_PACKAGE="$BASE_DIR/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz"
+          
+          if [ ! -f "$RUNNER_PACKAGE" ]; then
+            echo "Downloading GitHub Actions runner..."
+            curl -o "$RUNNER_PACKAGE" -L \
+              "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz"
+          fi
+          
+          # Setup each runner
+          for i in $(seq 1 $RUNNER_COUNT); do
+            RUNNER_NAME="runner-${RUN_ID}-${i}"
+            RUNNER_DIR="$BASE_DIR/runner-${RUN_ID}-${i}"
+            
+            echo "Setting up runner: $RUNNER_NAME"
+            mkdir -p "$RUNNER_DIR"
+            cd "$RUNNER_DIR"
+            
+            # Extract runner
+            tar xzf "$RUNNER_PACKAGE"
+            
+            # Configure runner as ephemeral (auto-removes after one job)
+            ./config.sh \
+              --url "$REPO_URL" \
+              --token "$RUNNER_TOKEN" \
+              --name "$RUNNER_NAME" \
+              --labels "runner-${RUN_ID}" \
+              --work "_work" \
+              --ephemeral \
+              --unattended
+            
+            # Start runner in background
+            nohup ./run.sh > "$RUNNER_DIR/runner.log" 2>&1 &
+            echo $! > "$RUNNER_DIR/runner.pid"
+            
+            echo "Started runner $RUNNER_NAME with PID $(cat $RUNNER_DIR/runner.pid)"
+          done
+          
+          echo "All $RUNNER_COUNT runners started successfully"
+          EOFSCRIPT
+          
+          chmod +x setup-runners.sh
+          
+          echo "## 🚀 Self-Hosted Runner Setup" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To set up self-hosted runners on \`$HOST\`, execute the following command:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# Copy and execute the setup script" >> $GITHUB_STEP_SUMMARY
+          echo "bash setup-runners.sh \"$RUN_ID\" \"$RUNNER_COUNT\" \"<RUNNER_TOKEN>\" \"https://github.com/${{ github.repository }}\"" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** The setup script is available as a workflow artifact." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Runner Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run ID:** \`$RUN_ID\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner Label:** \`$RUNNER_LABEL\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner Count:** $RUNNER_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Host:** \`$HOST\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload setup script
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-setup-script-${{ github.run_id }}
+          path: setup-runners.sh
+
+  test-matrix:
+    name: Test ${{ matrix.name }}
+    needs: [generate-matrix, setup-runners]
+    # Use the dynamically generated runner label
+    # Note: This requires runners to be manually started with the correct label
+    runs-on: ${{ needs.setup-runners.outputs.runner-label }}
+    # Uncomment to enable - requires runners to be properly configured
+    if: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set environment
+        env:
+          target: ${{ matrix.target }}
+        run: |
+          export firmware=openwrt-snapshot-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
+          export upstream_url="https://mirror-03.infra.openwrt.org/snapshots/targets"
+          
+          mkdir -p $GITHUB_WORKSPACE/tftp/${{ matrix.device }}
+          
+          if wget $upstream_url/${target/-/\/}/$firmware \
+            --output-document $GITHUB_WORKSPACE/tftp/${{ matrix.device }}/$firmware; then
+            (cd $GITHUB_WORKSPACE/tftp/ && gzip -d ${{ matrix.device }}/$firmware) || true
+            
+            FIRMWARE_VERSION=$(curl $upstream_url/${target/-/\/}/version.buildinfo)
+            echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
+            echo "LG_IMAGE=$GITHUB_WORKSPACE/tftp/${{ matrix.device }}/${firmware/.gz/}" >> $GITHUB_ENV
+            echo "SKIP_TEST=false" >> $GITHUB_ENV
+          else
+            echo "::warning::Failed to download firmware. Skipping test."
+            echo "SKIP_TEST=true" >> $GITHUB_ENV
+          fi
+          
+          echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
+
+      - name: Wait for free device
+        if: env.SKIP_TEST != 'true'
+        run: |
+          eval $(uv run labgrid-client reserve --wait --shell device=${{ matrix.device }})
+          echo "LG_TOKEN=$LG_TOKEN" >> $GITHUB_ENV
+          echo "LG_PLACE=+" >> $GITHUB_ENV
+          uv run labgrid-client -p +$LG_TOKEN lock
+          echo "LG_ENV=targets/${{ matrix.device }}.yaml" >> $GITHUB_ENV
+
+      - name: Run test
+        if: env.SKIP_TEST != 'true'
+        run: |
+          mkdir -p ${{ matrix.device }}-results/
+          uv run pytest tests/ \
+            --lg-log ${{ matrix.device }}-results/ \
+            --junitxml=${{ matrix.device }}-results/report.xml \
+            --lg-colored-steps \
+            --log-cli-level=CONSOLE
+
+      - name: Poweroff and unlock device
+        if: always() && env.SKIP_TEST != 'true'
+        run: |
+          uv run labgrid-client power off || true
+          uv run labgrid-client -p +$LG_TOKEN unlock
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        if: always() && env.SKIP_TEST != 'true'
+        with:
+          name: results-${{ matrix.device }}-${{ github.run_id }}
+          path: ${{ matrix.device }}-results/*
+
+  cleanup-runners:
+    name: Cleanup Self-Hosted Runners
+    needs: [setup-runners, test-matrix]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Get runner removal token
+        id: get-removal-token
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get a runner removal token
+          TOKEN=$(gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/${{ github.repository }}/actions/runners/remove-token \
+            --jq .token)
+          
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Create cleanup script
+        env:
+          REMOVAL_TOKEN: ${{ steps.get-removal-token.outputs.token }}
+        run: |
+          RUN_ID="${{ github.run_id }}"
+          HOST="${{ inputs.host || 'labgrid-aparcar' }}"
+          
+          # Create a cleanup script
+          cat > cleanup-runners.sh << 'EOFSCRIPT'
+          #!/bin/bash
+          
+          RUN_ID="$1"
+          REMOVAL_TOKEN="$2"
+          
+          BASE_DIR="$HOME/github-runners"
+          
+          echo "Cleaning up runners for run ID: $RUN_ID"
+          
+          # Find and stop all runners for this run
+          for RUNNER_DIR in $BASE_DIR/runner-${RUN_ID}-*; do
+            if [ -d "$RUNNER_DIR" ]; then
+              RUNNER_NAME=$(basename "$RUNNER_DIR")
+              echo "Cleaning up $RUNNER_NAME"
+              
+              cd "$RUNNER_DIR"
+              
+              # Stop runner if still running
+              if [ -f runner.pid ]; then
+                PID=$(cat runner.pid)
+                if ps -p $PID > /dev/null 2>&1; then
+                  echo "Stopping runner process $PID"
+                  kill $PID || true
+                  sleep 2
+                  kill -9 $PID 2>/dev/null || true
+                fi
+                rm runner.pid
+              fi
+              
+              # Remove runner configuration (if not ephemeral or if it failed)
+              if [ -f ./config.sh ]; then
+                ./config.sh remove --token "$REMOVAL_TOKEN" || true
+              fi
+              
+              # Remove runner directory
+              cd "$BASE_DIR"
+              rm -rf "$RUNNER_DIR"
+              
+              echo "Cleaned up $RUNNER_NAME"
+            fi
+          done
+          
+          echo "Cleanup complete for run ID: $RUN_ID"
+          EOFSCRIPT
+          
+          chmod +x cleanup-runners.sh
+          
+          echo "## 🧹 Self-Hosted Runner Cleanup" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To clean up self-hosted runners on \`$HOST\`, execute the following command:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "# Copy and execute the cleanup script" >> $GITHUB_STEP_SUMMARY
+          echo "bash cleanup-runners.sh \"$RUN_ID\" \"<REMOVAL_TOKEN>\"" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** The cleanup script is available as a workflow artifact." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Cleanup Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run ID:** \`$RUN_ID\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Host:** \`$HOST\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💡 **Tip:** If runners were configured as ephemeral, they will automatically remove themselves after completing one job." >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload cleanup script
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-cleanup-script-${{ github.run_id }}
+          path: cleanup-runners.sh
