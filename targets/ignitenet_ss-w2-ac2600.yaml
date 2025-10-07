@@ -1,0 +1,36 @@
+targets:
+  main:
+    features:
+      - wan_port
+      - wifi
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      - PDUDaemonDriver: {}
+      - TFTPProviderDriver: {}
+      - SerialDriver:
+          txdelay: 0.01
+      - UBootDriver:
+          interrupt: "\\x0"
+          prompt: "(IPQ) #"
+          init_commands:
+            - tftp 0x44000000
+          boot_command: bootm $loadaddr#$bootconf
+      - ShellDriver:
+          prompt: 'root@[\w()]+:[^ ]+ '
+          login_prompt: Please press Enter to activate this console.
+          await_login_timeout: 15
+          login_timeout: 120
+          post_login_settle_time: 5
+          username: root
+      - UBootTFTPStrategy: {}
+      - SSHDriver:
+          connection_timeout: 120.0
+          explicit_scp_mode: True
+
+images:
+  root: !template $LG_IMAGE
+
+imports:
+  - ../strategies/tftpstrategy.py
