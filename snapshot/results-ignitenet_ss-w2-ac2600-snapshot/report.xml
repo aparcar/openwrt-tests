@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="8" tests="33" time="109.362" timestamp="2025-10-07T20:58:23.542828+00:00" hostname="openwrt-testing"><properties><property name="ENV_CONFIG" value="targets/ignitenet_ss-w2-ac2600.yaml" /><property name="TARGETS" value="['main']" /><property name="TARGET_MAIN_REMOTE" value="+" /><property name="IMAGE_ROOT" value="/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tftp/ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb" /><property name="IMAGE_ROOT_GIT_COMMIT" value="be920269342413f5e78baa3c174716732f29045d" /></properties><testcase classname="tests.test_apk.TestApk" name="test_apk_procd_installed" time="77.455" /><testcase classname="tests.test_apk.TestApk" name="test_apk_add_ucert" time="0.000"><skipped type="pytest.skip" message="LG_FEATURE_ONLINE not defined">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_apk.py:13: LG_FEATURE_ONLINE not defined</skipped></testcase><testcase classname="tests.test_apk.TestApk" name="test_apk_audit" time="0.214" /><testcase classname="tests.test_base" name="test_shell" time="0.658" /><testcase classname="tests.test_base" name="test_firmware_version" time="1.045"><properties><property name="firmware_version" value="r31360-11820ef801" /><property name="expected_firmware_version" value="r31360-11820ef801" /></properties></testcase><testcase classname="tests.test_base" name="test_dropbear_startup" time="1.971" /><testcase classname="tests.test_base" name="test_ssh" time="0.072" /><testcase classname="tests.test_base" name="test_echo" time="0.111" /><testcase classname="tests.test_base" name="test_uname" time="0.123" /><testcase classname="tests.test_base" name="test_ubus_system_board" time="0.088" /><testcase classname="tests.test_base" name="test_free_memory" time="0.086" /><testcase classname="tests.test_base" name="test_sysupgrade_backup" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'rootfs'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_base.py:69: Skipping because feature "{'rootfs'}" is not supported</skipped></testcase><testcase classname="tests.test_base" name="test_sysupgrade_backup_u" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'rootfs'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_base.py:81: Skipping because feature "{'rootfs'}" is not supported</skipped></testcase><testcase classname="tests.test_base" name="test_kernel_errors" time="0.178" /><testcase classname="tests.test_lan" name="test_lan_wait_for_network" time="1.180" /><testcase classname="tests.test_lan" name="test_lan_interface_address" time="0.942" /><testcase classname="tests.test_network_security" name="test_ssh_supported_algorithms" time="0.243" /><testcase classname="tests.test_opkg" name="test_opkg_procd_installed" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'opkg'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_opkg.py:4: Skipping because feature "{'opkg'}" is not supported</skipped></testcase><testcase classname="tests.test_opkg" name="test_opkg_install_ucert" time="0.000"><skipped type="pytest.skip" message="Skipping because features &quot;{'online', 'opkg'}&quot; are not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_opkg.py:9: Skipping because features "{'online', 'opkg'}" are not supported</skipped></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_cpu_load" time="0.059" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_memory_usage" time="0.060" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_filesystem_usage" time="0.530" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_system_uptime" time="0.075" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_temperature_sensors" time="0.973" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_process_count" time="0.249" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_entropy_available" time="0.325" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_open_file_descriptors" time="0.097" /><testcase classname="tests.test_wan" name="test_wan_wait_for_network" time="1.301"><failure message="labgrid.driver.exception.ExecutionError: (&quot;ubus call network.interface.wan status '{}'&quot;, ['Command failed: Not found'], [])">shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/ignitenet_ss-w2-ac2600.yaml')), name=None,...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+
+    @pytest.mark.lg_feature("wan_port")
+    def test_wan_wait_for_network(shell_command):
+        for i in range(60):
+&gt;           if ubus_call(shell_command, "network.interface.wan", "status").get(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                "ipv4-address"
+            ):
+
+tests/test_wan.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:37: in ubus_call
+    output = command.run_check(f"ubus call {namespace} {method} '{json.dumps(params)}'")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/binding.py:102: in wrapper
+    return func(self, *_args, **_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/step.py:215: in wrapper
+    _result = func(*_args, **_kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/driver/commandmixin.py:98: in run_check
+    return self._run_check(cmd, timeout=timeout, codec=codec, decodeerrors=decodeerrors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/ignitenet_ss-w2-ac2600.yaml')), name=None,...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+cmd = "ubus call network.interface.wan status '{}'"
+
+    def _run_check(self, cmd: str, *, timeout=30, codec: str = "utf-8",
+                   decodeerrors: str = "strict"):
+        """
+        Internal function which runs the specified command on the shell and
+        returns the output if successful, raises ExecutionError otherwise.
+    
+        Args:
+            cmd (str): command to run on the shell
+    
+        Returns:
+            List[str]: stdout of the executed command
+        """
+        stdout, stderr, exitcode = self._run(cmd, timeout=timeout, codec=codec,
+                                             decodeerrors=decodeerrors)
+        if exitcode != 0:
+&gt;           raise ExecutionError(cmd, stdout, stderr)
+E           labgrid.driver.exception.ExecutionError: ("ubus call network.interface.wan status '{}'", ['Command failed: Not found'], [])
+
+.venv/lib/python3.13/site-packages/labgrid/driver/commandmixin.py:81: ExecutionError</failure></testcase><testcase classname="tests.test_wan" name="test_https_download" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'online'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_wan.py:56: Skipping because feature "{'online'}" is not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_wpa3" time="10.758"><failure message="assert 'Encryption: WPA3 SAE (CCMP)' in 'phy0-ap0 ESSID: &quot;OpenWrt&quot;\n         Access Point: 28:76:10:24:5e:77\n         Mode: Master  Channel: 0 (unknown GHz)  HT Mode: VHT80\n         Center Channel 1: unknown 2: unknown\n         Tx-Power: 0 dBm  Link Quality: 70/70\n         Signal: 0 dBm  Noise: -100 dBm\n         Bit Rate: unknown\n         Encryption: SAE (CCMP)\n         Type: nl80211  HW Mode(s): 802.11ac/n\n         Hardware: 0x168c:0x0046 0x168c:0xcafe [Qualcomm Atheros QCA9984]\n         TX power offset: none\n         Channel offset: none\n         Supports VAPs: yes  PHY name: phy0\n'">ssh_command = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/ignitenet_ss-w2-ac2600.yaml')), name=None, s...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    @pytest.mark.lg_feature("wifi")
+    def test_wifi_wpa3(ssh_command):
+        """
+        Test enabling a wifi network with WPA3 encryption.
+    
+        This test configures a wifi network with WPA3 encryption and password 'openwrt4all'.
+        """
+        ssh_command.run("uci delete wireless.radio0.disabled")
+        ssh_command.run("uci set wireless.default_radio0.encryption=sae")
+        ssh_command.run("uci set wireless.default_radio0.key=openwrt4all")
+    
+        ssh_command.run("uci commit")
+    
+        restart_wifi_and_wait(ssh_command)
+    
+        iwinfo_output = "\n".join(ssh_command.run("iwinfo")[0])
+    
+        assert "Mode: Master" in iwinfo_output
+&gt;       assert "Encryption: WPA3 SAE (CCMP)" in iwinfo_output
+E       assert 'Encryption: WPA3 SAE (CCMP)' in 'phy0-ap0 ESSID: "OpenWrt"\n         Access Point: 28:76:10:24:5e:77\n         Mode: Master  Channel: 0 (unknown GHz)  HT Mode: VHT80\n         Center Channel 1: unknown 2: unknown\n         Tx-Power: 0 dBm  Link Quality: 70/70\n         Signal: 0 dBm  Noise: -100 dBm\n         Bit Rate: unknown\n         Encryption: SAE (CCMP)\n         Type: nl80211  HW Mode(s): 802.11ac/n\n         Hardware: 0x168c:0x0046 0x168c:0xcafe [Qualcomm Atheros QCA9984]\n         TX power offset: none\n         Channel offset: none\n         Supports VAPs: yes  PHY name: phy0\n'
+
+tests/test_wifi.py:46: AssertionError</failure></testcase><testcase classname="tests.test_wifi" name="test_wifi_wpa2" time="10.146"><failure message="assert 'Encryption: WPA2 PSK (CCMP)' in 'phy0-ap0 ESSID: &quot;OpenWrt&quot;\n         Access Point: 28:76:10:24:5e:77\n         Mode: Master  Channel: 36 (5.180 GHz)  HT Mode: VHT80\n         Center Channel 1: 42 2: unknown\n         Tx-Power: 23 dBm  Link Quality: 70/70\n         Signal: 0 dBm  Noise: -105 dBm\n         Bit Rate: unknown\n         Encryption: WPA-PSK (CCMP)\n         Type: nl80211  HW Mode(s): 802.11ac/n\n         Hardware: 0x168c:0x0046 0x168c:0xcafe [Qualcomm Atheros QCA9984]\n         TX power offset: none\n         Channel offset: none\n         Supports VAPs: yes  PHY name: phy0\n'">ssh_command = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/ignitenet_ss-w2-ac2600.yaml')), name=None, s...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    @pytest.mark.lg_feature("wifi")
+    def test_wifi_wpa2(ssh_command):
+        """
+        Test enabling a wifi network with WPA2 encryption.
+    
+        This test configures a wifi network with WPA2 encryption and password 'openwrt4all'.
+        """
+        ssh_command.run("uci delete wireless.radio0.disabled")
+        ssh_command.run("uci set wireless.default_radio0.encryption=psk2")
+        ssh_command.run("uci set wireless.default_radio0.key=openwrt4all")
+    
+        ssh_command.run("uci commit")
+    
+        restart_wifi_and_wait(ssh_command)
+    
+        iwinfo_output = "\n".join(ssh_command.run("iwinfo")[0])
+    
+        assert "Mode: Master" in iwinfo_output
+&gt;       assert "Encryption: WPA2 PSK (CCMP)" in iwinfo_output
+E       assert 'Encryption: WPA2 PSK (CCMP)' in 'phy0-ap0 ESSID: "OpenWrt"\n         Access Point: 28:76:10:24:5e:77\n         Mode: Master  Channel: 36 (5.180 GHz)  HT Mode: VHT80\n         Center Channel 1: 42 2: unknown\n         Tx-Power: 23 dBm  Link Quality: 70/70\n         Signal: 0 dBm  Noise: -105 dBm\n         Bit Rate: unknown\n         Encryption: WPA-PSK (CCMP)\n         Type: nl80211  HW Mode(s): 802.11ac/n\n         Hardware: 0x168c:0x0046 0x168c:0xcafe [Qualcomm Atheros QCA9984]\n         TX power offset: none\n         Channel offset: none\n         Supports VAPs: yes  PHY name: phy0\n'
+
+tests/test_wifi.py:67: AssertionError</failure></testcase><testcase classname="tests.test_wifi" name="test_wifi_scan" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'wifi-neighbors'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_wifi.py:70: Skipping because feature "{'wifi-neighbors'}" is not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_hwsim_sae_mixed" time="0.360"><skipped type="pytest.skip" message="Skipping because feature &quot;{'hwsim'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_wifi.py:91: Skipping because feature "{'hwsim'}" is not supported</skipped></testcase></testsuite></testsuites>
