@@ -204,9 +204,10 @@
         mode: "0755"
       loop: "{{ hostvars[inventory_hostname]['labs'][inventory_hostname]['devices'] }}"
 
+
     - name: Copy exporter configuration
       template:
-        src: files/exporter/{{ inventory_hostname }}.yaml
+        src: files/exporter/{{ inventory_hostname }}/exporter.yaml
         dest: /etc/labgrid/exporter.yaml
       notify:
         - Restart labgrid-exporter
