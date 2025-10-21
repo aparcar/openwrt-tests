@@ -4,6 +4,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      VERSION:
+        description: 'Override OpenWrt version to specific release (e.g. 23.05.3, 22.03.6)'
+        required: false
+        default: ''
   schedule:
     - cron: "0 0 * * *"
 
@@ -39,11 +44,20 @@ jobs:
           stable_branch=$(echo "$stable_version" | cut -d. -f1,2)
           oldstable_branch=$(echo "$oldstable_version" | cut -d. -f1,2)
 
-          versions="[
-            {\"type\": \"snapshot\", \"name\": \"snapshot\", \"version_url\": \"https://mirror-03.infra.openwrt.org/snapshots/targets\"},
-            {\"type\": \"stable\", \"name\": \"$stable_branch\", \"version\": \"$stable_version\", \"version_url\": \"https://mirror-03.infra.openwrt.org/releases/$stable_branch-SNAPSHOT/targets\"},
-            {\"type\": \"stable\", \"name\": \"$oldstable_branch\", \"version\": \"$oldstable_version\", \"version_url\": \"https://mirror-03.infra.openwrt.org/releases/$oldstable_branch-SNAPSHOT/targets\"}
-          ]"
+
+          # If workflow_dispatch VERSION is set, override versions
+          if [ -n "${{ github.event.inputs.VERSION }}" ] && [ "${{ github.event.inputs.VERSION }}" != "" ]; then
+            user_version=${{ github.event.inputs.VERSION }}
+            versions="[
+              {\"type\": \"snapshot\", \"name\": \"$user_version\", \"version_url\": \"https://mirror-03.infra.openwrt.org/releases/$user_version/targets\"},
+            ]"
+          else
+            versions="[
+              {\"type\": \"snapshot\", \"name\": \"snapshot\", \"version_url\": \"https://mirror-03.infra.openwrt.org/snapshots/targets\"},
+              {\"type\": \"stable\", \"name\": \"$stable_branch\", \"version\": \"$stable_version\", \"version_url\": \"https://mirror-03.infra.openwrt.org/releases/$stable_branch-SNAPSHOT/targets\"},
+              {\"type\": \"stable\", \"name\": \"$oldstable_branch\", \"version\": \"$oldstable_version\", \"version_url\": \"https://mirror-03.infra.openwrt.org/releases/$oldstable_branch-SNAPSHOT/targets\"}
+            ]"
+          fi
 
           device_matrix=$(yq -o=json '
             . as $root |
