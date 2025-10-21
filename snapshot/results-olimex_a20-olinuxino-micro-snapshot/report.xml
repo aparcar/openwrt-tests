@@ -1,0 +1,2260 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="17" failures="2" skipped="11" tests="33" time="2142.089" timestamp="2025-10-21T11:49:57.806503+00:00" hostname="openwrt-testing"><properties><property name="ENV_CONFIG" value="targets/olimex_a20-olinuxino-micro.yaml" /><property name="TARGETS" value="['main']" /><property name="TARGET_MAIN_REMOTE" value="+" /><property name="IMAGE_ROOT" value="/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tftp/olimex_a20-olinuxino-micro/openwrt-sunxi-cortexa7-olimex_a20-olinuxino-micro-initramfs-kernel.bin" /><property name="IMAGE_ROOT_GIT_COMMIT" value="5ac7e36cc75b25321c1e8f5f28f338d61401aa82" /></properties><testcase classname="tests.test_apk.TestApk" name="test_apk_procd_installed" time="189.918"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-oc0c8t53/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-oc0c8t53/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 13:53:07 socat[206352] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_apk.TestApk" name="test_apk_add_ucert" time="0.001"><skipped type="pytest.skip" message="LG_FEATURE_ONLINE not defined">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_apk.py:13: LG_FEATURE_ONLINE not defined</skipped></testcase><testcase classname="tests.test_apk.TestApk" name="test_apk_audit" time="120.918"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-k9hib_xa/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-k9hib_xa/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 13:55:08 socat[207485] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_base" name="test_shell" time="2.650" /><testcase classname="tests.test_base" name="test_firmware_version" time="4.454"><properties><property name="firmware_version" value="r31532-13c30c2e58" /><property name="expected_firmware_version" value="r31532-13c30c2e58" /></properties></testcase><testcase classname="tests.test_base" name="test_dropbear_startup" time="8.594" /><testcase classname="tests.test_base" name="test_ssh" time="120.982"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-enhhmopz/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-enhhmopz/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 13:57:25 socat[208339] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_base" name="test_echo" time="121.137"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-rg7zu1x3/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-rg7zu1x3/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 13:59:26 socat[209297] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_base" name="test_uname" time="121.146"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-8y7x3jaj/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-8y7x3jaj/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:01:27 socat[210624] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_base" name="test_ubus_system_board" time="121.404"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-cfrja3w8/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-cfrja3w8/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:03:29 socat[211461] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_base" name="test_free_memory" time="120.813"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-0bwf37x0/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-0bwf37x0/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:05:30 socat[212610] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_base" name="test_sysupgrade_backup" time="0.001"><skipped type="pytest.skip" message="Skipping because feature &quot;{'rootfs'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_base.py:69: Skipping because feature "{'rootfs'}" is not supported</skipped></testcase><testcase classname="tests.test_base" name="test_sysupgrade_backup_u" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'rootfs'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_base.py:81: Skipping because feature "{'rootfs'}" is not supported</skipped></testcase><testcase classname="tests.test_base" name="test_kernel_errors" time="120.860"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-lsd2_z0i/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-lsd2_z0i/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:07:31 socat[213445] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_lan" name="test_lan_wait_for_network" time="0.004"><failure message="labgrid.binding.StateError: ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=None, state=&lt;BindingState.bound: 1&gt;, prompt='root@[\\w()]+:[^ ]+ ', login_prompt='Please press Enter to activate this console.', username='root', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5) has not been activated, CommandMixin.run_check cannot be called in state &quot;bound&quot;">shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+
+    def test_lan_wait_for_network(shell_command):
+        for _ in range(60):
+&gt;           if ubus_call(shell_command, "network.interface.lan", "status").get(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                "ipv4-address"
+            ):
+
+tests/test_lan.py:8: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/conftest.py:37: in ubus_call
+    output = command.run_check(f"ubus call {namespace} {method} '{json.dumps(params)}'")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+_args = ("ubus call network.interface.lan status '{}'",), _kwargs = {}
+
+    @wraps(func)
+    def wrapper(self, *_args, **_kwargs):
+        if self.state is not BindingState.active:
+&gt;           raise StateError(
+                f'{self} has not been activated, {func.__qualname__} cannot be called in state "{self.state.name}"'  # pylint: disable=line-too-long
+            )
+E           labgrid.binding.StateError: ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=None, state=&lt;BindingState.bound: 1&gt;, prompt='root@[\\w()]+:[^ ]+ ', login_prompt='Please press Enter to activate this console.', username='root', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5) has not been activated, CommandMixin.run_check cannot be called in state "bound"
+
+.venv/lib/python3.13/site-packages/labgrid/binding.py:99: StateError</failure></testcase><testcase classname="tests.test_lan" name="test_lan_interface_address" time="0.001"><failure message="labgrid.binding.StateError: ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=None, state=&lt;BindingState.bound: 1&gt;, prompt='root@[\\w()]+:[^ ]+ ', login_prompt='Please press Enter to activate this console.', username='root', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5) has not been activated, ShellDriver.get_ip_addresses cannot be called in state &quot;bound&quot;">shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+
+    def test_lan_interface_address(shell_command):
+&gt;       assert shell_command.get_ip_addresses("br-lan")[0] == IPv4Interface(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            "192.168.1.1/24"
+        )
+
+tests/test_lan.py:17: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+_args = ('br-lan',), _kwargs = {}
+
+    @wraps(func)
+    def wrapper(self, *_args, **_kwargs):
+        if self.state is not BindingState.active:
+&gt;           raise StateError(
+                f'{self} has not been activated, {func.__qualname__} cannot be called in state "{self.state.name}"'  # pylint: disable=line-too-long
+            )
+E           labgrid.binding.StateError: ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=None, state=&lt;BindingState.bound: 1&gt;, prompt='root@[\\w()]+:[^ ]+ ', login_prompt='Please press Enter to activate this console.', username='root', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5) has not been activated, ShellDriver.get_ip_addresses cannot be called in state "bound"
+
+.venv/lib/python3.13/site-packages/labgrid/binding.py:99: StateError</failure></testcase><testcase classname="tests.test_network_security" name="test_ssh_supported_algorithms" time="121.015"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-0858hf_d/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-0858hf_d/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:09:32 socat[214283] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_opkg" name="test_opkg_procd_installed" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'opkg'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_opkg.py:4: Skipping because feature "{'opkg'}" is not supported</skipped></testcase><testcase classname="tests.test_opkg" name="test_opkg_install_ucert" time="0.000"><skipped type="pytest.skip" message="Skipping because features &quot;{'opkg', 'online'}&quot; are not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_opkg.py:9: Skipping because features "{'opkg', 'online'}" are not supported</skipped></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_cpu_load" time="120.978"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-vg5woh0q/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-vg5woh0q/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:11:33 socat[215434] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_memory_usage" time="120.885"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-syne5sdu/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-syne5sdu/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:13:34 socat[216271] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_filesystem_usage" time="120.887"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-bbou03di/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-bbou03di/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:15:35 socat[217421] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_system_uptime" time="120.896"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-9l1hxjeb/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-9l1hxjeb/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:17:36 socat[218269] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_temperature_sensors" time="121.035"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-3w0y8gvw/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-3w0y8gvw/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:19:37 socat[219107] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_process_count" time="120.790"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-9q3n0kec/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-9q3n0kec/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:21:37 socat[220260] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_entropy_available" time="121.080"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-p_sbj72v/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-p_sbj72v/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:23:39 socat[221099] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_open_file_descriptors" time="120.732"><error message="failed on setup with &quot;Exception: Timeout while waiting for ssh connection&quot;">self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+&gt;               return self._start_own_master_once(connect_timeout)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+timeout = 0
+
+    def _start_own_master_once(self, timeout):
+    
+        self.tmpdir = tempfile.mkdtemp(prefix='lg-ssh-')
+        control = os.path.join(
+            self.tmpdir, f'control-{self.networkservice.address}'
+        )
+    
+        args = [self._ssh, "-f", *self.ssh_prefix, "-x", "-o", f"ConnectTimeout={timeout}",
+                 "-o", "ControlPersist=300", "-o",
+                 "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no",
+                 "-o", "ServerAliveInterval=15", "-MN", "-S", control.replace('%', '%%'), "-p",
+                 str(self.networkservice.port), "-l", self._get_username(),
+                 self.networkservice.address]
+    
+        # proxy via the exporter if we have an ifname suffix
+        address = self.networkservice.address
+        if address.count('%') &gt; 1:
+            raise ValueError(f"Multiple '%' found in '{address}'.")
+        if '%' in address:
+            address, ifname = address.split('%', 1)
+        else:
+            ifname = None
+    
+        proxy_cmd = proxymanager.get_command(self.networkservice, address, self.networkservice.port, ifname)
+        if proxy_cmd:  # only proxy if needed
+            args += [
+                "-o", f"ProxyCommand={' '.join(proxy_cmd)} 2&gt;{self.tmpdir}/proxy-stderr"
+            ]
+    
+        env = os.environ.copy()
+        pass_file = ''
+        if self._get_password():
+            fd, pass_file = tempfile.mkstemp()
+            os.fchmod(fd, stat.S_IRWXU)
+            #with openssh&gt;=8.4 SSH_ASKPASS_REQUIRE can be used to force SSH_ASK_PASS
+            #openssh&lt;8.4 requires the DISPLAY var and a detached process with start_new_session=True
+            env = {'SSH_ASKPASS': pass_file, 'DISPLAY':'', 'SSH_ASKPASS_REQUIRE':'force'}
+            with open(fd, 'w') as f:
+                f.write("#!/bin/sh\necho " + shlex.quote(self._get_password()))
+    
+        self.process = subprocess.Popen(args, env=env,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        stdin=subprocess.DEVNULL,
+                                        start_new_session=True)
+    
+        try:
+            subprocess_timeout = timeout + 5
+            return_value = self.process.wait(timeout=subprocess_timeout)
+            if return_value != 0:
+                stdout, _ = self.process.communicate(timeout=subprocess_timeout)
+                stdout = stdout.split(b"\n")
+                for line in stdout:
+                    self.logger.warning("ssh: %s", line.rstrip().decode(encoding="utf-8", errors="replace"))
+    
+                try:
+                    with open(f'{self.tmpdir}/proxy-stderr') as proxy_err_fd:
+                        proxy_error = proxy_err_fd.read().strip()
+                    if proxy_error:
+&gt;                       raise ExecutionError(
+                            f"Failed to connect to {self.networkservice.address} with {' '.join(args)}: error from SSH ProxyCommand: {proxy_error}",  # pylint: disable=line-too-long
+                            stdout=stdout,
+                        )
+E                       labgrid.driver.exception.ExecutionError: Failed to connect to 192.168.1.1%eth0.202 with ssh -f -o LogLevel=ERROR -o PasswordAuthentication=no -x -o ConnectTimeout=0 -o ControlPersist=300 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ServerAliveInterval=15 -MN -S /tmp/lg-ssh-d76jh7xz/control-192.168.1.1%%eth0.202 -p 22 -l root 192.168.1.1%eth0.202 -o ProxyCommand=ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-g7drt28n/control-labgrid-wigyori labgrid-wigyori -- sudo --non-interactive labgrid-bound-connect eth0.202 192.168.1.1 22 2&gt;/tmp/lg-ssh-d76jh7xz/proxy-stderr: error from SSH ProxyCommand: 2025/10/21 14:25:39 socat[222249] E setsockopt(5, 1, 25, "eth0.202", 9): No such device
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:167: ExecutionError
+
+The above exception was the direct cause of the following exception:
+
+shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=N...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+target = Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml'))
+
+    @pytest.fixture
+    def ssh_command(shell_command, target):
+&gt;       ssh = target.get_driver("SSHDriver")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/target.py:235: in get_driver
+    return self._get_driver(cls, name=name, resource=resource, activate=activate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/target.py:209: in _get_driver
+    self.activate(found[0])
+.venv/lib/python3.13/site-packages/labgrid/target.py:472: in activate
+    client.on_activate()
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:72: in on_activate
+    self.control = self._start_own_master()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/olimex_a20-olinuxino-micro.yaml')), name=Non...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    def _start_own_master(self):
+        """Starts a controlmaster connection in a temporary directory."""
+    
+        timeout = Timeout(self.connection_timeout)
+    
+        # Retry start of controlmaster, to allow handle failures such as
+        # connection refused during target startup
+        connect_timeout = round(timeout.remaining)
+        while True:
+            try:
+                return self._start_own_master_once(connect_timeout)
+            except ExecutionError as e:
+                if timeout.expired:
+&gt;                   raise Exception("Timeout while waiting for ssh connection") from e
+E                   Exception: Timeout while waiting for ssh connection
+
+.venv/lib/python3.13/site-packages/labgrid/driver/sshdriver.py:104: Exception</error></testcase><testcase classname="tests.test_wan" name="test_wan_wait_for_network" time="0.001"><skipped type="pytest.skip" message="Skipping because feature &quot;{'wan_port'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_wan.py:45: Skipping because feature "{'wan_port'}" is not supported</skipped></testcase><testcase classname="tests.test_wan" name="test_https_download" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'online'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_wan.py:56: Skipping because feature "{'online'}" is not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_wpa3" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'wifi'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_wifi.py:28: Skipping because feature "{'wifi'}" is not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_wpa2" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'wifi'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_wifi.py:52: Skipping because feature "{'wifi'}" is not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_scan" time="0.000"><skipped type="pytest.skip" message="Skipping because features &quot;{'wifi-neighbors', 'wifi'}&quot; are not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_wifi.py:76: Skipping because features "{'wifi-neighbors', 'wifi'}" are not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_hwsim_sae_mixed" time="0.056"><skipped type="pytest.skip" message="Skipping because feature &quot;{'hwsim'}&quot; is not supported">/home/aparcar/actions-runner3/_work/openwrt-tests/openwrt-tests/tests/test_wifi.py:97: Skipping because feature "{'hwsim'}" is not supported</skipped></testcase></testsuite></testsuites>
