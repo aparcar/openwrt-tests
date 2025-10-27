@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="10" tests="33" time="98.369" timestamp="2025-10-27T11:39:51.525885+00:00" hostname="openwrt-testing"><properties><property name="ENV_CONFIG" value="targets/tplink_tl-wdr3600-v1.yaml" /><property name="TARGETS" value="['main']" /><property name="TARGET_MAIN_REMOTE" value="+" /><property name="IMAGE_ROOT" value="/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tftp/tplink_tl-wdr3600-v1/openwrt-23.05-snapshot-r24238-3971b15868-ath79-generic-tplink_tl-wdr3600-v1-initramfs-kernel.bin" /><property name="IMAGE_ROOT_GIT_COMMIT" value="074c26723947e6035094f65db5e4e957df0237d1" /></properties><testcase classname="tests.test_apk.TestApk" name="test_apk_procd_installed" time="0.000"><skipped type="pytest.skip" message="LG_FEATURE_APK not defined">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_apk.py:10: LG_FEATURE_APK not defined</skipped></testcase><testcase classname="tests.test_apk.TestApk" name="test_apk_add_ucert" time="0.000"><skipped type="pytest.skip" message="LG_FEATURE_ONLINE not defined">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_apk.py:13: LG_FEATURE_ONLINE not defined</skipped></testcase><testcase classname="tests.test_apk.TestApk" name="test_apk_audit" time="0.000"><skipped type="pytest.skip" message="LG_FEATURE_APK not defined">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_apk.py:23: LG_FEATURE_APK not defined</skipped></testcase><testcase classname="tests.test_base" name="test_shell" time="43.746" /><testcase classname="tests.test_base" name="test_firmware_version" time="1.037"><properties><property name="firmware_version" value="r24238-3971b15868" /><property name="expected_firmware_version" value="r24238-3971b15868" /></properties></testcase><testcase classname="tests.test_base" name="test_dropbear_startup" time="30.947"><failure message="pexpect.exceptions.TIMEOUT: Timeout of 29.99 seconds exceeded or connection closed by peer&#10;&lt;labgrid.util.expect.PtxExpect object at 0x7a7ac8195a90&gt;&#10;command: None&#10;args: None&#10;buffer (last 100 chars): b&quot;MARKER='USGQ''VTXLLW' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'&quot;&#10;before (last 100 chars): b&quot;MARKER='USGQ''VTXLLW' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'&quot;&#10;after: &lt;class 'pexpect.exceptions.TIMEOUT'&gt;&#10;match: None&#10;match_index: None&#10;exitstatus: None&#10;pid: None&#10;child_fd: -1&#10;closed: True&#10;timeout: 30&#10;delimiter: &lt;class 'pexpect.exceptions.EOF'&gt;&#10;logfile: None&#10;logfile_read: None&#10;logfile_send: None&#10;maxread: 1&#10;ignorecase: False&#10;searchwindowsize: None&#10;delaybeforesend: 0.05&#10;delayafterclose: 0.1&#10;delayafterterminate: 0.1&#10;searcher: searcher_re:&#10;    0: re.compile(b'USGQVTXLLW(.*)USGQVTXLLW\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ')">shell_command = ShellDriver(target=Target(name='main', env=Environment(config_file='targets/tplink_tl-wdr3600-v1.yaml')), name=None, s...oot', password=None, keyfile='', login_timeout=120, console_ready='', await_login_timeout=15, post_login_settle_time=5)
+
+    def test_dropbear_startup(shell_command):
+        for i in range(120):
+&gt;           if shell_command.run("ls /etc/dropbear/dropbear_rsa_host_key")[2] == 0:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_base.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/labgrid/binding.py:102: in wrapper
+    return func(self, *_args, **_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/step.py:215: in wrapper
+    _result = func(*_args, **_kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/driver/shelldriver.py:109: in run
+    return self._run(cmd, timeout=timeout, codec=codec, decodeerrors=decodeerrors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/driver/shelldriver.py:93: in _run
+    _, _, match, _ = self.console.expect(
+.venv/lib/python3.13/site-packages/labgrid/binding.py:102: in wrapper
+    return func(self, *_args, **_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/step.py:215: in wrapper
+    _result = func(*_args, **_kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/labgrid/driver/consoleexpectmixin.py:59: in expect
+    index = self._expect.expect(pattern, timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/pexpect/spawnbase.py:354: in expect
+    return self.expect_list(compiled_pattern_list,
+.venv/lib/python3.13/site-packages/pexpect/spawnbase.py:383: in expect_list
+    return exp.expect_loop(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/pexpect/expect.py:181: in expect_loop
+    return self.timeout(e)
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;pexpect.expect.Expecter object at 0x7a7abb560f70&gt;
+err = TIMEOUT('Timeout of 29.99 seconds exceeded or connection closed by peer')
+
+    def timeout(self, err=None):
+        spawn = self.spawn
+    
+        spawn.before = spawn._before.getvalue()
+        spawn.after = TIMEOUT
+        index = self.searcher.timeout_index
+        if index &gt;= 0:
+            spawn.match = TIMEOUT
+            spawn.match_index = index
+            return index
+        else:
+            spawn.match = None
+            spawn.match_index = None
+            msg = str(spawn)
+            msg += '\nsearcher: %s' % self.searcher
+            if err is not None:
+                msg = str(err) + '\n' + msg
+    
+            exc = TIMEOUT(msg)
+            exc.__cause__ = None    # in Python 3.x we can use "raise exc from None"
+&gt;           raise exc
+E           pexpect.exceptions.TIMEOUT: Timeout of 29.99 seconds exceeded or connection closed by peer
+E           &lt;labgrid.util.expect.PtxExpect object at 0x7a7ac8195a90&gt;
+E           command: None
+E           args: None
+E           buffer (last 100 chars): b"MARKER='USGQ''VTXLLW' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'"
+E           before (last 100 chars): b"MARKER='USGQ''VTXLLW' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'"
+E           after: &lt;class 'pexpect.exceptions.TIMEOUT'&gt;
+E           match: None
+E           match_index: None
+E           exitstatus: None
+E           pid: None
+E           child_fd: -1
+E           closed: True
+E           timeout: 30
+E           delimiter: &lt;class 'pexpect.exceptions.EOF'&gt;
+E           logfile: None
+E           logfile_read: None
+E           logfile_send: None
+E           maxread: 1
+E           ignorecase: False
+E           searchwindowsize: None
+E           delaybeforesend: 0.05
+E           delayafterclose: 0.1
+E           delayafterterminate: 0.1
+E           searcher: searcher_re:
+E               0: re.compile(b'USGQVTXLLW(.*)USGQVTXLLW\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ')
+
+.venv/lib/python3.13/site-packages/pexpect/expect.py:144: TIMEOUT</failure></testcase><testcase classname="tests.test_base" name="test_ssh" time="5.947" /><testcase classname="tests.test_base" name="test_echo" time="0.176" /><testcase classname="tests.test_base" name="test_uname" time="0.271" /><testcase classname="tests.test_base" name="test_ubus_system_board" time="0.243" /><testcase classname="tests.test_base" name="test_free_memory" time="0.247" /><testcase classname="tests.test_base" name="test_sysupgrade_backup" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'rootfs'}&quot; is not supported">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_base.py:69: Skipping because feature "{'rootfs'}" is not supported</skipped></testcase><testcase classname="tests.test_base" name="test_sysupgrade_backup_u" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'rootfs'}&quot; is not supported">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_base.py:81: Skipping because feature "{'rootfs'}" is not supported</skipped></testcase><testcase classname="tests.test_base" name="test_kernel_errors" time="0.232" /><testcase classname="tests.test_lan" name="test_lan_wait_for_network" time="1.217" /><testcase classname="tests.test_lan" name="test_lan_interface_address" time="0.905" /><testcase classname="tests.test_network_security" name="test_ssh_supported_algorithms" time="0.274" /><testcase classname="tests.test_opkg" name="test_opkg_procd_installed" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'opkg'}&quot; is not supported">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_opkg.py:4: Skipping because feature "{'opkg'}" is not supported</skipped></testcase><testcase classname="tests.test_opkg" name="test_opkg_install_ucert" time="0.000"><skipped type="pytest.skip" message="Skipping because features &quot;{'opkg', 'online'}&quot; are not supported">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_opkg.py:9: Skipping because features "{'opkg', 'online'}" are not supported</skipped></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_cpu_load" time="0.100" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_memory_usage" time="0.081" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_filesystem_usage" time="0.495" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_system_uptime" time="0.079" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_temperature_sensors" time="0.107" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_process_count" time="0.092" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_entropy_available" time="0.066" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_open_file_descriptors" time="0.074" /><testcase classname="tests.test_wan" name="test_wan_wait_for_network" time="1.175" /><testcase classname="tests.test_wan" name="test_https_download" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'online'}&quot; is not supported">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_wan.py:56: Skipping because feature "{'online'}" is not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_wpa3" time="5.067" /><testcase classname="tests.test_wifi" name="test_wifi_wpa2" time="5.316" /><testcase classname="tests.test_wifi" name="test_wifi_scan" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'wifi-neighbors'}&quot; is not supported">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_wifi.py:76: Skipping because feature "{'wifi-neighbors'}" is not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_hwsim_sae_mixed" time="0.367"><skipped type="pytest.skip" message="Skipping because feature &quot;{'hwsim'}&quot; is not supported">/home/aparcar/actions-runner/_work/openwrt-tests/openwrt-tests/tests/test_wifi.py:97: Skipping because feature "{'hwsim'}" is not supported</skipped></testcase></testsuite></testsuites>
