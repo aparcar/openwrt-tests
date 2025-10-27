@@ -302,7 +302,7 @@ jobs:
           path: ${{ matrix.device }}-${{ matrix.version_name }}/*
 
       - name: Configure AWS credentials
-        if: always() && env.SKIP_TEST != 'true'
+        if: always() && env.SKIP_TEST != 'true' && secrets.S3_BUCKET != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -310,7 +310,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Upload to S3
-        if: always() && env.SKIP_TEST != 'true'
+        if: always() && env.SKIP_TEST != 'true' && secrets.S3_BUCKET != ''
         run: |
           # Create a timestamp for organizing results
           TIMESTAMP=$(date -u +"%Y-%m-%d")
@@ -321,10 +321,11 @@ jobs:
             s3://${{ secrets.S3_BUCKET }}/daily/$TIMESTAMP/$RUN_ID/${{ matrix.device }}-${{ matrix.version_name }}/report.xml \
             --no-progress
           
-          # Upload boot logs (all files in the directory except report.xml)
+          # Upload boot logs (console logs from labgrid)
           aws s3 sync ${{ matrix.device }}-${{ matrix.version_name }}/ \
             s3://${{ secrets.S3_BUCKET }}/daily/$TIMESTAMP/$RUN_ID/${{ matrix.device }}-${{ matrix.version_name }}/ \
-            --exclude "report.xml" \
+            --exclude "*" \
+            --include "console_*.log" \
             --no-progress
 
   test-qemu:
@@ -475,7 +476,7 @@ jobs:
           path: ${{ matrix.target }}-${{ matrix.version_name }}/*
 
       - name: Configure AWS credentials
-        if: always() && env.SKIP_TEST != 'true'
+        if: always() && env.SKIP_TEST != 'true' && secrets.S3_BUCKET != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -483,7 +484,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Upload to S3
-        if: always() && env.SKIP_TEST != 'true'
+        if: always() && env.SKIP_TEST != 'true' && secrets.S3_BUCKET != ''
         run: |
           # Create a timestamp for organizing results
           TIMESTAMP=$(date -u +"%Y-%m-%d")
@@ -494,10 +495,11 @@ jobs:
             s3://${{ secrets.S3_BUCKET }}/daily/$TIMESTAMP/$RUN_ID/qemu_${{ matrix.target }}-${{ matrix.version_name }}/report.xml \
             --no-progress
           
-          # Upload boot logs (all files in the directory except report.xml)
+          # Upload boot logs (console logs from labgrid)
           aws s3 sync ${{ matrix.target }}-${{ matrix.version_name }}/ \
             s3://${{ secrets.S3_BUCKET }}/daily/$TIMESTAMP/$RUN_ID/qemu_${{ matrix.target }}-${{ matrix.version_name }}/ \
-            --exclude "report.xml" \
+            --exclude "*" \
+            --include "console_*.log" \
             --no-progress
 
   results:

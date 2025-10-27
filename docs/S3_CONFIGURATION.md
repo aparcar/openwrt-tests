@@ -2,6 +2,8 @@
 
 The daily CI workflow uploads test results and boot logs to an S3-compatible storage service. This provides long-term storage and easy access to test artifacts.
 
+**Note**: S3 uploads are optional. If the required GitHub secrets are not configured, the workflow will continue to run normally but will skip the S3 upload steps.
+
 ## Required GitHub Secrets
 
 To enable S3 uploads, you need to configure the following secrets in your GitHub repository:
@@ -25,7 +27,7 @@ Test results are organized in the S3 bucket with the following structure:
 ```
 s3://{bucket}/daily/{date}/{run_id}/{device}-{version}/
 ├── report.xml          # JUnit XML test report
-└── console_*.log       # Boot and console logs from labgrid
+└── console_*.log       # Boot and console logs from labgrid (e.g., console_boot.log, console_serial.log)
 ```
 
 Where:
@@ -33,6 +35,8 @@ Where:
 - `{run_id}`: GitHub Actions workflow run ID
 - `{device}`: Device name (e.g., `glinet_gl-mt6000`) or `qemu_{target}` for QEMU tests
 - `{version}`: OpenWrt version (e.g., `snapshot`, `23.05`, `24.10`)
+
+**Note**: Only files matching the pattern `console_*.log` are uploaded to S3 to ensure only relevant log files are stored.
 
 ## Setting Up Secrets
 
