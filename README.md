@@ -87,6 +87,16 @@ def test_uname(shell_command):
     assert "GNU/Linux" in shell_command.run("uname -a")[0][0]
 ```
 
+## Continuous Integration
+
+The repository includes automated testing workflows that run daily and on pull requests.
+
+### Daily CI with S3 Storage
+
+The daily CI workflow tests OpenWrt snapshots and stable releases on both QEMU and real hardware. Test results and boot logs are automatically uploaded to S3 storage for long-term archival.
+
+For information on configuring S3 storage for CI artifacts, see [docs/S3_CONFIGURATION.md](docs/S3_CONFIGURATION.md).
+
 ## Remote Access
 
 With *labgrid*, you can remotely access devices. Key capabilities include
