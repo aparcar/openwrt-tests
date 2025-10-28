@@ -1,5 +1,7 @@
 # Devices in LeineLab Testlab
 
+![Photograph of the leinelab setup. Raspberry Pi, relay board, 2 wan cables coming into the picture, one relay switches power, one relay the reset pin, rx,tx,gnd are connected from gpio to router.](leinelab.png)
+
 ## Coordinator/Exporter
 - Raspberry Pi 3
     - Ethernet (eth0): Uplink
