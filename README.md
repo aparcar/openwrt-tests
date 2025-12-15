@@ -7,14 +7,21 @@ real. Using [`labgrid`](https://labgrid.readthedocs.io/en/latest/) to control
 the devices, the framework offers a simple way to write tests and run them on
 different hardware.
 
-## Requirements
+## Testing
+
+This section provides information on how to run tests using OpenWrt Testing,
+either on real or emulated devices. If you want to deploy real devices for
+testing, please see the *Lab Setup* section..
+
+### Requirements
+
+There are multiple ways to run tests, on real or emulated devices.
 
 - An OpenWrt firmware image
 - Python and [`uv`](https://docs.astral.sh/uv/)
-- QEMU
+- QEMU (for emulated devices)
 
-
-## Setup
+### Setup
 
 For maximum convenience, clone the repository inside the `openwrt.git`
 repository as `tests/`:
@@ -50,8 +57,6 @@ You can run tests via the Makefile or directly using `pytest`.
 ### Using the Makefile
 
 You can start runtime and shell tests via the Makefile.
-
-#### Runtime tests
 
 ```shell
 cd /path/to/openwrt.git
@@ -145,3 +150,50 @@ Lastly, unlock your device when you're done:
 ```shell
 uv run labgrid-client unlock
 ```
+
+## Lab Setup
+
+Setting up a new lab involves several steps and is a fun and curious process,
+however some precise and forward thinking is required to ensure a successful
+setup. This section describes a low-cost setup usable for network communities
+and individuals. Larger setups will be added in the future.
+
+### Concept
+
+The general idea is to have independent labs (i.e. coordinator and exporter) and
+connect them over a global coordinator, which has access to all labs. Developers
+and CI can access individual labs over the global coordinator, the graphic below
+gives an idea.
+
+![](docs/img/labnet_overview.png)
+
+This decentralized approach allows labs to function even if the global
+coordinator is down. Also access management can be individually controlled, i.e.
+which developer may access which lab or at what time automated CIs run tests.
+
+### Requirements
+
+* Coordinator/Exporter (i.e **RaspberryPi 5**)
+* PoE switch (i.e. **Zyxel GS1900-8HP**)
+* PoE Splitter (12v, 5v, etc.)
+* Devices-Under-Test (DUTs)
+* Some cables
+* A guest wifi
+
+### Setup
+
+For a minimal setup, a single device runs the coordinator and exporter at the
+same time, from now on called controller. The controller is connected to a PoE
+switch, managing network and power. A serial to USB-to-serial converter is
+needed for each *Device Under Test* (DUT) as well as a PoE splitter.
+
+> [!NOTE]
+> Larger setups may run multiple exporters, each connected to a separate PoE
+> switch.
+
+![](docs/img/labnet_setup.png)
+
+### Conroller
+
+The controller should be setup via Ansible, which install `labgrid` as well as
+all required tools.
