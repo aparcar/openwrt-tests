@@ -1,0 +1,389 @@
+# =============================================================================
+# OpenWrt KernelCI Pipeline Configuration
+# =============================================================================
+#
+# This file configures the pipeline services for OpenWrt firmware testing:
+# - Firmware source watchers
+# - Test scheduling
+# - Health check automation
+# - Result collection
+#
+# =============================================================================
+
+# API connection settings
+api:
+  local:
+    url: ${KCI_API_URL:-http://kernelci-api:8001}
+    token: ${KCI_API_TOKEN}
+
+# Storage configuration
+storage:
+  minio:
+    type: s3
+    endpoint: ${MINIO_ENDPOINT:-minio:9000}
+    access_key: ${MINIO_ACCESS_KEY}
+    secret_key: ${MINIO_SECRET_KEY}
+    secure: false
+    buckets:
+      firmware: openwrt-firmware
+      logs: openwrt-logs
+      artifacts: openwrt-artifacts
+
+# =============================================================================
+# Firmware Source Watchers
+# =============================================================================
+
+firmware_sources:
+  # Official OpenWrt releases
+  official:
+    enabled: true
+    type: openwrt_releases
+    sources:
+      snapshot:
+        url: https://downloads.openwrt.org/snapshots/targets
+        version: SNAPSHOT
+        check_interval: 3600  # 1 hour
+        # Only check specific targets (for efficiency)
+        targets:
+          - ath79/generic
+          - ramips/mt7621
+          - mediatek/filogic
+          - x86/64
+          - armsr/armv8
+          - malta/be
+
+      stable:
+        url: https://downloads.openwrt.org/releases/24.10.0/targets
+        version: "24.10.0"
+        check_interval: 86400  # 24 hours
+        targets:
+          - ath79/generic
+          - ramips/mt7621
+          - mediatek/filogic
+          - x86/64
+          - armsr/armv8
+
+      oldstable:
+        url: https://downloads.openwrt.org/releases/23.05.5/targets
+        version: "23.05.5"
+        check_interval: 86400
+        targets:
+          - ath79/generic
+          - ramips/mt7621
+          - x86/64
+
+  # GitHub Pull Request builds
+  github_pr:
+    enabled: true
+    type: github_artifacts
+    repository: openwrt/openwrt
+    token: ${GITHUB_TOKEN}
+    # Only process PRs with specific labels
+    trigger_labels:
+      - ci-test-requested
+      - needs-testing
+    # Workflow that produces firmware artifacts
+    workflow_name: Build
+    artifact_pattern: "openwrt-*"
+    check_interval: 300  # 5 minutes
+
+  # Custom firmware uploads via API
+  custom:
+    enabled: true
+    type: api_upload
+    max_file_size: 104857600  # 100MB
+    allowed_extensions:
+      - .bin
+      - .img
+      - .itb
+      - .gz
+    validation:
+      require_target: true
+      require_profile: true
+
+  # Buildbot integration (webhook-based)
+  buildbot:
+    enabled: false  # Enable when buildbot is configured
+    type: webhook
+    endpoint: /api/v1/webhook/buildbot
+    secret: ${BUILDBOT_WEBHOOK_SECRET}
+
+# =============================================================================
+# Test Plans
+# =============================================================================
+
+test_plans:
+  base:
+    name: Base Tests
+    description: Basic boot and connectivity tests
+    tests:
+      - test_shell
+      - test_ssh
+      - test_firmware_version
+      - test_ubus_system_board
+      - test_free_memory
+      - test_kernel_errors
+    timeout: 600
+    required_features: []
+
+  system:
+    name: System Health
+    description: System resource validation
+    tests:
+      - test_memory_usage
+      - test_filesystem_usage
+      - test_system_uptime
+      - test_process_count
+      - test_entropy_available
+    timeout: 300
+    required_features: []
+
+  network:
+    name: Network Tests
+    description: Network functionality tests
+    tests:
+      - test_lan_interface_address
+      - test_lan_interface_has_neighbor
+      - test_wan_wait_for_network
+      - test_https_download
+    timeout: 600
+    required_features:
+      - wan_port
+      - online
+
+  wifi:
+    name: WiFi Tests
+    description: Wireless functionality tests
+    tests:
+      - test_wifi_scan
+      - test_wifi_wpa2
+      - test_wifi_wpa3
+    timeout: 900
+    required_features:
+      - wifi
+
+  wifi_hwsim:
+    name: WiFi HWSIM Tests
+    description: WiFi tests using mac80211_hwsim
+    tests:
+      - test_wifi_hwsim_sae_mixed
+    timeout: 600
+    required_features:
+      - hwsim
+
+  package_opkg:
+    name: OPKG Tests
+    description: OPKG package manager tests
+    tests:
+      - test_opkg_procd_installed
+      - test_opkg_install_ucert
+    timeout: 300
+    required_features:
+      - opkg
+      - online
+
+  package_apk:
+    name: APK Tests
+    description: APK package manager tests
+    tests:
+      - test_apk_procd_installed
+      - test_apk_add_ucert
+      - test_apk_audit
+    timeout: 300
+    required_features:
+      - apk
+      - online
+
+  health_check:
+    name: Health Check
+    description: Quick device health verification
+    tests:
+      - test_shell
+      - test_ssh
+    timeout: 300
+    required_features: []
+    skip_firmware_flash: true
+
+# =============================================================================
+# Scheduler Configuration
+# =============================================================================
+
+scheduler:
+  # Maximum jobs to queue at once
+  max_queue_size: 100
+
+  # Maximum concurrent jobs per lab
+  max_concurrent_per_lab: 3
+
+  # Job timeout (seconds) - jobs exceeding this are marked failed
+  job_timeout: 3600
+
+  # Priority values (higher = more urgent)
+  priorities:
+    health_check: 10
+    pr_builds: 9
+    custom: 8
+    snapshot: 5
+    stable: 3
+    oldstable: 2
+
+  # Default test plans by firmware source
+  default_test_plans:
+    snapshot:
+      - base
+      - system
+    stable:
+      - base
+      - system
+      - network
+    oldstable:
+      - base
+    pr_builds:
+      - base
+      - system
+    custom:
+      - base
+
+  # Additional test plans based on device features
+  feature_test_plans:
+    wifi:
+      - wifi
+    hwsim:
+      - wifi_hwsim
+    opkg:
+      - package_opkg
+    apk:
+      - package_apk
+    wan_port:
+      - network
+
+# =============================================================================
+# Health Check Configuration
+# =============================================================================
+
+health_check:
+  enabled: true
+
+  # Check interval (seconds)
+  interval: 86400  # 24 hours
+
+  # Failure thresholds
+  warning_threshold: 3
+  disable_threshold: 5
+
+  # Tests to run for health check
+  test_plan: health_check
+
+  # Notification settings
+  notifications:
+    github_issues:
+      enabled: true
+      repository: ${GITHUB_REPO:-openwrt/openwrt}
+      labels:
+        - device-failure
+        - health-check
+      auto_close: true
+
+    email:
+      enabled: false
+      recipients: []
+
+    slack:
+      enabled: false
+      webhook_url: ${SLACK_WEBHOOK_URL}
+
+# =============================================================================
+# Device Type Mapping
+# =============================================================================
+#
+# Maps labgrid target names to OpenWrt target/subtarget/profile
+# This allows the scheduler to match firmware to compatible devices
+#
+device_types:
+  # QEMU targets
+  qemu_x86-64:
+    target: x86
+    subtarget: "64"
+    profile: generic
+    features:
+      - wan_port
+      - rootfs
+
+  qemu_malta-be:
+    target: malta
+    subtarget: be
+    profile: generic
+    features:
+      - wan_port
+
+  qemu_armsr-armv8:
+    target: armsr
+    subtarget: armv8
+    profile: generic
+    features:
+      - wan_port
+
+  # Real hardware (examples - extend based on labnet.yaml)
+  openwrt_one:
+    target: mediatek
+    subtarget: filogic
+    profile: openwrt_one
+    features:
+      - wifi
+      - wan_port
+
+  bananapi_bpi-r4:
+    target: mediatek
+    subtarget: filogic
+    profile: bananapi_bpi-r4
+    features:
+      - wifi
+      - wan_port
+
+  linksys_e8450:
+    target: mediatek
+    subtarget: mt7622
+    profile: linksys_e8450-ubi
+    features:
+      - wifi
+      - wan_port
+
+  glinet_gl-mt6000:
+    target: mediatek
+    subtarget: filogic
+    profile: glinet_gl-mt6000
+    features:
+      - wifi
+      - wan_port
+
+  tplink_archer-c7-v2:
+    target: ath79
+    subtarget: generic
+    profile: tplink_archer-c7-v2
+    features:
+      - wifi
+      - wan_port
+
+  raspberry_pi_4:
+    target: bcm27xx
+    subtarget: bcm2711
+    profile: rpi-4
+    features:
+      - wan_port
+
+# =============================================================================
+# Results Collection
+# =============================================================================
+
+results:
+  # Store console logs
+  store_console_logs: true
+
+  # Store test artifacts
+  store_artifacts: true
+
+  # Log retention (days)
+  log_retention_days: 90
+
+  # Compress logs older than (days)
+  compress_after_days: 7

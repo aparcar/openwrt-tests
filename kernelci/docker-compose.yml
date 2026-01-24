@@ -1,0 +1,308 @@
+version: '3.8'
+
+# =============================================================================
+# OpenWrt KernelCI - Self-Hosted Testing Infrastructure
+# =============================================================================
+#
+# This Docker Compose stack deploys a complete KernelCI instance for OpenWrt
+# firmware testing with:
+# - KernelCI API (Maestro) for job management
+# - Dashboard for result visualization
+# - Pipeline services for firmware triggers and scheduling
+# - Health check monitoring
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f
+#
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Core Infrastructure
+  # ===========================================================================
+
+  mongodb:
+    image: mongo:7.0
+    container_name: openwrt-kci-mongodb
+    volumes:
+      - mongodb_data:/data/db
+      - ./config/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD is required}
+      MONGO_INITDB_DATABASE: openwrt_kernelci
+    networks:
+      - kci-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: openwrt-kci-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - kci-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: openwrt-kci-minio
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+    networks:
+      - kci-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio-console.rule=Host(`storage.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.minio-console.entrypoints=websecure"
+      - "traefik.http.routers.minio-console.tls.certresolver=letsencrypt"
+      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: openwrt-kci-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set minio http://minio:9000 $${MINIO_ACCESS_KEY} $${MINIO_SECRET_KEY};
+      mc mb --ignore-existing minio/openwrt-firmware;
+      mc mb --ignore-existing minio/openwrt-logs;
+      mc mb --ignore-existing minio/openwrt-artifacts;
+      mc anonymous set download minio/openwrt-firmware;
+      mc anonymous set download minio/openwrt-logs;
+      echo 'MinIO buckets initialized';
+      "
+    networks:
+      - kci-internal
+
+  # ===========================================================================
+  # KernelCI API (Maestro)
+  # ===========================================================================
+
+  kernelci-api:
+    image: ghcr.io/kernelci/kernelci-api:latest
+    container_name: openwrt-kci-api
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: ${KCI_SECRET_KEY:?KCI_SECRET_KEY is required}
+      MONGO_SERVICE: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD}@mongodb:27017
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 480
+    volumes:
+      - ./config/api-config.toml:/home/kernelci/config/kernelci.toml:ro
+    networks:
+      - kci-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=8001"
+
+  # ===========================================================================
+  # KernelCI Pipeline Services
+  # ===========================================================================
+
+  pipeline-trigger:
+    build:
+      context: ./openwrt-pipeline
+      dockerfile: Dockerfile
+    container_name: openwrt-kci-trigger
+    depends_on:
+      kernelci-api:
+        condition: service_healthy
+    environment:
+      KCI_API_URL: http://kernelci-api:8001
+      KCI_API_TOKEN: ${KCI_API_TOKEN:?KCI_API_TOKEN is required}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
+      - firmware_cache:/app/cache
+    command: ["python", "-m", "openwrt_pipeline.firmware_trigger"]
+    networks:
+      - kci-internal
+    restart: unless-stopped
+
+  pipeline-scheduler:
+    build:
+      context: ./openwrt-pipeline
+      dockerfile: Dockerfile
+    container_name: openwrt-kci-scheduler
+    depends_on:
+      kernelci-api:
+        condition: service_healthy
+    environment:
+      KCI_API_URL: http://kernelci-api:8001
+      KCI_API_TOKEN: ${KCI_API_TOKEN}
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
+    command: ["python", "-m", "openwrt_pipeline.test_scheduler"]
+    networks:
+      - kci-internal
+    restart: unless-stopped
+
+  pipeline-results:
+    build:
+      context: ./openwrt-pipeline
+      dockerfile: Dockerfile
+    container_name: openwrt-kci-results
+    depends_on:
+      kernelci-api:
+        condition: service_healthy
+    environment:
+      KCI_API_URL: http://kernelci-api:8001
+      KCI_API_TOKEN: ${KCI_API_TOKEN}
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
+    command: ["python", "-m", "openwrt_pipeline.results_collector"]
+    networks:
+      - kci-internal
+    restart: unless-stopped
+
+  pipeline-health:
+    build:
+      context: ./openwrt-pipeline
+      dockerfile: Dockerfile
+    container_name: openwrt-kci-health
+    depends_on:
+      kernelci-api:
+        condition: service_healthy
+    environment:
+      KCI_API_URL: http://kernelci-api:8001
+      KCI_API_TOKEN: ${KCI_API_TOKEN}
+      HEALTH_CHECK_INTERVAL: ${HEALTH_CHECK_INTERVAL:-86400}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_REPO: ${GITHUB_REPO:-openwrt/openwrt}
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
+    command: ["python", "-m", "openwrt_pipeline.health_scheduler"]
+    networks:
+      - kci-internal
+    restart: unless-stopped
+
+  # ===========================================================================
+  # Dashboard
+  # ===========================================================================
+
+  dashboard:
+    image: ghcr.io/kernelci/dashboard:latest
+    container_name: openwrt-kci-dashboard
+    depends_on:
+      kernelci-api:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_ORIGIN: https://api.${DOMAIN:-localhost}
+      NEXT_PUBLIC_PROJECT_NAME: OpenWrt
+    networks:
+      - kci-internal
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=3000"
+
+  # ===========================================================================
+  # Reverse Proxy
+  # ===========================================================================
+
+  traefik:
+    image: traefik:v3.0
+    container_name: openwrt-kci-proxy
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=kci-internal"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@example.org}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt_data:/letsencrypt
+    networks:
+      - kci-internal
+    restart: unless-stopped
+
+# =============================================================================
+# Volumes
+# =============================================================================
+
+volumes:
+  mongodb_data:
+    name: openwrt-kci-mongodb
+  redis_data:
+    name: openwrt-kci-redis
+  minio_data:
+    name: openwrt-kci-minio
+  letsencrypt_data:
+    name: openwrt-kci-letsencrypt
+  firmware_cache:
+    name: openwrt-kci-firmware-cache
+
+# =============================================================================
+# Networks
+# =============================================================================
+
+networks:
+  kci-internal:
+    name: openwrt-kci-network
+    driver: bridge
