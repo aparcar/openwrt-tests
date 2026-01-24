@@ -2,43 +2,33 @@
 
 Self-contained, auto-updating lab node setup for remote OpenWrt test labs with containerized services.
 
-## Platform Options
-
-| Platform | Best For | Auto-Updates |
-|----------|----------|--------------|
-| **[Raspberry Pi](raspberry-pi/)** | Most labs, easy setup | Watchtower (containers) |
-| [Fedora CoreOS](#fedora-coreos) | x86 servers, immutable OS | Zincati (OS) + Podman |
-
-## Quick Start - Raspberry Pi (Recommended)
+## Quick Start
 
 ```bash
-# 1. Flash Raspberry Pi OS Lite (64-bit) to SD card
+# 1. Create your lab config
+cp lab-config.yaml.example lab-config.yaml
+nano lab-config.yaml   # Add SSH keys, devices
 
-# 2. Copy cloud-init files to boot partition
-cp raspberry-pi/cloud-init/user-data /media/$USER/bootfs/
-cp raspberry-pi/cloud-init/meta-data /media/$USER/bootfs/
+# 2. Generate ignition file
+./scripts/build-ignition.sh lab-config.yaml -o config.ign
 
-# 3. Edit user-data - add your SSH keys
-nano /media/$USER/bootfs/user-data
+# 3. Flash SD card (Raspberry Pi) - uses podman container
+sudo ./raspberry-pi/flash-sd.sh /dev/sdX config.ign
 
-# 4. Boot the Pi - auto-configures in ~5-10 minutes
+# 4. Boot Pi, configure UEFI once, done!
 ```
 
-See [raspberry-pi/README.md](raspberry-pi/README.md) for detailed instructions.
+Only requires **podman** (or docker) - no other tools to install.
 
-## Quick Start - Fedora CoreOS
+See [raspberry-pi/README.md](raspberry-pi/README.md) for details.
+
+## x86 Servers
 
 ```bash
-# 1. Copy and edit the example config
-cp lab-config.yaml.example lab-config.yaml
-vim lab-config.yaml  # Add your SSH keys, devices, etc.
-
-# 2. Generate Ignition file
-./scripts/build-ignition.sh lab-config.yaml
-
-# 3. Install Fedora CoreOS
-# Download from: https://fedoraproject.org/coreos/download
-sudo coreos-installer install /dev/sdX --ignition-file labnode.ign
+# Use coreos-installer directly (or via container)
+podman run --rm --privileged -v /dev:/dev -v .:/data:ro \
+    quay.io/coreos/coreos-installer:release \
+    install /dev/sdX --ignition-file /data/config.ign
 ```
 
 ## Architecture

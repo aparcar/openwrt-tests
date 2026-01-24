@@ -2,37 +2,26 @@
 
 Fedora CoreOS on Raspberry Pi with safe, atomic auto-updates.
 
-## Quickest Method (from any Linux)
+## Quick Start
 
 ```bash
-# Install coreos-installer
-sudo dnf install coreos-installer   # Fedora
-# or: cargo install coreos-installer
-
-# Create your config
+# 1. Create config (optional but recommended)
 cp ../lab-config.yaml.example ../lab-config.yaml
-nano ../lab-config.yaml   # Add SSH keys, devices
+nano ../lab-config.yaml   # Add SSH keys
 
-# Generate ignition
+# 2. Generate ignition
 ../scripts/build-ignition.sh ../lab-config.yaml -o config.ign
 
-# Flash SD card (downloads CoreOS automatically)
-sudo coreos-installer install /dev/sdX \
-    --architecture aarch64 \
-    --ignition-file config.ign \
-    --append-karg nomodeset
-
-# Then add UEFI firmware (see below)
+# 3. Flash SD card (uses podman, no install needed)
+sudo ./flash-sd.sh /dev/sdX config.ign
 ```
 
-## Simple Method (script does everything)
+Only requires **podman** (or docker) - coreos-installer runs in a container.
+
+## Without Config (Minimal Install)
 
 ```bash
-# Configure your lab
-cp ../lab-config.yaml.example ../lab-config.yaml
-nano ../lab-config.yaml
-
-# Flash (downloads CoreOS + UEFI firmware)
+# Just flash, add SSH keys later
 sudo ./flash-sd.sh /dev/sdX
 ```
 
