@@ -1,32 +1,48 @@
 #!/bin/bash
 # Build Ignition configuration from simple lab config
-# Usage: ./build-ignition.sh lab-config.yaml [output.ign]
+# Usage: ./build-ignition.sh lab-config.yaml [-o output.ign]
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COREOS_DIR="$(dirname "$SCRIPT_DIR")"
 
 usage() {
-    echo "Usage: $0 <lab-config.yaml> [output.ign]"
+    echo "Usage: $0 <lab-config.yaml> [-o output.ign]"
     echo ""
     echo "Generate Ignition configuration from lab config file."
     echo ""
-    echo "Arguments:"
-    echo "  lab-config.yaml   Lab configuration (see lab-config.yaml.example)"
-    echo "  output.ign        Output file (default: labnode.ign)"
+    echo "Options:"
+    echo "  -o FILE    Output file (default: labnode.ign)"
     echo ""
     echo "Example:"
     echo "  $0 lab-config.yaml"
-    echo "  $0 my-lab.yaml my-lab.ign"
+    echo "  $0 lab-config.yaml -o config.ign"
 }
 
-if [ $# -lt 1 ]; then
+CONFIG=""
+OUTPUT="labnode.ign"
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -o|--output)
+            OUTPUT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            CONFIG="$1"
+            shift
+            ;;
+    esac
+done
+
+if [ -z "$CONFIG" ]; then
     usage
     exit 1
 fi
-
-CONFIG="$1"
-OUTPUT="${2:-labnode.ign}"
 
 if [ ! -f "$CONFIG" ]; then
     echo "Error: Config file not found: $CONFIG"

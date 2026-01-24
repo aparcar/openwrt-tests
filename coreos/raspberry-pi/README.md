@@ -1,170 +1,153 @@
 # OpenWrt Test Lab - Raspberry Pi
 
-Fedora CoreOS on Raspberry Pi 4/5 with auto-updating containers.
+Fedora CoreOS on Raspberry Pi with safe, atomic auto-updates.
 
-## Quick Start
+## Quickest Method (from any Linux)
 
 ```bash
-# 1. Create your lab config
+# Install coreos-installer
+sudo dnf install coreos-installer   # Fedora
+# or: cargo install coreos-installer
+
+# Create your config
 cp ../lab-config.yaml.example ../lab-config.yaml
-nano ../lab-config.yaml  # Add SSH keys, devices, PDUs
+nano ../lab-config.yaml   # Add SSH keys, devices
 
-# 2. Flash SD card
-sudo ./flash-coreos.sh /dev/sdX
+# Generate ignition
+../scripts/build-ignition.sh ../lab-config.yaml -o config.ign
 
-# 3. Boot Pi, do one-time UEFI setup, done!
+# Flash SD card (downloads CoreOS automatically)
+sudo coreos-installer install /dev/sdX \
+    --architecture aarch64 \
+    --ignition-file config.ign \
+    --append-karg nomodeset
+
+# Then add UEFI firmware (see below)
 ```
 
-## Requirements
-
-- Raspberry Pi 4 (4GB+) or Pi 5
-- SD card 32GB+ (or USB/NVMe storage)
-- Monitor + keyboard (first boot only, for UEFI setup)
-
-## Installation
-
-### 1. Configure Your Lab
+## Simple Method (script does everything)
 
 ```bash
-cd coreos/
-cp lab-config.yaml.example lab-config.yaml
-nano lab-config.yaml
-```
-
-Minimum config:
-```yaml
-lab:
-  name: my-lab
-  hostname: labgrid-pi
-
-ssh_keys:
-  - ssh-ed25519 AAAA... your-key@hostname
-
-devices:
-  - name: my-router
-    serial:
-      id_path: platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1:1.0
-    network:
-      vlan: 101
-    power:
-      pdu: 192.168.128.2
-      outlet: 1
-```
-
-### 2. Flash SD Card
-
-```bash
-# Find your SD card
-lsblk
+# Configure your lab
+cp ../lab-config.yaml.example ../lab-config.yaml
+nano ../lab-config.yaml
 
 # Flash (downloads CoreOS + UEFI firmware)
-sudo ./raspberry-pi/flash-coreos.sh /dev/sdX
+sudo ./flash-sd.sh /dev/sdX
 ```
 
-### 3. First Boot - UEFI Setup (One Time)
+## Manual Method (most control)
 
-1. Insert SD card, connect monitor + keyboard
-2. Power on, press **Esc** to enter UEFI
-3. Go to: **Device Manager → Raspberry Pi Configuration → Advanced**
-4. Set **Limit RAM to 3GB → Disabled**
-5. Press **F10** to save, **Esc** to exit
-6. Pi boots Fedora CoreOS
-
-### 4. Verify
+### 1. Download and flash CoreOS image
 
 ```bash
-ssh labgrid@<pi-ip>
-sudo podman ps
+# Download latest stable aarch64 image
+curl -LO https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/.../fedora-coreos-...-metal.aarch64.raw.xz
+
+# Flash to SD card
+xzcat fedora-coreos-*.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
 ```
 
-## Finding Serial Paths
-
-After boot, find your USB serial devices:
+### 2. Add ignition config
 
 ```bash
-# List devices
-ls /dev/ttyUSB*
+# Mount boot partition (partition 2 on CoreOS)
+sudo mount /dev/sdX2 /mnt
 
-# Get ID_PATH
-udevadm info /dev/ttyUSB0 | grep ID_PATH=
+# Copy your ignition file
+sudo mkdir -p /mnt/ignition
+sudo cp config.ign /mnt/ignition/config.ign
 
-# Typical Pi 4 path:
-# platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.1:1.0
+sudo umount /mnt
+```
+
+### 3. Add Raspberry Pi UEFI firmware
+
+```bash
+# Mount EFI partition (partition 1)
+sudo mount /dev/sdX1 /mnt
+
+# Download and extract UEFI firmware
+curl -LO https://github.com/pftf/RPi4/releases/download/v1.39/RPi4_UEFI_Firmware_v1.39.zip
+sudo unzip RPi4_UEFI_Firmware_v1.39.zip -d /mnt/
+
+sudo umount /mnt
+```
+
+### 4. First boot UEFI setup
+
+1. Connect monitor + keyboard
+2. Power on, press **Esc** for UEFI
+3. **Device Manager → Raspberry Pi Configuration → Advanced**
+4. **Limit RAM to 3GB → Disabled**
+5. **F10** save, **Esc** exit
+
+## Applying Config Changes Later
+
+Ignition only runs on **first boot**. To change config later:
+
+```bash
+# SSH into the Pi
+ssh labgrid@<ip>
+
+# Edit configs directly
+sudo nano /etc/labgrid/exporter.yaml
+sudo systemctl restart labgrid-exporter
+
+# Or use Ansible from your workstation
+ansible-playbook -i inventory playbook.yml --limit my-pi
 ```
 
 ## Auto-Updates
 
-| Component | Schedule | Method |
-|-----------|----------|--------|
-| Fedora CoreOS | Sundays 3am | Zincati (rpm-ostree) |
-| Containers | Daily 4am | Podman auto-update |
+| Component | Method | Schedule | Rollback |
+|-----------|--------|----------|----------|
+| **Fedora CoreOS** | Zincati + rpm-ostree | Sundays 3am | Automatic |
+| **Containers** | Podman auto-update | Daily 4am | Manual |
 
 ```bash
-# Check OS updates
+# Check OS update status
 rpm-ostree status
+
+# Force OS update now
+sudo rpm-ostree upgrade
 
 # Check container updates
 sudo podman auto-update --dry-run
 ```
 
-## Configuration
+### Why this is safe
 
-Configs are in `/etc/`:
+- **A/B partitions**: OS updates install to inactive partition
+- **Auto-rollback**: If new OS fails to boot 3 times → reverts
+- **Staged updates**: Zincati coordinates timing across fleet
+- **No apt/dnf**: Can't accidentally break the system
 
-```
-/etc/labgrid/exporter.yaml     # Devices
-/etc/pdudaemon/pdudaemon.conf  # PDUs
-/etc/dnsmasq.d/*.conf          # DHCP
-/srv/tftp/                     # Firmware
-```
+## Minimal lab-config.yaml
 
-Edit and restart:
-```bash
-sudo nano /etc/labgrid/exporter.yaml
-sudo systemctl restart labgrid-exporter
+```yaml
+lab:
+  hostname: labgrid-pi
+
+ssh_keys:
+  - ssh-ed25519 AAAA... you@host
+
+# Add devices after first boot (easier to find serial paths)
+devices: []
 ```
 
 ## Troubleshooting
 
-### Won't boot past UEFI
-- Disable 3GB RAM limit in UEFI settings
-- `nomodeset` is added automatically by flash script
+### Won't boot
+- Did you disable 3GB RAM limit in UEFI?
+- Check ignition syntax: `butane --strict config.bu`
 
-### No serial devices
+### Can't SSH
+- Default user is `core` if no lab-config.yaml
+- Check ignition was placed in `/mnt/ignition/config.ign`
+
+### Find serial device paths
 ```bash
-lsusb                              # Check USB
-ls -la /dev/ttyUSB*                # Check devices
-sudo podman exec labgrid-exporter ls /dev/
+ls /dev/ttyUSB*
+udevadm info /dev/ttyUSB0 | grep ID_PATH
 ```
-
-### Container errors
-```bash
-sudo journalctl -u labgrid-exporter -f
-```
-
-## Alternative: Raspberry Pi OS + Docker
-
-If you prefer Raspberry Pi OS:
-
-```bash
-# Use cloud-init (automatic)
-cp cloud-init/user-data /media/$USER/bootfs/
-cp cloud-init/meta-data /media/$USER/bootfs/
-# Edit user-data, add SSH keys, boot
-
-# Or manual setup
-sudo ./setup.sh
-```
-
-## Hardware
-
-**Recommended:**
-- Raspberry Pi 5 (8GB) or Pi 4 (4GB+)
-- Powered USB 3.0 hub
-- FTDI-based serial adapters
-
-## References
-
-- [Fedora CoreOS on RPi4 - Docs](https://docs.fedoraproject.org/es_419/fedora-coreos/provisioning-raspberry-pi4/)
-- [RPi4 UEFI Firmware](https://github.com/pftf/RPi4)
-- [RPi Forum Guide](https://forums.raspberrypi.com/viewtopic.php?t=381870)
