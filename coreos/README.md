@@ -1,16 +1,32 @@
-# OpenWrt Test Lab - Immutable OS Image
+# OpenWrt Test Lab - Containerized Infrastructure
 
-Self-contained, auto-updating immutable OS image for remote OpenWrt test labs based on Fedora CoreOS with containerized services.
+Self-contained, auto-updating lab node setup for remote OpenWrt test labs with containerized services.
 
-## Overview
+## Platform Options
 
-This setup provides:
-- **Immutable base OS**: Fedora CoreOS with automatic updates via Zincati
-- **Containerized services**: labgrid coordinator/exporter, pdudaemon, dnsmasq
-- **Auto-updating containers**: Podman auto-update pulls new images automatically
-- **Simple configuration**: Single YAML file generates complete system config
+| Platform | Best For | Auto-Updates |
+|----------|----------|--------------|
+| **[Raspberry Pi](raspberry-pi/)** | Most labs, easy setup | Watchtower (containers) |
+| [Fedora CoreOS](#fedora-coreos) | x86 servers, immutable OS | Zincati (OS) + Podman |
 
-## Quick Start
+## Quick Start - Raspberry Pi (Recommended)
+
+```bash
+# 1. Flash Raspberry Pi OS Lite (64-bit) to SD card
+
+# 2. Copy cloud-init files to boot partition
+cp raspberry-pi/cloud-init/user-data /media/$USER/bootfs/
+cp raspberry-pi/cloud-init/meta-data /media/$USER/bootfs/
+
+# 3. Edit user-data - add your SSH keys
+nano /media/$USER/bootfs/user-data
+
+# 4. Boot the Pi - auto-configures in ~5-10 minutes
+```
+
+See [raspberry-pi/README.md](raspberry-pi/README.md) for detailed instructions.
+
+## Quick Start - Fedora CoreOS
 
 ```bash
 # 1. Copy and edit the example config
@@ -24,8 +40,6 @@ vim lab-config.yaml  # Add your SSH keys, devices, etc.
 # Download from: https://fedoraproject.org/coreos/download
 sudo coreos-installer install /dev/sdX --ignition-file labnode.ign
 ```
-
-That's it! The system will boot with all services configured and auto-updating.
 
 ## Architecture
 

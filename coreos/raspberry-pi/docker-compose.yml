@@ -1,0 +1,84 @@
+# OpenWrt Test Lab - Docker Compose for Raspberry Pi
+# Usage: docker compose up -d
+
+services:
+  labgrid-coordinator:
+    image: ghcr.io/openwrt/openwrt-tests/labgrid:latest
+    container_name: labgrid-coordinator
+    restart: always
+    environment:
+      - LABGRID_MODE=coordinator
+      - LABGRID_COORDINATOR_LISTEN=::
+    ports:
+      - "20408:20408"
+    volumes:
+      - ./config/labgrid:/etc/labgrid:ro
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  labgrid-exporter:
+    image: ghcr.io/openwrt/openwrt-tests/labgrid:latest
+    container_name: labgrid-exporter
+    restart: always
+    depends_on:
+      - labgrid-coordinator
+    environment:
+      - LABGRID_MODE=exporter
+      - LABGRID_CONFIG=/etc/labgrid/exporter.yaml
+      - LG_CROSSBAR=ws://labgrid-coordinator:20408/ws
+    network_mode: host
+    volumes:
+      - ./config/labgrid:/etc/labgrid:ro
+      - ./tftp:/srv/tftp:rw
+      - labgrid-cache:/var/cache/labgrid
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+      - /dev/ttyUSB1:/dev/ttyUSB1
+      - /dev/ttyUSB2:/dev/ttyUSB2
+      - /dev/ttyUSB3:/dev/ttyUSB3
+      - /dev/ttyAMA0:/dev/ttyAMA0
+    group_add:
+      - dialout
+    privileged: true  # Needed for USB serial access
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  pdudaemon:
+    image: ghcr.io/openwrt/openwrt-tests/pdudaemon:latest
+    container_name: pdudaemon
+    restart: always
+    network_mode: host
+    volumes:
+      - ./config/pdudaemon:/etc/pdudaemon:ro
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  dnsmasq:
+    image: ghcr.io/openwrt/openwrt-tests/dnsmasq:latest
+    container_name: dnsmasq
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./config/dnsmasq:/etc/dnsmasq.d:ro
+      - ./config/dnsmasq.conf:/etc/dnsmasq.conf:ro
+      - ./tftp:/srv/tftp:ro
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Auto-update containers daily
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: always
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *
+      - WATCHTOWER_LABEL_ENABLE=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  labgrid-cache:

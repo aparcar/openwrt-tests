@@ -1,0 +1,195 @@
+#cloud-config
+# OpenWrt Test Lab - Raspberry Pi Cloud-Init
+#
+# Usage:
+# 1. Flash Raspberry Pi OS Lite (64-bit) to SD card
+# 2. Copy this file to boot partition as 'user-data'
+# 3. Create empty 'meta-data' file on boot partition
+# 4. Boot the Pi - it will auto-configure
+
+hostname: labgrid-pi
+
+# Create labgrid user
+users:
+  - name: labgrid
+    groups: [adm, dialout, plugdev, docker, sudo]
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      # Coordinator key
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP0ZVlD9TmfAXL53Vq7V9WKE3KPomOa1jINyflrPWAlJ coordinator
+      # ADD YOUR SSH KEYS HERE:
+      # - ssh-ed25519 AAAA... your-key
+
+# System packages
+packages:
+  - git
+  - socat
+  - vlan
+  - iptables-persistent
+
+# Enable IP forwarding
+write_files:
+  - path: /etc/sysctl.d/99-labgrid.conf
+    content: |
+      net.ipv4.ip_forward = 1
+      net.ipv6.conf.all.forwarding = 1
+
+  - path: /etc/modules-load.d/vlan.conf
+    content: |
+      8021q
+
+  - path: /opt/labgrid/docker-compose.yml
+    content: |
+      services:
+        labgrid-coordinator:
+          image: ghcr.io/openwrt/openwrt-tests/labgrid:latest
+          container_name: labgrid-coordinator
+          restart: always
+          environment:
+            - LABGRID_MODE=coordinator
+          ports:
+            - "20408:20408"
+          volumes:
+            - ./config/labgrid:/etc/labgrid:ro
+          labels:
+            - "com.centurylinklabs.watchtower.enable=true"
+
+        labgrid-exporter:
+          image: ghcr.io/openwrt/openwrt-tests/labgrid:latest
+          container_name: labgrid-exporter
+          restart: always
+          depends_on:
+            - labgrid-coordinator
+          environment:
+            - LABGRID_MODE=exporter
+            - LABGRID_CONFIG=/etc/labgrid/exporter.yaml
+            - LG_CROSSBAR=ws://labgrid-coordinator:20408/ws
+          network_mode: host
+          volumes:
+            - ./config/labgrid:/etc/labgrid:ro
+            - ./tftp:/srv/tftp:rw
+          devices:
+            - /dev/ttyUSB0:/dev/ttyUSB0
+            - /dev/ttyUSB1:/dev/ttyUSB1
+            - /dev/ttyUSB2:/dev/ttyUSB2
+            - /dev/ttyUSB3:/dev/ttyUSB3
+          privileged: true
+          labels:
+            - "com.centurylinklabs.watchtower.enable=true"
+
+        pdudaemon:
+          image: ghcr.io/openwrt/openwrt-tests/pdudaemon:latest
+          container_name: pdudaemon
+          restart: always
+          network_mode: host
+          volumes:
+            - ./config/pdudaemon:/etc/pdudaemon:ro
+          labels:
+            - "com.centurylinklabs.watchtower.enable=true"
+
+        dnsmasq:
+          image: ghcr.io/openwrt/openwrt-tests/dnsmasq:latest
+          container_name: dnsmasq
+          restart: always
+          network_mode: host
+          cap_add:
+            - NET_ADMIN
+            - NET_RAW
+          volumes:
+            - ./config/dnsmasq:/etc/dnsmasq.d:ro
+            - ./config/dnsmasq.conf:/etc/dnsmasq.conf:ro
+            - ./tftp:/srv/tftp:ro
+          labels:
+            - "com.centurylinklabs.watchtower.enable=true"
+
+        watchtower:
+          image: containrrr/watchtower:latest
+          container_name: watchtower
+          restart: always
+          environment:
+            - WATCHTOWER_CLEANUP=true
+            - WATCHTOWER_SCHEDULE=0 0 4 * * *
+            - WATCHTOWER_LABEL_ENABLE=true
+          volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+
+  - path: /opt/labgrid/config/labgrid/exporter.yaml
+    content: |
+      # Add your devices here
+      # See: labgrid-find-serial
+
+  - path: /opt/labgrid/config/pdudaemon/pdudaemon.conf
+    content: |
+      {
+        "daemon": {
+          "hostname": "0.0.0.0",
+          "port": 16421,
+          "logging_level": "INFO"
+        },
+        "pdus": {}
+      }
+
+  - path: /opt/labgrid/config/dnsmasq.conf
+    content: |
+      port=0
+      enable-tftp
+      tftp-root=/srv/tftp
+      log-dhcp
+      conf-dir=/etc/dnsmasq.d/,*.conf
+
+  - path: /etc/systemd/system/labgrid.service
+    content: |
+      [Unit]
+      Description=OpenWrt Test Lab
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=/opt/labgrid
+      ExecStart=/usr/bin/docker compose up -d
+      ExecStop=/usr/bin/docker compose down
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /usr/local/bin/labgrid-find-serial
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      echo "=== USB Serial Devices ==="
+      for dev in /dev/ttyUSB* /dev/ttyACM* 2>/dev/null; do
+          [ -e "$dev" ] || continue
+          echo -e "\nDevice: $dev"
+          udevadm info "$dev" | grep -E "(ID_PATH|ID_SERIAL)="
+      done
+
+runcmd:
+  # Install Docker
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker labgrid
+
+  # Create directories
+  - mkdir -p /opt/labgrid/{config/labgrid,config/pdudaemon,config/dnsmasq,tftp}
+  - chown -R labgrid:labgrid /opt/labgrid
+
+  # Enable services
+  - systemctl daemon-reload
+  - systemctl enable labgrid.service
+
+  # Apply sysctl
+  - sysctl -p /etc/sysctl.d/99-labgrid.conf
+
+  # Load VLAN module
+  - modprobe 8021q
+
+  # Start services (will pull images)
+  - systemctl start labgrid.service
+
+final_message: |
+  OpenWrt Test Lab ready!
+  SSH: ssh labgrid@$HOSTNAME
+  Config: /opt/labgrid/config/
+  Find serial devices: labgrid-find-serial
