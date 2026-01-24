@@ -12,58 +12,34 @@ nano ../lab-config.yaml   # Add SSH keys
 # 2. Generate ignition
 ../scripts/build-ignition.sh ../lab-config.yaml -o config.ign
 
-# 3. Flash SD card (uses podman, no install needed)
-sudo ./flash-sd.sh /dev/sdX config.ign
+# 3. Build image (no root needed, uses podman)
+./build-image.sh config.ign -o labnode.img
+
+# 4. Flash (only step requiring root)
+sudo dd if=labnode.img of=/dev/sdX bs=4M status=progress conv=fsync
 ```
 
-Only requires **podman** (or docker) - coreos-installer runs in a container.
+Requires: **podman** (or docker), curl, unzip, xz
+
+## What build-image.sh Does
+
+1. Downloads Fedora CoreOS (aarch64, stable)
+2. Downloads Raspberry Pi UEFI firmware
+3. Embeds ignition config into image
+4. Outputs ready-to-flash `.img` file
+
+All image manipulation runs inside a container - no root on host.
 
 ## Without Config (Minimal Install)
 
 ```bash
-# Just flash, add SSH keys later
-sudo ./flash-sd.sh /dev/sdX
+./build-image.sh -o minimal.img
+sudo dd if=minimal.img of=/dev/sdX bs=4M status=progress
 ```
 
-## Manual Method (most control)
+Default user is `core` - you'll need console access to add SSH keys.
 
-### 1. Download and flash CoreOS image
-
-```bash
-# Download latest stable aarch64 image
-curl -LO https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/.../fedora-coreos-...-metal.aarch64.raw.xz
-
-# Flash to SD card
-xzcat fedora-coreos-*.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress
-```
-
-### 2. Add ignition config
-
-```bash
-# Mount boot partition (partition 2 on CoreOS)
-sudo mount /dev/sdX2 /mnt
-
-# Copy your ignition file
-sudo mkdir -p /mnt/ignition
-sudo cp config.ign /mnt/ignition/config.ign
-
-sudo umount /mnt
-```
-
-### 3. Add Raspberry Pi UEFI firmware
-
-```bash
-# Mount EFI partition (partition 1)
-sudo mount /dev/sdX1 /mnt
-
-# Download and extract UEFI firmware
-curl -LO https://github.com/pftf/RPi4/releases/download/v1.39/RPi4_UEFI_Firmware_v1.39.zip
-sudo unzip RPi4_UEFI_Firmware_v1.39.zip -d /mnt/
-
-sudo umount /mnt
-```
-
-### 4. First boot UEFI setup
+## First Boot - UEFI Setup
 
 1. Connect monitor + keyboard
 2. Power on, press **Esc** for UEFI
@@ -71,9 +47,11 @@ sudo umount /mnt
 4. **Limit RAM to 3GB → Disabled**
 5. **F10** save, **Esc** exit
 
-## Applying Config Changes Later
+This is a one-time setup.
 
-Ignition only runs on **first boot**. To change config later:
+## After First Boot
+
+Ignition only runs once. To change config later:
 
 ```bash
 # SSH into the Pi
@@ -82,9 +60,6 @@ ssh labgrid@<ip>
 # Edit configs directly
 sudo nano /etc/labgrid/exporter.yaml
 sudo systemctl restart labgrid-exporter
-
-# Or use Ansible from your workstation
-ansible-playbook -i inventory playbook.yml --limit my-pi
 ```
 
 ## Auto-Updates
@@ -98,19 +73,27 @@ ansible-playbook -i inventory playbook.yml --limit my-pi
 # Check OS update status
 rpm-ostree status
 
-# Force OS update now
-sudo rpm-ostree upgrade
-
 # Check container updates
 sudo podman auto-update --dry-run
 ```
 
-### Why this is safe
+### Why Updates Are Safe
 
-- **A/B partitions**: OS updates install to inactive partition
-- **Auto-rollback**: If new OS fails to boot 3 times → reverts
-- **Staged updates**: Zincati coordinates timing across fleet
-- **No apt/dnf**: Can't accidentally break the system
+- **A/B partitions**: Updates install to inactive partition
+- **Auto-rollback**: Failed boot (3x) reverts automatically
+- **Immutable OS**: Can't accidentally break with apt/dnf
+
+## Finding Serial Devices
+
+After boot:
+
+```bash
+ls /dev/ttyUSB*
+udevadm info /dev/ttyUSB0 | grep ID_PATH
+
+# Typical Pi 4/5 path:
+# platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.1:1.0
+```
 
 ## Minimal lab-config.yaml
 
@@ -121,22 +104,21 @@ lab:
 ssh_keys:
   - ssh-ed25519 AAAA... you@host
 
-# Add devices after first boot (easier to find serial paths)
+# Add devices after first boot
 devices: []
 ```
 
 ## Troubleshooting
 
-### Won't boot
-- Did you disable 3GB RAM limit in UEFI?
-- Check ignition syntax: `butane --strict config.bu`
+### Won't boot past UEFI
+- Disable 3GB RAM limit in UEFI settings
 
 ### Can't SSH
-- Default user is `core` if no lab-config.yaml
-- Check ignition was placed in `/mnt/ignition/config.ign`
+- Check ignition was embedded: `./build-image.sh config.ign`
+- Default user is `core` without config
 
-### Find serial device paths
+### Container issues
 ```bash
-ls /dev/ttyUSB*
-udevadm info /dev/ttyUSB0 | grep ID_PATH
+sudo journalctl -u labgrid-exporter -f
+sudo podman ps
 ```

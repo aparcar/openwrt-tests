@@ -9,23 +9,24 @@ Self-contained, auto-updating lab node setup for remote OpenWrt test labs with c
 cp lab-config.yaml.example lab-config.yaml
 nano lab-config.yaml   # Add SSH keys, devices
 
-# 2. Generate ignition file
+# 2. Generate ignition
 ./scripts/build-ignition.sh lab-config.yaml -o config.ign
 
-# 3. Flash SD card (Raspberry Pi) - uses podman container
-sudo ./raspberry-pi/flash-sd.sh /dev/sdX config.ign
+# 3. Build image (no root needed)
+./raspberry-pi/build-image.sh config.ign -o labnode.img
 
-# 4. Boot Pi, configure UEFI once, done!
+# 4. Flash (only root step)
+sudo dd if=labnode.img of=/dev/sdX bs=4M status=progress conv=fsync
 ```
 
-Only requires **podman** (or docker) - no other tools to install.
+Requires: **podman** (or docker), curl, unzip, xz
 
 See [raspberry-pi/README.md](raspberry-pi/README.md) for details.
 
 ## x86 Servers
 
 ```bash
-# Use coreos-installer directly (or via container)
+# Use coreos-installer via container
 podman run --rm --privileged -v /dev:/dev -v .:/data:ro \
     quay.io/coreos/coreos-installer:release \
     install /dev/sdX --ignition-file /data/config.ign
