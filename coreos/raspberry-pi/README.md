@@ -1,211 +1,170 @@
-# OpenWrt Test Lab - Raspberry Pi Setup
+# OpenWrt Test Lab - Raspberry Pi
 
-Docker-based labgrid setup for Raspberry Pi with automatic container updates.
+Fedora CoreOS on Raspberry Pi 4/5 with auto-updating containers.
 
-## Quick Start (Cloud-Init)
-
-The easiest way - automatic setup on first boot:
+## Quick Start
 
 ```bash
-# 1. Flash Raspberry Pi OS Lite (64-bit) to SD card
-# Use Raspberry Pi Imager: https://www.raspberrypi.com/software/
+# 1. Create your lab config
+cp ../lab-config.yaml.example ../lab-config.yaml
+nano ../lab-config.yaml  # Add SSH keys, devices, PDUs
 
-# 2. Mount the boot partition and copy cloud-init files
-cp cloud-init/user-data /media/$USER/bootfs/
-cp cloud-init/meta-data /media/$USER/bootfs/
+# 2. Flash SD card
+sudo ./flash-coreos.sh /dev/sdX
 
-# 3. Edit user-data to add your SSH keys (search for "ADD YOUR SSH KEYS")
-nano /media/$USER/bootfs/user-data
-
-# 4. Unmount and boot the Pi
-# First boot takes ~5-10 minutes to install Docker and pull images
+# 3. Boot Pi, do one-time UEFI setup, done!
 ```
 
-## Quick Start (Manual)
+## Requirements
+
+- Raspberry Pi 4 (4GB+) or Pi 5
+- SD card 32GB+ (or USB/NVMe storage)
+- Monitor + keyboard (first boot only, for UEFI setup)
+
+## Installation
+
+### 1. Configure Your Lab
 
 ```bash
-# 1. Flash Raspberry Pi OS Lite and boot
-# 2. SSH into the Pi and run:
-curl -fsSL https://raw.githubusercontent.com/openwrt/openwrt-tests/main/coreos/raspberry-pi/setup.sh | sudo bash
-
-# 3. Configure your devices
-sudo nano /opt/labgrid/config/labgrid/exporter.yaml
-
-# 4. Start services
-sudo systemctl start labgrid
+cd coreos/
+cp lab-config.yaml.example lab-config.yaml
+nano lab-config.yaml
 ```
 
-## Finding Serial Device Paths
-
-```bash
-# List all USB serial devices with their ID_PATH
-labgrid-find-serial
-
-# Example output:
-# Device: /dev/ttyUSB0
-# ID_PATH=platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.1:1.0
-# ID_SERIAL=FTDI_FT232R_USB_UART_A50285BI
-```
-
-Use the `ID_PATH` value in your `exporter.yaml`.
-
-## Configuration Files
-
-All config files are in `/opt/labgrid/config/`:
-
-```
-/opt/labgrid/
-├── docker-compose.yml
-├── config/
-│   ├── labgrid/
-│   │   └── exporter.yaml    # Device definitions
-│   ├── pdudaemon/
-│   │   └── pdudaemon.conf   # PDU configuration
-│   └── dnsmasq/
-│       └── *.conf           # VLAN DHCP configs
-└── tftp/                    # TFTP root for firmware
-```
-
-### Example Device Configuration
-
-Edit `/opt/labgrid/config/labgrid/exporter.yaml`:
-
+Minimum config:
 ```yaml
-openwrt-one:
-  USBSerialPort:
-    match:
-      # Get this from: labgrid-find-serial
-      ID_PATH: platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.1:1.0
-    speed: 115200
-  NetworkService:
-    address: 192.168.101.1%vlan101
-    username: root
-  PDUDaemonPort:
-    host: localhost:16421
-    pdu: 192.168.128.2
-    index: 1
-  TFTPProvider:
-    internal: /srv/tftp/openwrt-one/
-    external: openwrt-one/
+lab:
+  name: my-lab
+  hostname: labgrid-pi
+
+ssh_keys:
+  - ssh-ed25519 AAAA... your-key@hostname
+
+devices:
+  - name: my-router
+    serial:
+      id_path: platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1:1.0
+    network:
+      vlan: 101
+    power:
+      pdu: 192.168.128.2
+      outlet: 1
 ```
 
-### PDU Configuration
-
-Edit `/opt/labgrid/config/pdudaemon/pdudaemon.conf`:
-
-```json
-{
-  "daemon": {
-    "hostname": "0.0.0.0",
-    "port": 16421,
-    "logging_level": "INFO"
-  },
-  "pdus": {
-    "192.168.128.2": {
-      "driver": "ubus"
-    }
-  }
-}
-```
-
-## VLAN Setup
+### 2. Flash SD Card
 
 ```bash
-# Create VLAN interface
-sudo ip link add link eth0 name vlan101 type vlan id 101
-sudo ip addr add 192.168.101.1/24 dev vlan101
-sudo ip link set vlan101 up
+# Find your SD card
+lsblk
 
-# Make persistent (add to /etc/network/interfaces.d/vlans)
-echo "auto vlan101
-iface vlan101 inet static
-    address 192.168.101.1/24
-    vlan-raw-device eth0" | sudo tee /etc/network/interfaces.d/vlans
+# Flash (downloads CoreOS + UEFI firmware)
+sudo ./raspberry-pi/flash-coreos.sh /dev/sdX
 ```
 
-## Managing Services
+### 3. First Boot - UEFI Setup (One Time)
+
+1. Insert SD card, connect monitor + keyboard
+2. Power on, press **Esc** to enter UEFI
+3. Go to: **Device Manager → Raspberry Pi Configuration → Advanced**
+4. Set **Limit RAM to 3GB → Disabled**
+5. Press **F10** to save, **Esc** to exit
+6. Pi boots Fedora CoreOS
+
+### 4. Verify
 
 ```bash
-# Start/stop all services
-sudo systemctl start labgrid
-sudo systemctl stop labgrid
+ssh labgrid@<pi-ip>
+sudo podman ps
+```
 
-# Or use docker compose directly
-cd /opt/labgrid
-docker compose up -d
-docker compose down
+## Finding Serial Paths
 
-# View logs
-docker logs -f labgrid-exporter
-docker logs -f labgrid-coordinator
+After boot, find your USB serial devices:
 
-# Restart a single service
-docker compose restart labgrid-exporter
+```bash
+# List devices
+ls /dev/ttyUSB*
+
+# Get ID_PATH
+udevadm info /dev/ttyUSB0 | grep ID_PATH=
+
+# Typical Pi 4 path:
+# platform-fd500000.pcie-pci-0000:01:00.0-usb-0:1.1:1.0
 ```
 
 ## Auto-Updates
 
-Watchtower automatically updates containers daily at 4:00 AM:
+| Component | Schedule | Method |
+|-----------|----------|--------|
+| Fedora CoreOS | Sundays 3am | Zincati (rpm-ostree) |
+| Containers | Daily 4am | Podman auto-update |
 
 ```bash
-# Check watchtower logs
-docker logs watchtower
+# Check OS updates
+rpm-ostree status
 
-# Force update now
-docker exec watchtower /watchtower --run-once
+# Check container updates
+sudo podman auto-update --dry-run
 ```
 
-## Hardware Recommendations
+## Configuration
 
-### Raspberry Pi Models
-- **Pi 5 (4GB+)**: Recommended - best USB and network performance
-- **Pi 4 (4GB+)**: Works well
-- **Pi 3**: Not recommended (limited USB bandwidth)
+Configs are in `/etc/`:
 
-### USB Hub
-Use a powered USB hub for multiple serial adapters:
-- Plugable 7-Port USB 3.0 Hub
-- Anker 7-Port USB 3.0 Hub
+```
+/etc/labgrid/exporter.yaml     # Devices
+/etc/pdudaemon/pdudaemon.conf  # PDUs
+/etc/dnsmasq.d/*.conf          # DHCP
+/srv/tftp/                     # Firmware
+```
 
-### Serial Adapters
-- FTDI FT232R-based adapters (most reliable)
-- CH340/CH341 adapters (budget option)
+Edit and restart:
+```bash
+sudo nano /etc/labgrid/exporter.yaml
+sudo systemctl restart labgrid-exporter
+```
 
 ## Troubleshooting
 
-### Serial devices not accessible
+### Won't boot past UEFI
+- Disable 3GB RAM limit in UEFI settings
+- `nomodeset` is added automatically by flash script
 
+### No serial devices
 ```bash
-# Check device permissions
-ls -la /dev/ttyUSB*
-
-# Add user to dialout group
-sudo usermod -aG dialout $USER
-
-# Restart containers
-docker compose restart labgrid-exporter
+lsusb                              # Check USB
+ls -la /dev/ttyUSB*                # Check devices
+sudo podman exec labgrid-exporter ls /dev/
 ```
 
-### Container won't start
-
+### Container errors
 ```bash
-# Check logs
-docker logs labgrid-exporter
-
-# Common issues:
-# - Serial device doesn't exist: update devices in docker-compose.yml
-# - Config error: check exporter.yaml syntax
+sudo journalctl -u labgrid-exporter -f
 ```
 
-### Network issues with VLANs
+## Alternative: Raspberry Pi OS + Docker
+
+If you prefer Raspberry Pi OS:
 
 ```bash
-# Verify VLAN interface exists
-ip -d link show vlan101
+# Use cloud-init (automatic)
+cp cloud-init/user-data /media/$USER/bootfs/
+cp cloud-init/meta-data /media/$USER/bootfs/
+# Edit user-data, add SSH keys, boot
 
-# Check routing
-ip route
-
-# Test connectivity
-ping -I vlan101 192.168.101.100
+# Or manual setup
+sudo ./setup.sh
 ```
+
+## Hardware
+
+**Recommended:**
+- Raspberry Pi 5 (8GB) or Pi 4 (4GB+)
+- Powered USB 3.0 hub
+- FTDI-based serial adapters
+
+## References
+
+- [Fedora CoreOS on RPi4 - Docs](https://docs.fedoraproject.org/es_419/fedora-coreos/provisioning-raspberry-pi4/)
+- [RPi4 UEFI Firmware](https://github.com/pftf/RPi4)
+- [RPi Forum Guide](https://forums.raspberrypi.com/viewtopic.php?t=381870)
