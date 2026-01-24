@@ -1,0 +1,29 @@
+# PDUDaemon container for power control
+FROM python:3.13-slim-bookworm
+
+LABEL org.opencontainers.image.source="https://github.com/openwrt/openwrt-tests"
+LABEL org.opencontainers.image.description="PDUDaemon for OpenWrt testing power control"
+LABEL org.opencontainers.image.licenses="MIT"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    telnet \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pdudaemon from fork with additional drivers
+RUN pip install --no-cache-dir \
+    git+https://github.com/jonasjelonek/pdudaemon.git@main
+
+# Create pdudaemon user
+RUN useradd -m -s /bin/bash pdudaemon
+
+# Create config directory
+RUN mkdir -p /etc/pdudaemon /run/pdudaemon \
+    && chown -R pdudaemon:pdudaemon /etc/pdudaemon /run/pdudaemon
+
+USER pdudaemon
+
+EXPOSE 16421
+
+ENTRYPOINT ["pdudaemon", "--conf", "/etc/pdudaemon/pdudaemon.conf"]

@@ -1,0 +1,22 @@
+[Unit]
+Description=Labgrid Coordinator
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/openwrt/openwrt-tests/labgrid:latest
+ContainerName=labgrid-coordinator
+Environment=LABGRID_MODE=coordinator
+Environment=LABGRID_COORDINATOR_LISTEN=::
+PublishPort=20408:20408
+Volume=/etc/labgrid:/etc/labgrid:ro
+AutoUpdate=registry
+Label=io.containers.autoupdate=registry
+
+[Service]
+Restart=always
+RestartSec=30
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

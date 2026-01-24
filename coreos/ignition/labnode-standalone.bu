@@ -1,0 +1,415 @@
+# Butane configuration for OpenWrt Test Lab Node (standalone version)
+# Compile with: butane --strict labnode-standalone.bu > labnode.ign
+#
+# This is a self-contained configuration with all quadlet files embedded.
+# For customization, modify the exporter.yaml and pdudaemon.conf sections.
+
+variant: fcos
+version: "1.5.0"
+
+passwd:
+  users:
+    - name: labgrid
+      groups:
+        - wheel
+        - sudo
+        - dialout
+        - plugdev
+      ssh_authorized_keys:
+        # Coordinator public key
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP0ZVlD9TmfAXL53Vq7V9WKE3KPomOa1jINyflrPWAlJ coordinator
+        # ADD YOUR SSH KEYS BELOW:
+        # - ssh-ed25519 AAAA... your-key-name
+      shell: /bin/bash
+
+storage:
+  directories:
+    - path: /etc/labgrid
+      mode: 0755
+    - path: /etc/pdudaemon
+      mode: 0755
+    - path: /etc/dnsmasq.d
+      mode: 0755
+    - path: /srv/tftp
+      mode: 0755
+      user:
+        name: labgrid
+      group:
+        name: labgrid
+    - path: /var/cache/labgrid
+      mode: 0755
+      user:
+        name: labgrid
+      group:
+        name: labgrid
+    - path: /etc/containers/systemd
+      mode: 0755
+
+  files:
+    # ============================================
+    # QUADLET CONTAINER DEFINITIONS
+    # ============================================
+
+    # Labgrid coordinator container
+    - path: /etc/containers/systemd/labgrid-coordinator.container
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=Labgrid Coordinator
+          After=network-online.target
+          Wants=network-online.target
+
+          [Container]
+          Image=ghcr.io/openwrt/openwrt-tests/labgrid:latest
+          ContainerName=labgrid-coordinator
+          Environment=LABGRID_MODE=coordinator
+          Environment=LABGRID_COORDINATOR_LISTEN=::
+          PublishPort=20408:20408
+          Volume=/etc/labgrid:/etc/labgrid:ro
+          AutoUpdate=registry
+          Label=io.containers.autoupdate=registry
+
+          [Service]
+          Restart=always
+          RestartSec=30
+          TimeoutStartSec=300
+
+          [Install]
+          WantedBy=multi-user.target
+
+    # Labgrid exporter container
+    - path: /etc/containers/systemd/labgrid-exporter.container
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=Labgrid Exporter
+          After=network-online.target labgrid-coordinator.service
+          Wants=network-online.target
+          Requires=labgrid-coordinator.service
+
+          [Container]
+          Image=ghcr.io/openwrt/openwrt-tests/labgrid:latest
+          ContainerName=labgrid-exporter
+          Environment=LABGRID_MODE=exporter
+          Environment=LABGRID_CONFIG=/etc/labgrid/exporter.yaml
+          Environment=LG_CROSSBAR=ws://localhost:20408/ws
+          Network=host
+          Volume=/etc/labgrid:/etc/labgrid:ro
+          Volume=/srv/tftp:/srv/tftp:rw
+          Volume=/var/cache/labgrid:/var/cache/labgrid:rw
+          AddDevice=/dev/ttyUSB0
+          AddDevice=/dev/ttyUSB1
+          AddDevice=/dev/ttyUSB2
+          AddDevice=/dev/ttyUSB3
+          AddDevice=/dev/ttyACM0
+          AddDevice=/dev/ttyACM1
+          GroupAdd=dialout
+          GroupAdd=plugdev
+          SecurityLabelDisable=true
+          AutoUpdate=registry
+          Label=io.containers.autoupdate=registry
+
+          [Service]
+          Restart=always
+          RestartSec=30
+          TimeoutStartSec=300
+
+          [Install]
+          WantedBy=multi-user.target
+
+    # PDUDaemon container
+    - path: /etc/containers/systemd/pdudaemon.container
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=PDU Daemon for power control
+          After=network-online.target
+          Wants=network-online.target
+
+          [Container]
+          Image=ghcr.io/openwrt/openwrt-tests/pdudaemon:latest
+          ContainerName=pdudaemon
+          Network=host
+          Volume=/etc/pdudaemon:/etc/pdudaemon:ro
+          AutoUpdate=registry
+          Label=io.containers.autoupdate=registry
+
+          [Service]
+          Restart=always
+          RestartSec=30
+          TimeoutStartSec=120
+
+          [Install]
+          WantedBy=multi-user.target
+
+    # Dnsmasq DHCP/TFTP container
+    - path: /etc/containers/systemd/dnsmasq.container
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=Dnsmasq DHCP/TFTP server
+          After=network-online.target
+          Wants=network-online.target
+
+          [Container]
+          Image=ghcr.io/openwrt/openwrt-tests/dnsmasq:latest
+          ContainerName=dnsmasq
+          Network=host
+          AddCapability=NET_ADMIN
+          AddCapability=NET_RAW
+          AddCapability=NET_BIND_SERVICE
+          Volume=/etc/dnsmasq.d:/etc/dnsmasq.d:ro
+          Volume=/etc/dnsmasq.conf:/etc/dnsmasq.conf:ro
+          Volume=/srv/tftp:/srv/tftp:ro
+          AutoUpdate=registry
+          Label=io.containers.autoupdate=registry
+
+          [Service]
+          Restart=always
+          RestartSec=10
+          TimeoutStartSec=60
+
+          [Install]
+          WantedBy=multi-user.target
+
+    # ============================================
+    # SYSTEM CONFIGURATION
+    # ============================================
+
+    # Enable IP forwarding
+    - path: /etc/sysctl.d/99-ip-forward.conf
+      mode: 0644
+      contents:
+        inline: |
+          net.ipv4.ip_forward = 1
+          net.ipv6.conf.all.forwarding = 1
+
+    # ============================================
+    # SERVICE CONFIGURATIONS - CUSTOMIZE THESE!
+    # ============================================
+
+    # Labgrid exporter configuration
+    # CUSTOMIZE THIS FOR YOUR DEVICES
+    - path: /etc/labgrid/exporter.yaml
+      mode: 0644
+      contents:
+        inline: |
+          # Labgrid exporter configuration
+          # Documentation: https://labgrid.readthedocs.io/en/latest/configuration.html
+          #
+          # Example device configuration:
+          #
+          # openwrt-router-1:
+          #   USBSerialPort:
+          #     match:
+          #       ID_PATH: pci-0000:00:14.0-usb-0:1:1.0
+          #     speed: 115200
+          #   NetworkService:
+          #     address: 192.168.101.1%vlan101
+          #     username: root
+          #   PDUDaemonPort:
+          #     host: localhost:16421
+          #     pdu: 192.168.128.2
+          #     index: 1
+          #   TFTPProvider:
+          #     internal: /srv/tftp/openwrt-router-1/
+          #     external: openwrt-router-1/
+
+    # PDUDaemon configuration
+    # CUSTOMIZE THIS FOR YOUR PDUs
+    - path: /etc/pdudaemon/pdudaemon.conf
+      mode: 0644
+      contents:
+        inline: |
+          {
+            "daemon": {
+              "hostname": "0.0.0.0",
+              "port": 16421,
+              "logging_level": "INFO"
+            },
+            "pdus": {
+              "example-pdu": {
+                "driver": "ubus",
+                "comment": "Example OpenWrt PDU - replace with your PDU config"
+              }
+            }
+          }
+
+    # Dnsmasq main configuration
+    - path: /etc/dnsmasq.conf
+      mode: 0644
+      contents:
+        inline: |
+          # Disable DNS (only DHCP and TFTP)
+          port=0
+
+          # Enable TFTP
+          enable-tftp
+          tftp-root=/srv/tftp
+
+          # Log DHCP transactions
+          log-dhcp
+
+          # Include per-VLAN configurations
+          conf-dir=/etc/dnsmasq.d/,*.conf
+
+    # Example VLAN dnsmasq configuration
+    - path: /etc/dnsmasq.d/vlan101.conf.example
+      mode: 0644
+      contents:
+        inline: |
+          # Example VLAN 101 DHCP configuration
+          # Rename to vlan101.conf to enable
+          #
+          # interface=vlan101
+          # dhcp-range=set:vlan101,192.168.101.100,192.168.101.200,24h
+          # dhcp-option=tag:vlan101,option:router,192.168.101.1
+
+    # ============================================
+    # UDEV RULES
+    # ============================================
+
+    # USB-SD-Mux rules
+    - path: /etc/udev/rules.d/99-usbsdmux.rules
+      mode: 0644
+      contents:
+        inline: |
+          SUBSYSTEM=="scsi_generic", KERNEL=="sg[0-9]*", ATTRS{manufacturer}=="Linux Automation GmbH", ATTRS{product}=="usb-sd-mux*", SYMLINK+="usb-sd-mux/id-$attr{serial}", GROUP="plugdev", TAG+="uaccess"
+          SUBSYSTEM=="scsi_generic", KERNEL=="sg[0-9]*", ATTRS{manufacturer}=="Pengutronix", ATTRS{product}=="usb-sd-mux*", SYMLINK+="usb-sd-mux/id-$attr{serial}", GROUP="plugdev", TAG+="uaccess"
+          SUBSYSTEM=="block", KERNEL=="sd[a-z]", ATTRS{manufacturer}=="Linux Automation GmbH", GROUP="plugdev"
+          SUBSYSTEM=="block", KERNEL=="sd[a-z]", ATTRS{manufacturer}=="Pengutronix", GROUP="plugdev"
+
+    # ============================================
+    # HELPER SCRIPTS
+    # ============================================
+
+    # labgrid-bound-connect for SSH tunneling through VLANs
+    - path: /usr/local/sbin/labgrid-bound-connect
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -e
+
+          if [ $# -lt 3 ]; then
+              echo "Usage: $0 <interface> <host> <port>"
+              exit 1
+          fi
+
+          INTERFACE="$1"
+          HOST="$2"
+          PORT="$3"
+
+          if ! ip link show "$INTERFACE" &>/dev/null; then
+              echo "Error: Interface $INTERFACE does not exist"
+              exit 1
+          fi
+
+          if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+              echo "Error: Invalid port $PORT"
+              exit 1
+          fi
+
+          exec socat - "TCP:${HOST}:${PORT},bind-dev=${INTERFACE},connect-timeout=10,keepalive,keepidle=10,keepintvl=10,keepcnt=3"
+
+    # Sudoers entry
+    - path: /etc/sudoers.d/labgrid-bound-connect
+      mode: 0440
+      contents:
+        inline: |
+          ALL ALL = NOPASSWD: /usr/local/sbin/labgrid-bound-connect
+
+    # ============================================
+    # AUTO-UPDATE CONFIGURATION
+    # ============================================
+
+    # Zincati (OS) auto-update - weekly Sunday 3am UTC
+    - path: /etc/zincati/config.d/55-updates-strategy.toml
+      mode: 0644
+      contents:
+        inline: |
+          [updates]
+          strategy = "periodic"
+
+          [updates.periodic]
+          time_zone = "UTC"
+
+          [[updates.periodic.window]]
+          days = [ "Sun" ]
+          start_time = "03:00"
+          length_minutes = 120
+
+    # Podman auto-update timer
+    - path: /etc/systemd/system/podman-auto-update.timer
+      mode: 0644
+      contents:
+        inline: |
+          [Unit]
+          Description=Podman auto-update timer
+
+          [Timer]
+          OnCalendar=*-*-* 04:00:00
+          RandomizedDelaySec=900
+          Persistent=true
+
+          [Install]
+          WantedBy=timers.target
+
+systemd:
+  units:
+    # Enable container auto-update timer
+    - name: podman-auto-update.timer
+      enabled: true
+
+    # Enable OS auto-updates via zincati
+    - name: zincati.service
+      enabled: true
+
+    # Cache cleanup timer
+    - name: labgrid-cache-cleanup.timer
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Labgrid cache cleanup timer
+
+        [Timer]
+        OnCalendar=daily
+        RandomizedDelaySec=3600
+        Persistent=true
+
+        [Install]
+        WantedBy=timers.target
+
+    - name: labgrid-cache-cleanup.service
+      contents: |
+        [Unit]
+        Description=Clean old labgrid cache files
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/find /var/cache/labgrid -type f -mtime +7 -delete
+
+    # Pull container images on first boot
+    - name: pull-labgrid-images.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Pull labgrid container images
+        After=network-online.target
+        Wants=network-online.target
+        ConditionPathExists=!/var/lib/labgrid-images-pulled
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/podman pull ghcr.io/openwrt/openwrt-tests/labgrid:latest
+        ExecStart=/usr/bin/podman pull ghcr.io/openwrt/openwrt-tests/pdudaemon:latest
+        ExecStart=/usr/bin/podman pull ghcr.io/openwrt/openwrt-tests/dnsmasq:latest
+        ExecStartPost=/usr/bin/touch /var/lib/labgrid-images-pulled
+
+        [Install]
+        WantedBy=multi-user.target

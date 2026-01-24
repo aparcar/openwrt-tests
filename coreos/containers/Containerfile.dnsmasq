@@ -1,0 +1,15 @@
+# dnsmasq container for DHCP and TFTP services
+FROM alpine:3.19
+
+LABEL org.opencontainers.image.source="https://github.com/openwrt/openwrt-tests"
+LABEL org.opencontainers.image.description="dnsmasq DHCP/TFTP server for OpenWrt testing"
+LABEL org.opencontainers.image.licenses="MIT"
+
+RUN apk add --no-cache dnsmasq
+
+# Create tftp directory
+RUN mkdir -p /srv/tftp
+
+# DNS disabled by default (port=0), only DHCP and TFTP
+ENTRYPOINT ["dnsmasq", "-k", "--log-facility=-"]
+CMD ["-C", "/etc/dnsmasq.conf"]

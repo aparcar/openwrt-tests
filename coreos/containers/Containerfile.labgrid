@@ -1,0 +1,43 @@
+# Labgrid container for coordinator and exporter
+# Supports both roles via entrypoint arguments
+FROM python:3.13-slim-bookworm
+
+LABEL org.opencontainers.image.source="https://github.com/openwrt/openwrt-tests"
+LABEL org.opencontainers.image.description="Labgrid coordinator and exporter for OpenWrt testing"
+LABEL org.opencontainers.image.licenses="MIT"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    openssh-client \
+    socat \
+    microcom \
+    iproute2 \
+    iputils-ping \
+    usbutils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install labgrid from custom fork
+RUN pip install --no-cache-dir \
+    git+https://github.com/aparcar/labgrid.git@aparcar/staging \
+    usbsdmux
+
+# Create labgrid user
+RUN useradd -m -s /bin/bash -G dialout,plugdev labgrid
+
+# Create required directories
+RUN mkdir -p /etc/labgrid /var/cache/labgrid /srv/tftp \
+    && chown -R labgrid:labgrid /etc/labgrid /var/cache/labgrid /srv/tftp
+
+# Copy entrypoint script
+COPY entrypoint-labgrid.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER labgrid
+WORKDIR /home/labgrid
+
+# Default to exporter mode
+ENV LABGRID_MODE=exporter
+ENV LABGRID_CONFIG=/etc/labgrid/exporter.yaml
+
+ENTRYPOINT ["/entrypoint.sh"]

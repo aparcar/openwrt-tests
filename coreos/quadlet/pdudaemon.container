@@ -1,0 +1,24 @@
+[Unit]
+Description=PDU Daemon for power control
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/openwrt/openwrt-tests/pdudaemon:latest
+ContainerName=pdudaemon
+
+# Host network for PDU access
+Network=host
+
+Volume=/etc/pdudaemon:/etc/pdudaemon:ro
+
+AutoUpdate=registry
+Label=io.containers.autoupdate=registry
+
+[Service]
+Restart=always
+RestartSec=30
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

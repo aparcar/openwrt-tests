@@ -1,0 +1,251 @@
+# Butane configuration for OpenWrt Test Lab Node
+# Compile with: butane --strict labnode.bu > labnode.ign
+variant: fcos
+version: "1.5.0"
+
+passwd:
+  users:
+    - name: labgrid
+      groups:
+        - wheel
+        - sudo
+        - dialout
+        - plugdev
+      ssh_authorized_keys:
+        # Coordinator public key - allows coordinator to access this node
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP0ZVlD9TmfAXL53Vq7V9WKE3KPomOa1jINyflrPWAlJ coordinator
+        # Add developer keys here or via afterburn
+      shell: /bin/bash
+
+storage:
+  directories:
+    - path: /etc/labgrid
+      mode: 0755
+    - path: /etc/pdudaemon
+      mode: 0755
+    - path: /etc/dnsmasq.d
+      mode: 0755
+    - path: /srv/tftp
+      mode: 0755
+      user:
+        name: labgrid
+      group:
+        name: labgrid
+    - path: /var/cache/labgrid
+      mode: 0755
+      user:
+        name: labgrid
+      group:
+        name: labgrid
+    - path: /etc/containers/systemd
+      mode: 0755
+
+  files:
+    # Labgrid coordinator quadlet
+    - path: /etc/containers/systemd/labgrid-coordinator.container
+      mode: 0644
+      contents:
+        local: quadlet/labgrid-coordinator.container
+
+    # Labgrid exporter quadlet
+    - path: /etc/containers/systemd/labgrid-exporter.container
+      mode: 0644
+      contents:
+        local: quadlet/labgrid-exporter.container
+
+    # PDUDaemon quadlet
+    - path: /etc/containers/systemd/pdudaemon.container
+      mode: 0644
+      contents:
+        local: quadlet/pdudaemon.container
+
+    # Dnsmasq quadlet
+    - path: /etc/containers/systemd/dnsmasq.container
+      mode: 0644
+      contents:
+        local: quadlet/dnsmasq.container
+
+    # Auto-update timer
+    - path: /etc/systemd/system/podman-auto-update.timer
+      mode: 0644
+      contents:
+        local: quadlet/podman-auto-update.timer
+
+    # Enable IP forwarding
+    - path: /etc/sysctl.d/99-ip-forward.conf
+      mode: 0644
+      contents:
+        inline: |
+          net.ipv4.ip_forward = 1
+          net.ipv6.conf.all.forwarding = 1
+
+    # Default exporter configuration (template)
+    - path: /etc/labgrid/exporter.yaml
+      mode: 0644
+      contents:
+        inline: |
+          # Labgrid exporter configuration
+          # This file should be customized for each lab node
+          # See: https://labgrid.readthedocs.io/en/latest/configuration.html
+
+          # Example device export:
+          # my-device:
+          #   USBSerialPort:
+          #     match:
+          #       ID_PATH: pci-0000:00:14.0-usb-0:1:1.0
+          #   NetworkService:
+          #     address: 192.168.101.1%vlan101
+          #     username: root
+          #   PDUDaemonPort:
+          #     host: localhost:16421
+          #     pdu: 192.168.128.2
+          #     index: 1
+
+    # Default PDUDaemon configuration
+    - path: /etc/pdudaemon/pdudaemon.conf
+      mode: 0644
+      contents:
+        inline: |
+          {
+            "daemon": {
+              "hostname": "0.0.0.0",
+              "port": 16421,
+              "logging_level": "INFO"
+            },
+            "pdus": {
+            }
+          }
+
+    # Default dnsmasq configuration
+    - path: /etc/dnsmasq.conf
+      mode: 0644
+      contents:
+        inline: |
+          # Disable DNS (only DHCP and TFTP)
+          port=0
+
+          # Enable TFTP
+          enable-tftp
+          tftp-root=/srv/tftp
+
+          # Log DHCP transactions
+          log-dhcp
+
+          # Include per-VLAN configurations
+          conf-dir=/etc/dnsmasq.d/,*.conf
+
+    # USB-SD-Mux udev rules
+    - path: /etc/udev/rules.d/99-usbsdmux.rules
+      mode: 0644
+      contents:
+        inline: |
+          SUBSYSTEM=="scsi_generic", KERNEL=="sg[0-9]*", ATTRS{manufacturer}=="Linux Automation GmbH", ATTRS{product}=="usb-sd-mux*", SYMLINK+="usb-sd-mux/id-$attr{serial}", GROUP="plugdev", TAG+="uaccess"
+          SUBSYSTEM=="scsi_generic", KERNEL=="sg[0-9]*", ATTRS{manufacturer}=="Pengutronix", ATTRS{product}=="usb-sd-mux*", SYMLINK+="usb-sd-mux/id-$attr{serial}", GROUP="plugdev", TAG+="uaccess"
+          SUBSYSTEM=="block", KERNEL=="sd[a-z]", ATTRS{manufacturer}=="Linux Automation GmbH", GROUP="plugdev"
+          SUBSYSTEM=="block", KERNEL=="sd[a-z]", ATTRS{manufacturer}=="Pengutronix", GROUP="plugdev"
+
+    # labgrid-bound-connect script for SSH tunneling
+    - path: /usr/local/sbin/labgrid-bound-connect
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # labgrid-bound-connect - Establish SSH connection bound to specific interface
+          set -e
+
+          if [ $# -lt 3 ]; then
+              echo "Usage: $0 <interface> <host> <port>"
+              exit 1
+          fi
+
+          INTERFACE="$1"
+          HOST="$2"
+          PORT="$3"
+
+          # Validate interface name
+          if ! ip link show "$INTERFACE" &>/dev/null; then
+              echo "Error: Interface $INTERFACE does not exist"
+              exit 1
+          fi
+
+          # Validate port
+          if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+              echo "Error: Invalid port $PORT"
+              exit 1
+          fi
+
+          exec socat - "TCP:${HOST}:${PORT},bind-dev=${INTERFACE},connect-timeout=10,keepalive,keepidle=10,keepintvl=10,keepcnt=3"
+
+    # Sudoers entry for labgrid-bound-connect
+    - path: /etc/sudoers.d/labgrid-bound-connect
+      mode: 0440
+      contents:
+        inline: |
+          ALL ALL = NOPASSWD: /usr/local/sbin/labgrid-bound-connect
+
+    # Zincati auto-update configuration (for OS updates)
+    - path: /etc/zincati/config.d/55-updates-strategy.toml
+      mode: 0644
+      contents:
+        inline: |
+          [updates]
+          strategy = "periodic"
+
+          [updates.periodic]
+          time_zone = "UTC"
+
+          [[updates.periodic.window]]
+          days = [ "Sun" ]
+          start_time = "03:00"
+          length_minutes = 120
+
+    # Container auto-update configuration
+    - path: /etc/systemd/system/podman-auto-update.service.d/override.conf
+      mode: 0644
+      contents:
+        inline: |
+          [Service]
+          # Restart containers after update
+          ExecStartPost=/usr/bin/systemctl daemon-reload
+
+systemd:
+  units:
+    # Enable auto-update timer for containers
+    - name: podman-auto-update.timer
+      enabled: true
+
+    # Enable zincati for OS updates
+    - name: zincati.service
+      enabled: true
+
+    # Regenerate systemd units from quadlet files on boot
+    - name: systemd-tmpfiles-setup.service
+      dropins:
+        - name: quadlet.conf
+          contents: |
+            [Service]
+            ExecStartPost=/usr/libexec/podman/quadlet --dryrun
+
+    # Cache cleanup timer
+    - name: labgrid-cache-cleanup.timer
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Labgrid cache cleanup timer
+
+        [Timer]
+        OnCalendar=daily
+        RandomizedDelaySec=3600
+        Persistent=true
+
+        [Install]
+        WantedBy=timers.target
+
+    - name: labgrid-cache-cleanup.service
+      contents: |
+        [Unit]
+        Description=Clean old labgrid cache files
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/find /var/cache/labgrid -type f -mtime +7 -delete

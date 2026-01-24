@@ -1,0 +1,47 @@
+[Unit]
+Description=Labgrid Exporter
+After=network-online.target labgrid-coordinator.service
+Wants=network-online.target
+Requires=labgrid-coordinator.service
+
+[Container]
+Image=ghcr.io/openwrt/openwrt-tests/labgrid:latest
+ContainerName=labgrid-exporter
+Environment=LABGRID_MODE=exporter
+Environment=LABGRID_CONFIG=/etc/labgrid/exporter.yaml
+Environment=LABGRID_EXPORTER_NAME=%H
+Environment=LG_CROSSBAR=ws://labgrid-coordinator:20408/ws
+
+# Host network required for VLAN access
+Network=host
+
+# Mount configurations
+Volume=/etc/labgrid:/etc/labgrid:ro
+Volume=/srv/tftp:/srv/tftp:rw
+Volume=/var/cache/labgrid:/var/cache/labgrid:rw
+
+# Device access for serial consoles and USB
+AddDevice=/dev/ttyUSB0
+AddDevice=/dev/ttyUSB1
+AddDevice=/dev/ttyUSB2
+AddDevice=/dev/ttyUSB3
+AddDevice=/dev/ttyACM0
+AddDevice=/dev/ttyACM1
+
+# Group permissions
+GroupAdd=dialout
+GroupAdd=plugdev
+
+# Security options for device access
+SecurityLabelDisable=true
+
+AutoUpdate=registry
+Label=io.containers.autoupdate=registry
+
+[Service]
+Restart=always
+RestartSec=30
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

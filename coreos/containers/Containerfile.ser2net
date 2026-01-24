@@ -1,0 +1,23 @@
+# ser2net container for serial console access
+FROM debian:bookworm-slim
+
+LABEL org.opencontainers.image.source="https://github.com/openwrt/openwrt-tests"
+LABEL org.opencontainers.image.description="ser2net for serial console access"
+LABEL org.opencontainers.image.licenses="MIT"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ser2net \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create ser2net user with dialout group
+RUN useradd -m -s /bin/bash -G dialout ser2net
+
+RUN mkdir -p /etc/ser2net \
+    && chown -R ser2net:ser2net /etc/ser2net
+
+# Default config location
+ENV SER2NET_CONF=/etc/ser2net/ser2net.yaml
+
+# Run as root to access serial devices (group permissions handled by host)
+ENTRYPOINT ["ser2net", "-n", "-c"]
+CMD ["/etc/ser2net/ser2net.yaml"]

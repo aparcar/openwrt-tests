@@ -1,0 +1,75 @@
+# OpenWrt Test Lab Configuration
+# Copy this file to lab-config.yaml and customize for your lab
+
+# Lab identification
+lab:
+  name: my-lab
+  hostname: labgrid-mylab
+
+# SSH access - add your public keys here
+ssh_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample... admin@example.com
+  # - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAnother... dev@example.com
+
+# Network configuration
+network:
+  # Main network interface
+  interface: eth0
+
+  # VLANs for device isolation
+  vlans:
+    - id: 101
+      address: 192.168.101.1/24
+      dhcp_start: 192.168.101.100
+      dhcp_end: 192.168.101.200
+    - id: 102
+      address: 192.168.102.1/24
+      dhcp_start: 192.168.102.100
+      dhcp_end: 192.168.102.200
+
+# Power distribution units
+pdus:
+  # OpenWrt device with ubus
+  - address: 192.168.128.2
+    driver: ubus
+
+  # NETIO4 smart PDU (uncomment if used)
+  # - address: 192.168.128.3
+  #   driver: netio4
+  #   username: netio
+  #   password: netio
+
+# Test devices
+devices:
+  - name: openwrt-one
+    serial:
+      # Find with: udevadm info /dev/ttyUSB0 | grep ID_PATH
+      id_path: pci-0000:00:14.0-usb-0:1:1.0
+      speed: 115200
+    network:
+      vlan: 101
+    power:
+      pdu: 192.168.128.2
+      outlet: 1
+
+  - name: banana-pi-r4
+    serial:
+      id_path: pci-0000:00:14.0-usb-0:2:1.0
+    network:
+      vlan: 102
+    power:
+      pdu: 192.168.128.2
+      outlet: 2
+
+# Container registry (defaults to ghcr.io/openwrt/openwrt-tests)
+# registry: ghcr.io/openwrt/openwrt-tests
+
+# Update schedule
+updates:
+  # OS updates (Zincati) - day of week and time (UTC)
+  os:
+    day: Sun
+    time: "03:00"
+  # Container updates - time (UTC)
+  containers:
+    time: "04:00"
