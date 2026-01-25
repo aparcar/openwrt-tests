@@ -301,6 +301,8 @@ class TestExecutor:
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
         env["LG_CONSOLE"] = "internal"
+        # Set labgrid coordinator address (gRPC)
+        env["LG_COORDINATOR"] = settings.lg_coordinator
 
         with open(console_log, "w") as log_file:
             try:

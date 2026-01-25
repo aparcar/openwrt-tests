@@ -27,10 +27,10 @@ class Settings(BaseSettings):
         description="KernelCI API authentication token",
     )
 
-    # Labgrid coordinator
-    lg_crossbar: str = Field(
-        default="ws://localhost:20408/ws",
-        description="Labgrid coordinator WebSocket URL",
+    # Labgrid coordinator (gRPC)
+    lg_coordinator: str = Field(
+        default="localhost:20408",
+        description="Labgrid coordinator gRPC address (host:port)",
     )
 
     # MinIO storage (optional)
