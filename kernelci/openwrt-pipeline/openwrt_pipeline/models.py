@@ -15,7 +15,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-
 # =============================================================================
 # Enums
 # =============================================================================
@@ -164,7 +163,9 @@ class TestJob(BaseModel):
     timeout: int = Field(default=1800, description="Job timeout in seconds")
 
     # Priority and scheduling
-    priority: int = Field(default=5, description="Job priority (1-10, higher=more urgent)")
+    priority: int = Field(
+        default=5, description="Job priority (1-10, higher=more urgent)"
+    )
     status: JobStatus = Field(default=JobStatus.PENDING)
 
     # Assignment

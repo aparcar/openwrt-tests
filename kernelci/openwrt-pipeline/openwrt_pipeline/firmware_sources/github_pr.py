@@ -9,7 +9,6 @@ import hashlib
 import io
 import logging
 import zipfile
-from datetime import datetime
 from pathlib import Path
 from typing import AsyncIterator
 
@@ -19,7 +18,8 @@ from github.PullRequest import PullRequest
 from github.WorkflowRun import WorkflowRun
 
 from ..config import settings
-from ..models import Firmware, FirmwareArtifacts, FirmwareSource as FirmwareSourceEnum
+from ..models import Firmware, FirmwareArtifacts
+from ..models import FirmwareSource as FirmwareSourceEnum
 from .base import FirmwareSource
 
 logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ class GitHubPRSource(FirmwareSource):
             try:
                 pulls = repo.get_pulls(state="open")
                 for pr in pulls:
-                    pr_labels = [l.name for l in pr.labels]
+                    pr_labels = [lbl.name for lbl in pr.labels]
                     if label in pr_labels:
                         async for firmware in self._process_pr(pr):
                             yield firmware

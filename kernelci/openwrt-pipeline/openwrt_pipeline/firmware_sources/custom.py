@@ -16,7 +16,8 @@ from minio import Minio
 from pydantic import BaseModel
 
 from ..config import settings
-from ..models import Firmware, FirmwareArtifacts, FirmwareSource as FirmwareSourceEnum
+from ..models import Firmware, FirmwareArtifacts
+from ..models import FirmwareSource as FirmwareSourceEnum
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +153,9 @@ class CustomFirmwareUploader:
 
         # Generate public URL
         # Note: In production, this would use a proper URL or presigned URL
-        artifact_url = f"http://{settings.minio_endpoint}/openwrt-firmware/{storage_path}"
+        artifact_url = (
+            f"http://{settings.minio_endpoint}/openwrt-firmware/{storage_path}"
+        )
 
         # Create artifact mapping
         artifacts = FirmwareArtifacts()

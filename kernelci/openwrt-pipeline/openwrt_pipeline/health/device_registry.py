@@ -195,7 +195,9 @@ class DeviceRegistry:
             logger.warning(f"Device {device_id} disabled after {failures} failures")
         elif failures >= self.warning_threshold:
             new_status = DeviceStatus.FAILING
-            logger.warning(f"Device {device_id} failing ({failures} consecutive failures)")
+            logger.warning(
+                f"Device {device_id} failing ({failures} consecutive failures)"
+            )
         else:
             new_status = device.status
 

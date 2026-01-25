@@ -13,11 +13,9 @@ import asyncio
 import json
 import logging
 import os
-import subprocess
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import httpx
 from minio import Minio
@@ -143,7 +141,7 @@ class TestExecutor:
                 )
 
                 # Run pytest
-                result = await self._run_pytest(
+                await self._run_pytest(
                     pytest_args=pytest_args,
                     timeout=timeout,
                     console_log=console_log_path,
@@ -368,7 +366,9 @@ class TestExecutor:
                 call_info = test.get("call", {})
                 error_message = call_info.get("longrepr", "")
                 if isinstance(error_message, dict):
-                    error_message = error_message.get("reprcrash", {}).get("message", "")
+                    error_message = error_message.get("reprcrash", {}).get(
+                        "message", ""
+                    )
 
             result = TestResult(
                 id=f"{job_id}:{test_name}",

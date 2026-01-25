@@ -83,7 +83,7 @@ class NotificationManager:
         Creates GitHub issue if threshold reached and enabled.
         """
         logger.info(
-            f"Device failure notification",
+            "Device failure notification",
             device_id=device.id,
             failures=device.consecutive_failures,
         )
@@ -98,7 +98,7 @@ class NotificationManager:
 
         Closes GitHub issue if auto_close is enabled.
         """
-        logger.info(f"Device recovery notification", device_id=device.id)
+        logger.info("Device recovery notification", device_id=device.id)
 
         # Close GitHub issue if exists
         if self.github_enabled and self.auto_close:
@@ -225,7 +225,7 @@ class NotificationManager:
 ### Error Details
 
 ```
-{error_message or 'No error message available'}
+{error_message or "No error message available"}
 ```
 
 """
@@ -272,7 +272,7 @@ class NotificationManager:
         This could be a daily digest or post-check summary.
         """
         logger.info(
-            f"Health check summary",
+            "Health check summary",
             total=summary.get("total", 0),
             healthy=summary.get("healthy", 0),
             failing=summary.get("failing", 0),

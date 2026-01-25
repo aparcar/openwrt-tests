@@ -9,14 +9,12 @@ Periodically schedules and monitors device health checks:
 """
 
 import asyncio
-import logging
-from datetime import datetime
 
 import structlog
 
 from ..api_client import KernelCIClient
 from ..config import load_pipeline_config
-from ..models import DeviceHealthCheck, JobCreate, TestStatus
+from ..models import JobCreate
 from .device_registry import DeviceRegistry
 from .notifications import NotificationManager
 
@@ -86,7 +84,7 @@ class HealthCheckScheduler:
         self.notifications.initialize()
 
         logger.info(
-            f"Health scheduler initialized",
+            "Health scheduler initialized",
             devices=len(self.device_registry.get_all_devices()),
             interval=self.health_config.get("interval", 86400),
         )
@@ -183,7 +181,7 @@ class HealthCheckScheduler:
                 self._pending_checks[device.id] = created.id
 
                 logger.info(
-                    f"Scheduled health check",
+                    "Scheduled health check",
                     device_id=device.id,
                     job_id=created.id,
                 )
@@ -231,7 +229,7 @@ class HealthCheckScheduler:
         Updates device status and triggers notifications.
         """
         logger.info(
-            f"Processing health check result",
+            "Processing health check result",
             device_id=device_id,
             job_id=job.id,
             status=job.status,
@@ -300,7 +298,7 @@ class HealthCheckScheduler:
         self._pending_checks[device_id] = created.id
 
         logger.info(
-            f"Manual health check triggered",
+            "Manual health check triggered",
             device_id=device_id,
             job_id=created.id,
         )

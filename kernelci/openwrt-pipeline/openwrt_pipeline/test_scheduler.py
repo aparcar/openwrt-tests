@@ -14,15 +14,12 @@ This service runs continuously and:
 """
 
 import asyncio
-import logging
-from datetime import datetime
-from typing import Any
 
 import structlog
 
 from .api_client import APIError, KernelCIClient
-from .config import get_device_type, get_test_plan, load_pipeline_config, settings
-from .models import JobCreate, JobStatus
+from .config import load_pipeline_config
+from .models import JobCreate
 
 # Configure logging
 structlog.configure(
@@ -140,7 +137,7 @@ class TestScheduler:
         test plans based on device features.
         """
         logger.info(
-            f"Creating jobs for firmware",
+            "Creating jobs for firmware",
             firmware_id=firmware.id,
             target=firmware.target,
             profile=firmware.profile,
@@ -160,7 +157,7 @@ class TestScheduler:
 
         if not compatible_devices:
             logger.warning(
-                f"No compatible devices for firmware",
+                "No compatible devices for firmware",
                 firmware_id=firmware.id,
                 target=firmware.target,
             )
@@ -203,12 +200,14 @@ class TestScheduler:
                         tests=plan_config.get("tests", []),
                         priority=priority,
                         timeout=plan_config.get("timeout", 1800),
-                        skip_firmware_flash=plan_config.get("skip_firmware_flash", False),
+                        skip_firmware_flash=plan_config.get(
+                            "skip_firmware_flash", False
+                        ),
                     )
 
                     created = await self.api_client.create_job(job)
                     logger.info(
-                        f"Created job",
+                        "Created job",
                         job_id=created.id,
                         device=device_name,
                         test_plan=plan_name,
@@ -216,7 +215,9 @@ class TestScheduler:
 
                 except APIError as e:
                     if e.status_code == 409:
-                        logger.debug(f"Job already exists for {device_name}/{plan_name}")
+                        logger.debug(
+                            f"Job already exists for {device_name}/{plan_name}"
+                        )
                     else:
                         logger.error(f"Failed to create job: {e}")
                 except Exception as e:

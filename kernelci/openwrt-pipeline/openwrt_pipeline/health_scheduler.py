@@ -11,7 +11,7 @@ Or via Docker:
     docker compose run pipeline-health
 """
 
-from .health.scheduler import main, run
+from .health.scheduler import run
 
 if __name__ == "__main__":
     run()

@@ -9,14 +9,13 @@ Watches downloads.openwrt.org for new firmware images across:
 
 import hashlib
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import AsyncIterator
-from urllib.parse import urljoin
 
 import httpx
 
-from ..models import Firmware, FirmwareArtifacts, FirmwareSource as FirmwareSourceEnum
+from ..models import Firmware, FirmwareArtifacts
+from ..models import FirmwareSource as FirmwareSourceEnum
 from .base import FirmwareSource
 
 logger = logging.getLogger(__name__)
@@ -110,9 +109,9 @@ class OfficialReleaseSource(FirmwareSource):
             logger.error(f"Error parsing profiles from {profiles_url}: {e}")
             return
 
-        # Extract version info from profiles.json
-        version_info = profiles_data.get("version_code", version)
-        git_commit = profiles_data.get("version_code", "").split("-")[-1] if "-" in profiles_data.get("version_code", "") else None
+        # Extract git commit from version_code if available
+        version_code = profiles_data.get("version_code", "")
+        git_commit = version_code.split("-")[-1] if "-" in version_code else None
 
         profiles = profiles_data.get("profiles", {})
         logger.info(f"Found {len(profiles)} profiles for {target}/{subtarget}")
@@ -247,7 +246,9 @@ class OfficialReleaseSource(FirmwareSource):
 
         # WiFi detection
         wifi_packages = ["hostapd", "wpad", "iw", "iwinfo"]
-        if any(pkg in packages or any(pkg in p for p in packages) for pkg in wifi_packages):
+        if any(
+            pkg in packages or any(pkg in p for p in packages) for pkg in wifi_packages
+        ):
             features.append("wifi")
 
         # USB detection

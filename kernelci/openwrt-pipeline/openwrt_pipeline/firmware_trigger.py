@@ -12,9 +12,6 @@ This service runs continuously and:
 """
 
 import asyncio
-import logging
-import signal
-import sys
 from datetime import datetime
 
 import structlog
@@ -23,8 +20,9 @@ from fastapi import FastAPI
 
 from .api_client import APIError, KernelCIClient
 from .config import load_pipeline_config, settings
-from .firmware_sources import CustomFirmwareUploader, GitHubPRSource, OfficialReleaseSource
-from .firmware_sources.custom import init_uploader, router as upload_router
+from .firmware_sources import GitHubPRSource, OfficialReleaseSource
+from .firmware_sources.custom import init_uploader
+from .firmware_sources.custom import router as upload_router
 from .models import FirmwareCreate
 
 # Configure logging
@@ -174,7 +172,7 @@ class FirmwareTriggerService:
 
                 # Create firmware entry
                 logger.info(
-                    f"New firmware found",
+                    "New firmware found",
                     firmware_id=firmware.id,
                     version=firmware.version,
                     target=firmware.target,
@@ -215,20 +213,20 @@ class FirmwareTriggerService:
                     existing_count += 1
                 else:
                     logger.error(
-                        f"API error creating firmware",
+                        "API error creating firmware",
                         firmware_id=firmware.id,
                         error=str(e),
                     )
             except Exception as e:
                 logger.exception(
-                    f"Error processing firmware",
+                    "Error processing firmware",
                     firmware_id=firmware.id,
                     error=str(e),
                 )
 
         scan_duration = (datetime.utcnow() - scan_start).total_seconds()
         logger.info(
-            f"Scan complete",
+            "Scan complete",
             source=source.name,
             new_firmware=new_count,
             existing_firmware=existing_count,

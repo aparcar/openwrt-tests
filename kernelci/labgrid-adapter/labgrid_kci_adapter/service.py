@@ -9,10 +9,7 @@ Main service that:
 """
 
 import asyncio
-import logging
 import signal
-import sys
-from pathlib import Path
 
 import httpx
 import structlog
@@ -198,7 +195,7 @@ class LabgridKCIAdapter:
             await self._submit_results(result)
 
             logger.info(
-                f"Job completed",
+                "Job completed",
                 job_id=job_id,
                 status=result.status,
                 passed=result.passed_tests,

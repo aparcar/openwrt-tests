@@ -8,9 +8,9 @@ Provides device health monitoring:
 - Notification system
 """
 
-from .scheduler import HealthCheckScheduler
-from .notifications import NotificationManager
 from .device_registry import DeviceRegistry
+from .notifications import NotificationManager
+from .scheduler import HealthCheckScheduler
 
 __all__ = [
     "HealthCheckScheduler",
