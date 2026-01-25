@@ -7,9 +7,8 @@ version: '3.8'
 # This Docker Compose stack deploys a complete KernelCI instance for OpenWrt
 # firmware testing with:
 # - KernelCI API (Maestro) for job management
-# - Dashboard for result visualization
+# - KernelCI Dashboard for result visualization
 # - Pipeline services for firmware triggers and scheduling
-# - Health check monitoring
 #
 # Usage:
 #   docker compose up -d
@@ -181,47 +180,6 @@ services:
     volumes:
       - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
     command: ["python", "-m", "openwrt_pipeline.test_scheduler"]
-    networks:
-      - kci-internal
-    restart: unless-stopped
-
-  pipeline-results:
-    build:
-      context: ./openwrt-pipeline
-      dockerfile: Dockerfile
-    container_name: openwrt-kci-results
-    depends_on:
-      kernelci-api:
-        condition: service_healthy
-    environment:
-      KCI_API_URL: http://kernelci-api:8001
-      KCI_API_TOKEN: ${KCI_API_TOKEN}
-      PYTHONUNBUFFERED: "1"
-    volumes:
-      - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
-    command: ["python", "-m", "openwrt_pipeline.results_collector"]
-    networks:
-      - kci-internal
-    restart: unless-stopped
-
-  pipeline-health:
-    build:
-      context: ./openwrt-pipeline
-      dockerfile: Dockerfile
-    container_name: openwrt-kci-health
-    depends_on:
-      kernelci-api:
-        condition: service_healthy
-    environment:
-      KCI_API_URL: http://kernelci-api:8001
-      KCI_API_TOKEN: ${KCI_API_TOKEN}
-      HEALTH_CHECK_INTERVAL: ${HEALTH_CHECK_INTERVAL:-86400}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      GITHUB_REPO: ${GITHUB_REPO:-openwrt/openwrt}
-      PYTHONUNBUFFERED: "1"
-    volumes:
-      - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
-    command: ["python", "-m", "openwrt_pipeline.health_scheduler"]
     networks:
       - kci-internal
     restart: unless-stopped
