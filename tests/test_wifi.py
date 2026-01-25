@@ -99,9 +99,10 @@ def test_wifi_hwsim_sae_mixed(ssh_command):
     """
     Test wifi configuration.
 
-    This test creates one AP and one station and checks if they can connect to each other.
-    It sets up the wireless configuration using the `ssh_command` fixture and relies on the
-    "hwsim" driver to create the virtual radios.
+    This test creates one AP and one station and checks if they can
+    connect to each other. It sets up the wireless configuration using
+    the `ssh_command` fixture and relies on the "hwsim" driver to
+    create the virtual radios.
     """
     ssh_command.run("uci set wireless.radio0.channel=11")
     ssh_command.run("uci set wireless.radio0.band=2g")
@@ -134,11 +135,11 @@ def test_wifi_hwsim_sae_mixed(ssh_command):
     )
 
     # Wait till the client associated
-    assert "auth" in "\n".join(
-        ssh_command.run(
-            "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"auth\":' | while read line; do echo auth && killall ubus; done"
-        )[0]
+    ubus_auth_cmd = (
+        "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"auth\":' | "
+        "while read line; do echo auth && killall ubus; done"
     )
+    assert "auth" in "\n".join(ssh_command.run(ubus_auth_cmd)[0])
 
     assert "Mode: Client  Channel: 11 (2.462 GHz)" in "\n".join(
         ssh_command.run("iwinfo")[0]
@@ -159,11 +160,11 @@ def test_wifi_hwsim_sae_mixed(ssh_command):
     ssh_command.run("service network reload")
 
     # Wait till the wifi client is removed
-    assert "disassoc" in "\n".join(
-        ssh_command.run(
-            "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"disassoc\":' | while read line; do echo disassoc && killall ubus; done"
-        )[0]
+    ubus_disassoc_cmd = (
+        "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"disassoc\":' | "
+        "while read line; do echo disassoc && killall ubus; done"
     )
+    assert "disassoc" in "\n".join(ssh_command.run(ubus_disassoc_cmd)[0])
 
     # wait till network reload finished
     assert "timed out" not in "\n".join(
@@ -175,11 +176,7 @@ def test_wifi_hwsim_sae_mixed(ssh_command):
     )
 
     # Wait till the client associated
-    assert "auth" in "\n".join(
-        ssh_command.run(
-            "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"auth\":' | while read line; do echo auth && killall ubus; done"
-        )[0]
-    )
+    assert "auth" in "\n".join(ssh_command.run(ubus_auth_cmd)[0])
 
     assert "expected throughput" in "\n".join(
         ssh_command.run("iwinfo phy0-ap0 assoclist")[0]

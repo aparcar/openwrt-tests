@@ -19,7 +19,8 @@ def test_firmware_version(shell_command, record_property):
         expected_version = os.environ["FIRMWARE_VERSION"]
         record_property("expected_firmware_version", expected_version)
         assert actual_version == expected_version, (
-            f"Firmware version mismatch: expected {expected_version}, got {actual_version}"
+            f"Firmware version mismatch: expected {expected_version}, "
+            f"got {actual_version}"
         )
 
 

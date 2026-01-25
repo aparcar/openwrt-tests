@@ -289,7 +289,8 @@ class OfficialReleaseSource(FirmwareSource):
             if actual_sha256 != expected_sha256:
                 dest_path.unlink()
                 raise ValueError(
-                    f"Checksum mismatch: expected {expected_sha256}, got {actual_sha256}"
+                    f"Checksum mismatch: expected {expected_sha256}, "
+                    f"got {actual_sha256}"
                 )
 
         logger.info(f"Downloaded {artifact_type} to {dest_path}")

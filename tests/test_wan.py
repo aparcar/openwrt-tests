@@ -63,8 +63,9 @@ def test_https_download(ssh_command):
         remove=False,
     )
 
+    expected_hash = "26b85383a138594b1197e581bd13c6825c0b6b5f23829870a6dbc5d37ccf6cd8"
     assert (
-        "26b85383a138594b1197e581bd13c6825c0b6b5f23829870a6dbc5d37ccf6cd8  config.buildinfo"
+        f"{expected_hash}  config.buildinfo"
         in ssh_command.run("sha256sum config.buildinfo")[0]
     )
     ssh_command.run("rm config.buildinfo")
@@ -103,7 +104,8 @@ def test_https_download(ssh_command):
 #     check_download(
 #         ssh_command,
 #         "https://wrong.host.badssl.com/",
-#         expect_stderr="Connection error: Server hostname does not match SSL certificate",
+#         expect_stderr="Connection error: Server hostname does not match "
+#                       "SSL certificate",
 #         expect_exitcode=5,
 #     )
 
