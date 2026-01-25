@@ -1,38 +1,31 @@
 #!/bin/bash
-# Generate Fedora CoreOS image for Raspberry Pi
-# No root required - uses podman for image manipulation
-# Usage: ./build-image.sh [config.ign] [-o output.img]
+# Prepare Fedora CoreOS files for Raspberry Pi
+# Downloads everything, user does the privileged operations
+# Usage: ./build-image.sh [config.ign] [-o output-dir]
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IGNITION=""
-OUTPUT="labnode-rpi.img"
+OUTDIR="coreos-rpi"
 
 usage() {
-    echo "Usage: $0 [config.ign] [-o output.img]"
+    echo "Usage: $0 [config.ign] [-o output-dir]"
     echo ""
-    echo "Generate a ready-to-flash Fedora CoreOS image for Raspberry Pi"
-    echo "No root required - uses podman for image manipulation"
+    echo "Download and prepare Fedora CoreOS for Raspberry Pi"
+    echo "No root/privileged operations - just downloads files"
     echo ""
     echo "Options:"
     echo "  config.ign   Ignition file (optional)"
-    echo "  -o FILE      Output image (default: labnode-rpi.img)"
+    echo "  -o DIR       Output directory (default: coreos-rpi)"
     echo ""
     echo "Example:"
-    echo "  $0                           # Minimal image"
-    echo "  $0 config.ign                # With ignition"
-    echo "  $0 config.ign -o mylab.img   # Custom output name"
-    echo ""
-    echo "Then flash with:"
-    echo "  sudo dd if=labnode-rpi.img of=/dev/sdX bs=4M status=progress"
-    echo ""
-    echo "Requires: podman (or docker), curl"
+    echo "  $0 config.ign"
+    echo "  $0 config.ign -o my-lab"
 }
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         -o|--output)
-            OUTPUT="$2"
+            OUTDIR="$2"
             shift 2
             ;;
         -h|--help)
@@ -46,112 +39,129 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Find container runtime
-if command -v podman &>/dev/null; then
-    PODMAN="podman"
-elif command -v docker &>/dev/null; then
-    PODMAN="docker"
-else
-    echo "Error: podman or docker required"
+# Validate ignition if provided
+if [ -n "$IGNITION" ] && [ ! -f "$IGNITION" ]; then
+    echo "Error: Ignition file not found: $IGNITION"
     exit 1
 fi
 
+# Check for curl
 if ! command -v curl &>/dev/null; then
     echo "Error: curl required"
     exit 1
 fi
 
-# Resolve ignition path
-if [ -n "$IGNITION" ]; then
-    if [ ! -f "$IGNITION" ]; then
-        echo "Error: Ignition file not found: $IGNITION"
-        exit 1
-    fi
-    IGNITION=$(realpath "$IGNITION")
-fi
+mkdir -p "$OUTDIR"
+cd "$OUTDIR"
 
-OUTPUT=$(realpath "$OUTPUT")
-
-WORK_DIR=$(mktemp -d)
-trap "rm -rf $WORK_DIR" EXIT
-cd "$WORK_DIR"
-
-echo "=== Building Fedora CoreOS Image for Raspberry Pi ==="
-echo "Output: $OUTPUT"
-[ -n "$IGNITION" ] && echo "Ignition: $IGNITION"
+echo "=== Preparing Fedora CoreOS for Raspberry Pi ==="
+echo "Output: $OUTDIR/"
 echo ""
 
-# 1. Download Fedora CoreOS
+# 1. Download CoreOS
 STREAM="stable"
 ARCH="aarch64"
-echo ">>> Downloading Fedora CoreOS ($STREAM, $ARCH)..."
-
-META_URL="https://builds.coreos.fedoraproject.org/streams/${STREAM}.json"
-IMAGE_URL=$(curl -sL "$META_URL" | python3 -c "
+if [ ! -f fcos.raw.xz ]; then
+    echo ">>> Downloading Fedora CoreOS ($STREAM, $ARCH)..."
+    META_URL="https://builds.coreos.fedoraproject.org/streams/${STREAM}.json"
+    IMAGE_URL=$(curl -sL "$META_URL" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
 print(d['architectures']['$ARCH']['artifacts']['metal']['formats']['raw.xz']['disk']['location'])
 ")
-
-curl -L --progress-bar "$IMAGE_URL" -o fcos.raw.xz
-
-echo ">>> Extracting image..."
-xz -d fcos.raw.xz
-
-# 2. Download UEFI firmware
-echo ">>> Downloading Raspberry Pi UEFI firmware..."
-UEFI_VERSION="v1.39"
-curl -sL "https://github.com/pftf/RPi4/releases/download/${UEFI_VERSION}/RPi4_UEFI_Firmware_${UEFI_VERSION}.zip" -o uefi.zip
-unzip -q uefi.zip -d uefi/
-
-# 3. Create modification script for container
-cat > modify.sh << 'SCRIPT'
-#!/bin/bash
-set -e
-
-# Setup loop device
-LOOP=$(losetup --find --show --partscan /work/fcos.raw)
-trap "losetup -d $LOOP" EXIT
-
-# Mount and modify EFI partition
-mkdir -p /mnt/efi
-mount "${LOOP}p1" /mnt/efi
-cp -r /work/uefi/* /mnt/efi/
-umount /mnt/efi
-
-# Add ignition if provided
-if [ -f /work/config.ign ]; then
-    mkdir -p /mnt/boot
-    mount "${LOOP}p2" /mnt/boot
-    mkdir -p /mnt/boot/ignition
-    cp /work/config.ign /mnt/boot/ignition/config.ign
-    umount /mnt/boot
+    curl -L --progress-bar "$IMAGE_URL" -o fcos.raw.xz
+else
+    echo ">>> Using cached fcos.raw.xz"
 fi
 
-echo "Image modified successfully"
-SCRIPT
-chmod +x modify.sh
+# 2. Download UEFI firmware
+UEFI_VERSION="v1.39"
+if [ ! -d uefi ]; then
+    echo ">>> Downloading Raspberry Pi UEFI firmware..."
+    curl -sL "https://github.com/pftf/RPi4/releases/download/${UEFI_VERSION}/RPi4_UEFI_Firmware_${UEFI_VERSION}.zip" -o uefi.zip
+    unzip -q uefi.zip -d uefi
+    rm uefi.zip
+else
+    echo ">>> Using cached uefi/"
+fi
 
-# Copy ignition if provided
-[ -n "$IGNITION" ] && cp "$IGNITION" config.ign
+# 3. Copy ignition if provided
+if [ -n "$IGNITION" ]; then
+    cp "$IGNITION" config.ign
+    echo ">>> Copied ignition config"
+fi
 
-# 4. Run modification in container (needs privileges for losetup)
-echo ">>> Modifying image (in container)..."
+# 4. Generate flash script
+cat > flash.sh << 'SCRIPT'
+#!/bin/bash
+set -e
+DEVICE="${1:-}"
 
-$PODMAN run --rm --privileged \
-    -v "$WORK_DIR:/work:Z" \
-    fedora:latest \
-    /work/modify.sh
+if [ -z "$DEVICE" ]; then
+    echo "Usage: sudo ./flash.sh /dev/sdX"
+    exit 1
+fi
 
-# 5. Move to output
-mv fcos.raw "$OUTPUT"
+if [ "$EUID" -ne 0 ]; then
+    echo "Run as root: sudo $0 $DEVICE"
+    exit 1
+fi
+
+echo "=== Flashing to $DEVICE ==="
+echo "WARNING: This will ERASE ALL DATA"
+lsblk "$DEVICE"
+read -p "Type 'yes' to continue: " confirm
+[ "$confirm" = "yes" ] || exit 1
+
+# Flash
+echo ">>> Writing image..."
+xzcat fcos.raw.xz | dd of="$DEVICE" bs=4M status=progress conv=fsync
+
+sleep 2
+partprobe "$DEVICE" 2>/dev/null || true
+sleep 1
+
+# Detect partition naming
+if [[ "$DEVICE" == *"mmcblk"* ]] || [[ "$DEVICE" == *"nvme"* ]]; then
+    P1="${DEVICE}p1"
+    P2="${DEVICE}p2"
+else
+    P1="${DEVICE}1"
+    P2="${DEVICE}2"
+fi
+
+# Add UEFI firmware
+echo ">>> Adding UEFI firmware..."
+mount "$P1" /mnt
+cp -r uefi/* /mnt/
+umount /mnt
+
+# Add ignition if present
+if [ -f config.ign ]; then
+    echo ">>> Adding ignition config..."
+    mount "$P2" /mnt
+    mkdir -p /mnt/ignition
+    cp config.ign /mnt/ignition/config.ign
+    umount /mnt
+fi
 
 echo ""
 echo "=== Done! ==="
-echo ""
-echo "Image: $OUTPUT ($(du -h "$OUTPUT" | cut -f1))"
-echo ""
-echo "Flash with:"
-echo "  sudo dd if=$OUTPUT of=/dev/sdX bs=4M status=progress conv=fsync"
-echo ""
 echo "First boot: Press Esc for UEFI, disable 3GB RAM limit"
+SCRIPT
+chmod +x flash.sh
+
+echo ""
+echo "=== Ready ==="
+echo ""
+echo "Contents of $OUTDIR/:"
+ls -lh
+echo ""
+echo "To flash, run:"
+echo "  cd $OUTDIR"
+echo "  sudo ./flash.sh /dev/sdX"
+echo ""
+echo "Or manually:"
+echo "  xzcat fcos.raw.xz | sudo dd of=/dev/sdX bs=4M status=progress"
+echo "  sudo mount /dev/sdX1 /mnt && sudo cp -r uefi/* /mnt/ && sudo umount /mnt"
+[ -f config.ign ] && echo "  sudo mount /dev/sdX2 /mnt && sudo mkdir -p /mnt/ignition && sudo cp config.ign /mnt/ignition/ && sudo umount /mnt"

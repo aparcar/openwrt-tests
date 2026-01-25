@@ -12,14 +12,14 @@ nano lab-config.yaml   # Add SSH keys, devices
 # 2. Generate ignition
 ./scripts/build-ignition.sh lab-config.yaml -o config.ign
 
-# 3. Build image (no root needed)
-./raspberry-pi/build-image.sh config.ign -o labnode.img
+# 3. Download CoreOS + UEFI (no root, no containers)
+./raspberry-pi/build-image.sh config.ign
 
-# 4. Flash (only root step)
-sudo dd if=labnode.img of=/dev/sdX bs=4M status=progress conv=fsync
+# 4. Flash (inspect flash.sh first if you want)
+cd coreos-rpi && sudo ./flash.sh /dev/sdX
 ```
 
-Requires: **podman** (or docker), curl, unzip, xz
+No privileged containers. You control all root operations.
 
 See [raspberry-pi/README.md](raspberry-pi/README.md) for details.
 

@@ -12,23 +12,25 @@ nano ../lab-config.yaml   # Add SSH keys
 # 2. Generate ignition
 ../scripts/build-ignition.sh ../lab-config.yaml -o config.ign
 
-# 3. Build image (no root needed, uses podman)
-./build-image.sh config.ign -o labnode.img
+# 3. Download CoreOS + UEFI (no root needed)
+./build-image.sh config.ign
 
-# 4. Flash (only step requiring root)
-sudo dd if=labnode.img of=/dev/sdX bs=4M status=progress conv=fsync
+# 4. Flash (review flash.sh first if you want)
+cd coreos-rpi
+sudo ./flash.sh /dev/sdX
 ```
 
-Requires: **podman** (or docker), curl, unzip, xz
+Requires: curl, unzip, xz (python3 for ignition generation)
 
 ## What build-image.sh Does
 
-1. Downloads Fedora CoreOS (aarch64, stable)
-2. Downloads Raspberry Pi UEFI firmware
-3. Embeds ignition config into image
-4. Outputs ready-to-flash `.img` file
+Downloads files to `coreos-rpi/` directory:
+- `fcos.raw.xz` - Fedora CoreOS image
+- `uefi/` - Raspberry Pi UEFI firmware
+- `config.ign` - Your ignition config (if provided)
+- `flash.sh` - Simple script to flash everything
 
-All image manipulation runs inside a container - no root on host.
+**No root or privileged containers** - just downloads. You run `sudo` only on `flash.sh` which you can inspect first.
 
 ## Without Config (Minimal Install)
 
