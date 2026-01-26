@@ -49,6 +49,16 @@ class Settings(BaseSettings):
         description="Maximum concurrent jobs",
     )
 
+    # Health check configuration
+    health_check_interval: int = Field(
+        default=86400,
+        description="Seconds between health checks (default: 24h)",
+    )
+    health_check_enabled: bool = Field(
+        default=True,
+        description="Enable automatic health checks",
+    )
+
     # Paths
     targets_dir: Path = Field(
         default=Path("/app/targets"),

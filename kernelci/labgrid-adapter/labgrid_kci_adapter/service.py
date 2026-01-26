@@ -6,9 +6,11 @@ Main service that:
 2. Registers with KernelCI API
 3. Polls for and executes test jobs
 4. Submits results back to KernelCI
+5. Runs periodic health checks on devices (every 24h by default)
 """
 
 import asyncio
+import os
 import signal
 
 import httpx
@@ -50,12 +52,14 @@ class LabgridKCIAdapter:
     def __init__(self):
         self.lab_name = settings.lab_name
         self.devices: list[str] = []
+        self.healthy_devices: set[str] = set()  # Only healthy devices get jobs
         self.features: list[str] = []
 
         self.poller: JobPoller | None = None
         self.executor: TestExecutor | None = None
         self._api_client: httpx.AsyncClient | None = None
         self._running = False
+        self._health_check_task: asyncio.Task | None = None
 
     async def initialize(self) -> None:
         """Initialize the adapter."""
@@ -83,10 +87,13 @@ class LabgridKCIAdapter:
         )
         await self.executor.initialize()
 
-        # Initialize poller
+        # Initially assume all devices are healthy (health check will verify)
+        self.healthy_devices = set(self.devices)
+
+        # Initialize poller with healthy devices only
         self.poller = JobPoller(
             lab_name=self.lab_name,
-            devices=self.devices,
+            devices=list(self.healthy_devices),
             features=self.features,
             on_job=self._handle_job,
         )
@@ -241,19 +248,135 @@ class LabgridKCIAdapter:
         except Exception as e:
             logger.error(f"Failed to mark job as failed: {e}")
 
+    # =========================================================================
+    # Health Check
+    # =========================================================================
+
+    async def _run_health_checks(self) -> None:
+        """Run health checks on all devices and update healthy_devices set."""
+        logger.info("Starting health check for all devices")
+
+        for device in self.devices:
+            target_file = settings.targets_dir / f"{device}.yaml"
+            ok, message = await self._check_device_health(device, target_file)
+
+            if ok:
+                if device not in self.healthy_devices:
+                    logger.info(f"Device {device} is now healthy")
+                    self.healthy_devices.add(device)
+                    # Update poller with new device list
+                    if self.poller:
+                        self.poller.devices = list(self.healthy_devices)
+            else:
+                if device in self.healthy_devices:
+                    logger.warning(f"Device {device} failed health check: {message}")
+                    self.healthy_devices.discard(device)
+                    # Update poller to stop accepting jobs for this device
+                    if self.poller:
+                        self.poller.devices = list(self.healthy_devices)
+                else:
+                    logger.warning(f"Device {device} still unhealthy: {message}")
+
+        logger.info(
+            f"Health check complete: {len(self.healthy_devices)}/{len(self.devices)} "
+            "devices healthy"
+        )
+
+    async def _check_device_health(
+        self, device: str, target_file: os.PathLike
+    ) -> tuple[bool, str]:
+        """
+        Check if a device is accessible via labgrid.
+
+        Returns:
+            Tuple of (is_healthy, message)
+        """
+        try:
+            env = os.environ.copy()
+            env["LG_COORDINATOR"] = settings.lg_coordinator
+
+            # Try to acquire the target
+            proc = await asyncio.create_subprocess_exec(
+                "labgrid-client",
+                "-c",
+                str(target_file),
+                "acquire",
+                env=env,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            try:
+                _, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+                return (False, "Timeout acquiring device")
+
+            if proc.returncode != 0:
+                return (False, f"Acquire failed: {stderr.decode().strip()}")
+
+            # Release immediately
+            release_proc = await asyncio.create_subprocess_exec(
+                "labgrid-client",
+                "-c",
+                str(target_file),
+                "release",
+                env=env,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await asyncio.wait_for(release_proc.communicate(), timeout=10)
+
+            return (True, "OK")
+
+        except Exception as e:
+            return (False, str(e))
+
+    async def _health_check_loop(self) -> None:
+        """Background task that runs health checks periodically."""
+        # Run initial health check
+        await self._run_health_checks()
+
+        while self._running:
+            try:
+                await asyncio.sleep(settings.health_check_interval)
+                if self._running:
+                    await self._run_health_checks()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.exception(f"Error in health check loop: {e}")
+                # Continue running despite errors
+                await asyncio.sleep(60)
+
     async def run(self) -> None:
         """Main service loop."""
         self._running = True
         logger.info("Starting Labgrid KCI Adapter")
 
         try:
-            # Start the poller
+            # Start health check loop in background
+            if settings.health_check_enabled:
+                self._health_check_task = asyncio.create_task(self._health_check_loop())
+                logger.info(
+                    f"Health checks enabled, interval: "
+                    f"{settings.health_check_interval}s"
+                )
+
+            # Start the poller (uses healthy_devices)
             await self.poller.run()
         except asyncio.CancelledError:
             logger.info("Adapter cancelled")
         except Exception as e:
             logger.exception(f"Adapter error: {e}")
         finally:
+            if self._health_check_task:
+                self._health_check_task.cancel()
+                try:
+                    await self._health_check_task
+                except asyncio.CancelledError:
+                    pass
             await self.shutdown()
 
 
