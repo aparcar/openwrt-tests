@@ -92,34 +92,57 @@ Watches for new firmware from configured sources:
 - **Official releases** - downloads.openwrt.org
 - **GitHub PRs** - Artifacts from PR CI runs
 - **Custom uploads** - Via API endpoint
-- **Buildbot** - Webhook integration
 
 ### Test Scheduler (`pipeline-scheduler`)
 
-Assigns test jobs to available labs based on:
+Creates test job nodes for available firmware based on:
 
 - Device compatibility (target/subtarget/profile)
 - Device features (wifi, wan_port, etc.)
-- Job priority
-- Lab availability
+- Test plan requirements
 
-### Health Scheduler (`pipeline-health`)
+## Lab Integration
 
-Monitors device health:
+Labs connect using the **pull-mode** architecture:
 
-- Daily health checks on all devices
-- Automatic device disable after failures
-- GitHub issue creation for persistent failures
-- Auto-close issues when devices recover
+1. Lab runs the `labgrid-adapter` service
+2. Adapter polls API for pending jobs (`kind=job`, `state=available`)
+3. Jobs are claimed by setting `state=running`
+4. Tests run via pytest with labgrid
+5. Results submitted as test nodes under job
+6. Health checks run automatically every 24 hours
 
-### Results Collector (`pipeline-results`)
+See `labgrid-adapter/` for the lab-side component.
 
-Aggregates test results:
+### Lab Configuration
 
-- Collects results from labs
-- Stores console logs in MinIO
-- Updates job/firmware status
-- Triggers notifications
+```bash
+# Required environment variables
+LAB_NAME=my-lab
+KCI_API_URL=https://api.kernelci.example.com
+KCI_API_TOKEN=<your-token>
+LG_COORDINATOR=labgrid-coordinator:20408
+
+# Optional
+POLL_INTERVAL=30
+MAX_CONCURRENT_JOBS=3
+HEALTH_CHECK_INTERVAL=86400  # 24 hours
+HEALTH_CHECK_ENABLED=true
+```
+
+### Health Checks
+
+The adapter runs automatic health checks:
+
+- Every 24 hours (configurable via `HEALTH_CHECK_INTERVAL`)
+- Failing devices removed from job pool
+- Recovered devices automatically re-added
+- Results logged for lab maintainers
+
+Manual check:
+```bash
+python -m labgrid_kci_adapter.health_check --all
+```
 
 ## Configuration
 
@@ -161,40 +184,88 @@ Labs connect using the **pull-mode** architecture:
 
 See `labgrid-adapter/` for the lab-side component.
 
-## API Endpoints
+## API Reference
 
-### Firmware
+The KernelCI API uses a **Node-based data model** where all entities
+(firmware builds, jobs, tests) are nodes with different `kind` values.
 
-```
-POST   /api/v1/firmware/upload    - Upload custom firmware
-GET    /api/v1/firmware           - List firmware
-GET    /api/v1/firmware/{id}      - Get firmware details
-```
+### Query Nodes
 
-### Jobs
+```bash
+# Get all available jobs for a device type
+GET /latest/nodes?kind=job&state=available&data.device_type=ath79-tplink-archer-c7-v2
 
-```
-GET    /api/v1/jobs               - List jobs
-GET    /api/v1/jobs/pending       - Get pending jobs (for labs)
-POST   /api/v1/jobs/{id}/start    - Mark job as started
-POST   /api/v1/jobs/{id}/complete - Submit job results
-```
+# Get firmware nodes
+GET /latest/nodes?kind=kbuild&data.target=ath79
 
-### Devices
-
-```
-GET    /api/v1/devices            - List devices
-GET    /api/v1/devices/{id}       - Get device status
-POST   /api/v1/devices/{id}/health-check - Trigger health check
+# Get test results for a job
+GET /latest/nodes?kind=test&parent={job_id}
 ```
 
-### Labs
+### Create Nodes
 
+```bash
+# Create firmware node
+POST /latest/nodes
+{
+  "kind": "kbuild",
+  "name": "openwrt-ath79-generic-tplink_archer-c7-v2",
+  "state": "available",
+  "data": {
+    "target": "ath79",
+    "subtarget": "generic",
+    "profile": "tplink_archer-c7-v2",
+    "version": "24.10.0"
+  }
+}
+
+# Create test result
+POST /latest/nodes
+{
+  "kind": "test",
+  "name": "test_firmware_version",
+  "parent": "{job_id}",
+  "state": "done",
+  "result": "pass"
+}
 ```
-POST   /api/v1/labs/register      - Register a lab
-GET    /api/v1/labs               - List labs
-POST   /api/v1/labs/{id}/heartbeat - Lab heartbeat
+
+### Update Nodes
+
+```bash
+# Claim a job
+PUT /latest/nodes/{job_id}
+{
+  "state": "running",
+  "data": {
+    "lab_name": "my-lab",
+    "device_id": "device-01"
+  }
+}
+
+# Complete a job
+PUT /latest/nodes/{job_id}
+{
+  "state": "done",
+  "result": "pass"
+}
 ```
+
+### Node States
+
+| State | Description |
+|-------|-------------|
+| `available` | Ready to be processed (job ready for lab) |
+| `running` | Currently being processed |
+| `done` | Processing complete |
+
+### Node Kinds
+
+| Kind | Description |
+|------|-------------|
+| `kbuild` | Firmware build (OpenWrt image) |
+| `job` | Test job container |
+| `test` | Individual test result |
 
 ## Maintenance
 
