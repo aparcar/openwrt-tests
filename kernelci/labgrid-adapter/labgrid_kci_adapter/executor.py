@@ -20,7 +20,7 @@ from minio import Minio
 
 from .config import settings
 from .models import JobResult, TestResult, TestStatus
-from .test_sync import fetch_tests_for_job
+from .test_sync import ensure_tests
 
 logger = logging.getLogger(__name__)
 
@@ -153,16 +153,12 @@ class TestExecutor:
                 tmpdir_path = Path(tmpdir)
                 console_log_path = tmpdir_path / "console.log"
 
-                # Fetch tests if repo specified in job (LAVA pattern)
-                # Otherwise use the static tests_dir
-                if tests_repo_url:
-                    tests_dir = await fetch_tests_for_job(
-                        repo_url=tests_repo_url,
-                        branch=tests_repo_branch,
-                    )
-                    logger.info(f"Using per-job tests from {tests_repo_url}")
-                else:
-                    tests_dir = self.tests_dir
+                # Ensure tests are up-to-date before execution
+                # Uses per-job repo if specified, otherwise uses configured repo
+                tests_dir = await ensure_tests(
+                    repo_url=tests_repo_url,
+                    branch=tests_repo_branch,
+                )
 
                 # Download firmware if URL provided
                 firmware_path = None

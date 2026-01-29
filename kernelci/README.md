@@ -118,47 +118,34 @@ See `labgrid-adapter/` for the lab-side component.
 
 Tests are executed using pytest's programmatic API with the labgrid plugin.
 Following the [LAVA pattern](https://docs.lavasoftware.org/lava/writing-tests.html),
-tests can be fetched in two ways:
+tests are pulled from git before each job execution.
 
-**1. Per-job (recommended for shared tests):**
+**Configuration:**
 
-The job definition includes a `tests_repo` URL. The adapter fetches tests
-at execution time, ensuring all labs run the same version:
+```bash
+# Configure the tests repository (pulled before each job)
+TESTS_REPO_URL=https://github.com/openwrt/openwrt-tests.git
+TESTS_REPO_BRANCH=main
+```
+
+**Per-job override:**
+
+Jobs can specify a different tests repository:
 
 ```yaml
-# In job data
 data:
-  tests_repo: "https://github.com/openwrt/openwrt-tests.git"
-  tests_branch: "main"
+  tests_repo: "https://github.com/custom/tests.git"
+  tests_branch: "feature-branch"
   tests: ["test_boot", "test_wifi"]
 ```
 
-**2. Static (simple setups):**
+The executor:
+1. Pulls tests from git (clones if not exists, updates if exists)
+2. Runs pytest with labgrid plugin
+3. Collects results via `ResultCollectorPlugin`
+4. Submits results as KernelCI test nodes
 
-Configure `TESTS_REPO_URL` to sync tests on startup and periodically:
-
-```bash
-TESTS_REPO_URL=https://github.com/openwrt/openwrt-tests.git
-TESTS_REPO_BRANCH=main
-TESTS_SYNC_INTERVAL=3600  # Sync every hour
-```
-
-The executor runs pytest programmatically:
-
-```python
-pytest.main([
-    str(tests_dir),
-    "-v",
-    "--tb=short",
-    f"--lg-env={target_file}",
-], plugins=[result_collector])
-```
-
-The `ResultCollectorPlugin` captures test outcomes, durations, and error
-messages. Results are converted to KernelCI test nodes and submitted to the API.
-
-Labgrid handles firmware flashing via its pytest fixtures (e.g., `@pytest.fixture`
-with `SSHDriver`, `ShellDriver`, etc.).
+Labgrid handles firmware flashing via its pytest fixtures.
 
 ### Lab Configuration
 
@@ -177,10 +164,9 @@ MAX_CONCURRENT_JOBS=3
 HEALTH_CHECK_INTERVAL=86400  # 24 hours
 HEALTH_CHECK_ENABLED=true
 
-# Optional - static test sync (if not using per-job tests)
+# Optional - tests repository (pulled before each job)
 TESTS_REPO_URL=https://github.com/openwrt/openwrt-tests.git
 TESTS_REPO_BRANCH=main
-TESTS_SYNC_INTERVAL=3600  # 1 hour
 ```
 
 ### Health Checks
