@@ -20,6 +20,7 @@ from minio import Minio
 
 from .config import settings
 from .models import JobResult, TestResult, TestStatus
+from .test_sync import fetch_tests_for_job
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,10 @@ class TestExecutor:
         firmware_id = job.get("parent", "")
         firmware_url = job_data.get("firmware_url")
 
+        # Tests can be fetched per-job (LAVA pattern) or use static tests_dir
+        tests_repo_url = job_data.get("tests_repo")
+        tests_repo_branch = job_data.get("tests_branch", "main")
+
         logger.info(f"Executing job {job_id} on device {device_type}")
 
         start_time = datetime.utcnow()
@@ -147,6 +152,17 @@ class TestExecutor:
             with tempfile.TemporaryDirectory(prefix=f"job-{job_id}-") as tmpdir:
                 tmpdir_path = Path(tmpdir)
                 console_log_path = tmpdir_path / "console.log"
+
+                # Fetch tests if repo specified in job (LAVA pattern)
+                # Otherwise use the static tests_dir
+                if tests_repo_url:
+                    tests_dir = await fetch_tests_for_job(
+                        repo_url=tests_repo_url,
+                        branch=tests_repo_branch,
+                    )
+                    logger.info(f"Using per-job tests from {tests_repo_url}")
+                else:
+                    tests_dir = self.tests_dir
 
                 # Download firmware if URL provided
                 firmware_path = None
@@ -160,6 +176,7 @@ class TestExecutor:
                 collector, output = self._run_pytest(
                     device_type=device_type,
                     tests=tests,
+                    tests_dir=tests_dir,
                     firmware_path=firmware_path,
                     timeout=timeout,
                 )
@@ -247,11 +264,19 @@ class TestExecutor:
         self,
         device_type: str,
         tests: list[str],
+        tests_dir: Path,
         firmware_path: Path | None,
         timeout: int,
     ) -> tuple[ResultCollectorPlugin, str]:
         """
         Run pytest programmatically and collect results.
+
+        Args:
+            device_type: Device type for labgrid target selection
+            tests: List of test name patterns to run
+            tests_dir: Directory containing pytest test files
+            firmware_path: Path to firmware file (optional)
+            timeout: Test timeout in seconds
 
         Returns:
             Tuple of (result collector plugin, console output)
@@ -260,7 +285,7 @@ class TestExecutor:
 
         # Build pytest arguments
         args = [
-            str(self.tests_dir),
+            str(tests_dir),
             "-v",
             "--tb=short",
             f"--lg-env={target_file}",

@@ -73,6 +73,20 @@ class Settings(BaseSettings):
         description="Directory for caching firmware files",
     )
 
+    # Test repository sync
+    tests_repo_url: str = Field(
+        default="",
+        description="Git URL for tests repository (if empty, uses local tests_dir)",
+    )
+    tests_repo_branch: str = Field(
+        default="main",
+        description="Branch to use for tests repository",
+    )
+    tests_sync_interval: int = Field(
+        default=3600,
+        description="Seconds between test repo syncs (default: 1h)",
+    )
+
     # Logging
     log_level: str = Field(default="INFO")
 

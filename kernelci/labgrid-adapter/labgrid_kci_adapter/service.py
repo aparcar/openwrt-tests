@@ -21,6 +21,7 @@ from .config import settings
 from .executor import TestExecutor
 from .models import JobResult
 from .poller import JobPoller
+from .test_sync import TestSync
 
 # Configure logging
 structlog.configure(
@@ -57,13 +58,19 @@ class LabgridKCIAdapter:
 
         self.poller: JobPoller | None = None
         self.executor: TestExecutor | None = None
+        self.test_sync: TestSync | None = None
         self._api_client: httpx.AsyncClient | None = None
         self._running = False
         self._health_check_task: asyncio.Task | None = None
+        self._test_sync_task: asyncio.Task | None = None
 
     async def initialize(self) -> None:
         """Initialize the adapter."""
         logger.info(f"Initializing Labgrid KCI Adapter for lab: {self.lab_name}")
+
+        # Sync tests from remote repository (if configured)
+        self.test_sync = TestSync()
+        await self.test_sync.initialize()
 
         # Discover devices from target files
         self.devices, self.features = self._discover_devices()
@@ -364,6 +371,13 @@ class LabgridKCIAdapter:
                     f"{settings.health_check_interval}s"
                 )
 
+            # Start test sync loop in background (if static sync enabled)
+            if self.test_sync and self.test_sync.enabled:
+                self._test_sync_task = asyncio.create_task(self.test_sync.run())
+                logger.info(
+                    f"Test sync enabled, interval: {settings.tests_sync_interval}s"
+                )
+
             # Start the poller (uses healthy_devices)
             await self.poller.run()
         except asyncio.CancelledError:
@@ -375,6 +389,12 @@ class LabgridKCIAdapter:
                 self._health_check_task.cancel()
                 try:
                     await self._health_check_task
+                except asyncio.CancelledError:
+                    pass
+            if self._test_sync_task:
+                self._test_sync_task.cancel()
+                try:
+                    await self._test_sync_task
                 except asyncio.CancelledError:
                     pass
             await self.shutdown()

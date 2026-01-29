@@ -116,10 +116,36 @@ See `labgrid-adapter/` for the lab-side component.
 
 ### Test Execution
 
-Tests are executed using pytest's programmatic API with the labgrid plugin:
+Tests are executed using pytest's programmatic API with the labgrid plugin.
+Following the [LAVA pattern](https://docs.lavasoftware.org/lava/writing-tests.html),
+tests can be fetched in two ways:
+
+**1. Per-job (recommended for shared tests):**
+
+The job definition includes a `tests_repo` URL. The adapter fetches tests
+at execution time, ensuring all labs run the same version:
+
+```yaml
+# In job data
+data:
+  tests_repo: "https://github.com/openwrt/openwrt-tests.git"
+  tests_branch: "main"
+  tests: ["test_boot", "test_wifi"]
+```
+
+**2. Static (simple setups):**
+
+Configure `TESTS_REPO_URL` to sync tests on startup and periodically:
+
+```bash
+TESTS_REPO_URL=https://github.com/openwrt/openwrt-tests.git
+TESTS_REPO_BRANCH=main
+TESTS_SYNC_INTERVAL=3600  # Sync every hour
+```
+
+The executor runs pytest programmatically:
 
 ```python
-# The executor runs pytest programmatically
 pytest.main([
     str(tests_dir),
     "-v",
@@ -129,8 +155,7 @@ pytest.main([
 ```
 
 The `ResultCollectorPlugin` captures test outcomes, durations, and error
-messages without requiring external JSON report files. Results are then
-converted to KernelCI test nodes and submitted to the API.
+messages. Results are converted to KernelCI test nodes and submitted to the API.
 
 Labgrid handles firmware flashing via its pytest fixtures (e.g., `@pytest.fixture`
 with `SSHDriver`, `ShellDriver`, etc.).
@@ -144,11 +169,18 @@ KCI_API_URL=https://api.kernelci.example.com
 KCI_API_TOKEN=<your-token>
 LG_COORDINATOR=labgrid-coordinator:20408
 
-# Optional
+# Optional - polling and concurrency
 POLL_INTERVAL=30
 MAX_CONCURRENT_JOBS=3
+
+# Optional - health checks
 HEALTH_CHECK_INTERVAL=86400  # 24 hours
 HEALTH_CHECK_ENABLED=true
+
+# Optional - static test sync (if not using per-job tests)
+TESTS_REPO_URL=https://github.com/openwrt/openwrt-tests.git
+TESTS_REPO_BRANCH=main
+TESTS_SYNC_INTERVAL=3600  # 1 hour
 ```
 
 ### Health Checks
