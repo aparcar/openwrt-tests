@@ -7,6 +7,10 @@ Provides async methods aligned with the KernelCI Maestro API:
 - Authentication via Bearer token
 
 API Reference: https://docs.kernelci.org/maestro/
+
+Tree/Branch Structure:
+- Tree: openwrt
+- Branches: main (SNAPSHOT), openwrt-24.10, openwrt-25.12
 """
 
 import logging
@@ -19,6 +23,32 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from .config import settings
 
 logger = logging.getLogger(__name__)
+
+# OpenWrt tree and branch mapping
+OPENWRT_TREE = "openwrt"
+OPENWRT_REPO = "https://git.openwrt.org/openwrt/openwrt.git"
+
+# Map version patterns to branches
+VERSION_TO_BRANCH = {
+    "SNAPSHOT": "main",
+    "24.10": "openwrt-24.10",
+    "25.12": "openwrt-25.12",
+}
+
+
+def version_to_branch(version: str) -> str:
+    """Map OpenWrt version to git branch name."""
+    if version == "SNAPSHOT":
+        return "main"
+    # Extract major.minor from version (e.g., "24.10.0" -> "24.10")
+    parts = version.split(".")
+    if len(parts) >= 2:
+        major_minor = f"{parts[0]}.{parts[1]}"
+        if major_minor in VERSION_TO_BRANCH:
+            return VERSION_TO_BRANCH[major_minor]
+        # Default pattern for releases
+        return f"openwrt-{major_minor}"
+    return "main"
 
 
 class APIError(Exception):
@@ -210,14 +240,24 @@ class KernelCIClient:
         Create a firmware node (kind=kbuild for OpenWrt).
 
         This represents a built firmware image available for testing.
+        Links to the openwrt tree with proper branch mapping.
         """
+        branch = version_to_branch(version)
+
         node = {
             "kind": "kbuild",
             "name": f"openwrt-{target}-{subtarget}-{profile}",
-            "path": ["openwrt", version, target, subtarget, profile],
+            "path": [OPENWRT_TREE, branch, target, subtarget, profile],
+            "group": OPENWRT_TREE,  # Tree identifier for dashboard
             "state": "available",
             "result": "pass",
             "data": {
+                "kernel_revision": {
+                    "tree": OPENWRT_TREE,
+                    "branch": branch,
+                    "commit": git_commit or "",
+                    "url": OPENWRT_REPO,
+                },
                 "openwrt_version": version,
                 "target": target,
                 "subtarget": subtarget,
@@ -226,8 +266,6 @@ class KernelCIClient:
                 "artifacts": artifacts,
             },
         }
-        if git_commit:
-            node["data"]["git_commit"] = git_commit
         if pr_number:
             node["data"]["pr_number"] = pr_number
 
@@ -245,13 +283,21 @@ class KernelCIClient:
         Create a test job node (kind=job).
 
         Jobs are containers for test runs on a specific device.
+        Inherits tree/branch from parent firmware node.
         """
+        # Get parent node to inherit tree/branch info
+        parent = await self.get_node(firmware_node_id)
+        parent_data = parent.get("data", {}) if parent else {}
+        kernel_rev = parent_data.get("kernel_revision", {})
+
         node = {
             "kind": "job",
             "name": f"openwrt-test-{device_type}-{test_plan}",
             "parent": firmware_node_id,
+            "group": OPENWRT_TREE,
             "state": "available",  # Ready to be picked up by a lab
             "data": {
+                "kernel_revision": kernel_rev,
                 "device_type": device_type,
                 "test_plan": test_plan,
                 "tests": tests or [],
@@ -319,6 +365,7 @@ class KernelCIClient:
                 "kind": "test",
                 "name": test.get("name", "unknown"),
                 "parent": job_id,
+                "group": OPENWRT_TREE,
                 "state": "done",
                 "result": test.get("status", "fail"),
                 "data": {

@@ -30,6 +30,20 @@ storage:
       artifacts: openwrt-artifacts
 
 # =============================================================================
+# Tree and Branch Configuration
+# =============================================================================
+#
+# Tree: openwrt
+# Branches:
+#   - main        -> SNAPSHOT builds
+#   - openwrt-24.10 -> 24.10.x releases
+#   - openwrt-25.12 -> 25.12.x releases (future)
+#
+tree:
+  name: openwrt
+  url: https://git.openwrt.org/openwrt/openwrt.git
+
+# =============================================================================
 # Firmware Source Watchers
 # =============================================================================
 
@@ -39,9 +53,11 @@ firmware_sources:
     enabled: true
     type: openwrt_releases
     sources:
+      # Branch: main
       snapshot:
         url: https://downloads.openwrt.org/snapshots/targets
         version: SNAPSHOT
+        branch: main
         check_interval: 3600  # 1 hour
         # Only check specific targets (for efficiency)
         targets:
@@ -52,9 +68,11 @@ firmware_sources:
           - armsr/armv8
           - malta/be
 
+      # Branch: openwrt-24.10
       stable:
         url: https://downloads.openwrt.org/releases/24.10.0/targets
         version: "24.10.0"
+        branch: openwrt-24.10
         check_interval: 86400  # 24 hours
         targets:
           - ath79/generic
@@ -63,9 +81,11 @@ firmware_sources:
           - x86/64
           - armsr/armv8
 
+      # Branch: openwrt-23.05 (legacy)
       oldstable:
         url: https://downloads.openwrt.org/releases/23.05.5/targets
         version: "23.05.5"
+        branch: openwrt-23.05
         check_interval: 86400
         targets:
           - ath79/generic
