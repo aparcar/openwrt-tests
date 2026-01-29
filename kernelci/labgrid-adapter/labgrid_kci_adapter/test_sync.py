@@ -35,6 +35,7 @@ async def ensure_tests(
     repo_url: str | None = None,
     branch: str | None = None,
     dest_dir: Path | None = None,
+    subdir: str | None = None,
 ) -> Path:
     """
     Ensure tests are available and up-to-date before job execution.
@@ -47,25 +48,34 @@ async def ensure_tests(
         repo_url: Git repository URL (optional, uses settings if not provided)
         branch: Branch to checkout (optional, uses settings if not provided)
         dest_dir: Destination directory (optional, uses settings if not provided)
+        subdir: Subdirectory within repo containing tests (optional)
 
     Returns:
-        Path to the tests directory
+        Path to the tests directory (including subdir if specified)
     """
     repo_url = repo_url or settings.tests_repo_url
     branch = branch or settings.tests_repo_branch
     dest_dir = dest_dir or settings.tests_dir
+    subdir = subdir if subdir is not None else settings.tests_repo_subdir
 
     dest_dir.parent.mkdir(parents=True, exist_ok=True)
 
+    # Helper to get final tests path including subdir
+    def _tests_path() -> Path:
+        if subdir:
+            return dest_dir / subdir
+        return dest_dir
+
     # If no repo URL configured, just use local directory
     if not repo_url:
-        if not dest_dir.exists():
+        tests_path = _tests_path()
+        if not tests_path.exists():
             raise RuntimeError(
-                f"Tests directory {dest_dir} does not exist "
+                f"Tests directory {tests_path} does not exist "
                 "and no TESTS_REPO_URL configured"
             )
-        logger.debug(f"Using local tests at {dest_dir}")
-        return dest_dir
+        logger.debug(f"Using local tests at {tests_path}")
+        return tests_path
 
     # Check if already cloned
     if (dest_dir / ".git").exists():
@@ -75,7 +85,7 @@ async def ensure_tests(
         if returncode != 0:
             logger.warning(f"Git fetch failed: {output}")
             # Continue with existing checkout
-            return dest_dir
+            return _tests_path()
 
         # Check if there are updates
         _, local_rev = await _run_git("rev-parse", "HEAD", cwd=dest_dir)
@@ -99,4 +109,9 @@ async def ensure_tests(
             raise RuntimeError(f"Failed to clone tests: {output}")
         logger.info(f"Tests cloned to {dest_dir}")
 
-    return dest_dir
+    tests_path = _tests_path()
+    if subdir and not tests_path.exists():
+        raise RuntimeError(
+            f"Subdirectory '{subdir}' does not exist in repository"
+        )
+    return tests_path

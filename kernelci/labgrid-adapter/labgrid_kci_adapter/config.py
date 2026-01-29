@@ -86,6 +86,10 @@ class Settings(BaseSettings):
         default="main",
         description="Branch to use for tests repository",
     )
+    tests_repo_subdir: str = Field(
+        default="",
+        description="Subdirectory within tests repository containing tests",
+    )
 
     # Logging
     log_level: str = Field(default="INFO")
