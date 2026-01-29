@@ -10,7 +10,8 @@ API Reference: https://docs.kernelci.org/maestro/
 
 Tree/Branch Structure:
 - Tree: openwrt
-- Branches: main (SNAPSHOT), openwrt-24.10, openwrt-25.12
+- Branches: main (SNAPSHOT), openwrt-24.10, openwrt-23.05, etc.
+- Versions fetched dynamically from downloads.openwrt.org/.versions.json
 """
 
 import logging
@@ -21,34 +22,9 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .config import settings
+from .versions import OPENWRT_REPO, OPENWRT_TREE, version_to_branch
 
 logger = logging.getLogger(__name__)
-
-# OpenWrt tree and branch mapping
-OPENWRT_TREE = "openwrt"
-OPENWRT_REPO = "https://git.openwrt.org/openwrt/openwrt.git"
-
-# Map version patterns to branches
-VERSION_TO_BRANCH = {
-    "SNAPSHOT": "main",
-    "24.10": "openwrt-24.10",
-    "25.12": "openwrt-25.12",
-}
-
-
-def version_to_branch(version: str) -> str:
-    """Map OpenWrt version to git branch name."""
-    if version == "SNAPSHOT":
-        return "main"
-    # Extract major.minor from version (e.g., "24.10.0" -> "24.10")
-    parts = version.split(".")
-    if len(parts) >= 2:
-        major_minor = f"{parts[0]}.{parts[1]}"
-        if major_minor in VERSION_TO_BRANCH:
-            return VERSION_TO_BRANCH[major_minor]
-        # Default pattern for releases
-        return f"openwrt-{major_minor}"
-    return "main"
 
 
 class APIError(Exception):

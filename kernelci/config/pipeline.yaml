@@ -34,10 +34,13 @@ storage:
 # =============================================================================
 #
 # Tree: openwrt
-# Branches:
+# Branches are discovered dynamically from:
+#   https://downloads.openwrt.org/.versions.json
+#
+# This automatically picks up:
 #   - main        -> SNAPSHOT builds
-#   - openwrt-24.10 -> 24.10.x releases
-#   - openwrt-25.12 -> 25.12.x releases (future)
+#   - stable      -> Current release (e.g., 24.10.0)
+#   - oldstable   -> Previous release series (e.g., 23.05.5)
 #
 tree:
   name: openwrt
@@ -48,49 +51,29 @@ tree:
 # =============================================================================
 
 firmware_sources:
-  # Official OpenWrt releases
+  # Official OpenWrt releases (versions fetched from .versions.json)
   official:
     enabled: true
     type: openwrt_releases
-    sources:
-      # Branch: main
-      snapshot:
-        url: https://downloads.openwrt.org/snapshots/targets
-        version: SNAPSHOT
-        branch: main
-        check_interval: 3600  # 1 hour
-        # Only check specific targets (for efficiency)
-        targets:
-          - ath79/generic
-          - ramips/mt7621
-          - mediatek/filogic
-          - x86/64
-          - armsr/armv8
-          - malta/be
 
-      # Branch: openwrt-24.10
-      stable:
-        url: https://downloads.openwrt.org/releases/24.10.0/targets
-        version: "24.10.0"
-        branch: openwrt-24.10
-        check_interval: 86400  # 24 hours
-        targets:
-          - ath79/generic
-          - ramips/mt7621
-          - mediatek/filogic
-          - x86/64
-          - armsr/armv8
+    # Include snapshot (main branch) builds
+    include_snapshot: true
 
-      # Branch: openwrt-23.05 (legacy)
-      oldstable:
-        url: https://downloads.openwrt.org/releases/23.05.5/targets
-        version: "23.05.5"
-        branch: openwrt-23.05
-        check_interval: 86400
-        targets:
-          - ath79/generic
-          - ramips/mt7621
-          - x86/64
+    # Include oldstable (previous release series)
+    include_oldstable: true
+
+    # Check interval in seconds
+    check_interval: 3600  # 1 hour for snapshots, 24h for releases
+
+    # Targets to scan for firmware
+    # These are checked for all active branches
+    targets:
+      - ath79/generic
+      - ramips/mt7621
+      - mediatek/filogic
+      - x86/64
+      - armsr/armv8
+      - malta/be
 
   # GitHub Pull Request builds
   github_pr:

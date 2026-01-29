@@ -24,6 +24,7 @@ from .firmware_sources import GitHubPRSource, OfficialReleaseSource
 from .firmware_sources.custom import init_uploader
 from .firmware_sources.custom import router as upload_router
 from .models import FirmwareCreate
+from .versions import get_active_branches
 
 # Configure logging
 structlog.configure(
@@ -70,12 +71,10 @@ class FirmwareTriggerService:
         # Initialize firmware sources
         sources_config = self.config.get("firmware_sources", {})
 
-        # Official releases source
-        if "official" in sources_config:
-            source = OfficialReleaseSource("official", sources_config["official"])
-            await source.initialize()
-            self.sources.append(source)
-            logger.info("Initialized official release source")
+        # Dynamically fetch active branches from .versions.json
+        official_config = sources_config.get("official", {})
+        if official_config.get("enabled", True):
+            await self._init_official_sources(official_config)
 
         # GitHub PR source
         if "github_pr" in sources_config:
@@ -93,6 +92,52 @@ class FirmwareTriggerService:
             logger.info("Initialized custom upload handler")
 
         logger.info(f"Initialized {len(self.sources)} firmware sources")
+
+    async def _init_official_sources(self, config: dict) -> None:
+        """
+        Initialize official release sources dynamically.
+
+        Fetches active branches from .versions.json and creates
+        a source for each (main/SNAPSHOT, stable, oldstable).
+        """
+        # Get targets to scan from config
+        default_targets = config.get("targets", [])
+        check_interval = config.get("check_interval", 3600)
+
+        # Fetch active branches dynamically
+        try:
+            branches = await get_active_branches(
+                include_snapshot=config.get("include_snapshot", True),
+                include_oldstable=config.get("include_oldstable", True),
+            )
+            logger.info(f"Discovered {len(branches)} active branches")
+        except Exception as e:
+            logger.error(f"Failed to fetch branches: {e}")
+            return
+
+        # Create a source for each branch
+        for branch in branches:
+            source_config = {
+                "enabled": True,
+                "type": "openwrt_releases",
+                "sources": {
+                    branch.name: {
+                        "url": branch.url,
+                        "version": branch.version,
+                        "branch": branch.name,
+                        "check_interval": check_interval,
+                        "targets": default_targets,
+                    }
+                },
+            }
+
+            source = OfficialReleaseSource(f"official-{branch.name}", source_config)
+            await source.initialize()
+            self.sources.append(source)
+            logger.info(
+                f"Initialized source for {branch.name} "
+                f"(version={branch.version}, url={branch.url})"
+            )
 
     async def shutdown(self) -> None:
         """Cleanup resources."""
