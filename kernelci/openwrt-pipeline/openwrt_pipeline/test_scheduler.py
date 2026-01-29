@@ -19,7 +19,6 @@ import structlog
 
 from .api_client import APIError, KernelCIClient
 from .config import load_pipeline_config
-from .models import JobCreate
 
 # Configure logging
 structlog.configure(
@@ -84,28 +83,33 @@ class TestScheduler:
         """
         Listen for firmware events and create jobs.
 
-        In a real implementation, this would use WebSocket or SSE
-        to receive events from the API. For now, we poll.
+        Uses the Node-based API to query for firmware (kbuild nodes)
+        that don't yet have test jobs scheduled.
         """
         logger.info("Starting event listener")
 
         while self._running:
             try:
-                # Get recent firmware that needs jobs
-                firmware_list = await self.api_client.list_firmware(
+                # Get recent firmware nodes (kind=kbuild, state=available)
+                firmware_nodes = await self.api_client.query_nodes(
+                    kind="kbuild",
+                    state="available",
                     limit=50,
                 )
 
-                for firmware in firmware_list:
+                for firmware_node in firmware_nodes:
+                    firmware_id = firmware_node.get("id") or firmware_node.get("_id")
+
                     # Check if jobs already exist for this firmware
-                    existing_jobs = await self.api_client.get_results(
-                        firmware_id=firmware.id,
+                    existing_jobs = await self.api_client.query_nodes(
+                        kind="job",
+                        parent=firmware_id,
                         limit=1,
                     )
 
                     if not existing_jobs:
                         # Create jobs for this firmware
-                        await self._create_jobs_for_firmware(firmware)
+                        await self._create_jobs_for_firmware(firmware_node)
 
             except Exception as e:
                 logger.exception(f"Error in event listener: {e}")
@@ -129,18 +133,28 @@ class TestScheduler:
 
             await asyncio.sleep(60)
 
-    async def _create_jobs_for_firmware(self, firmware) -> None:
+    async def _create_jobs_for_firmware(self, firmware_node: dict) -> None:
         """
         Create test jobs for a firmware image.
 
         Finds compatible devices and creates jobs with appropriate
         test plans based on device features.
+
+        Args:
+            firmware_node: Firmware node dict from KernelCI API
         """
+        firmware_id = firmware_node.get("id") or firmware_node.get("_id")
+        firmware_data = firmware_node.get("data", {})
+        target = firmware_data.get("target", "")
+        subtarget = firmware_data.get("subtarget", "")
+        profile = firmware_data.get("profile", "*")
+        source = firmware_data.get("source", "official")
+
         logger.info(
             "Creating jobs for firmware",
-            firmware_id=firmware.id,
-            target=firmware.target,
-            profile=firmware.profile,
+            firmware_id=firmware_id,
+            target=target,
+            profile=profile,
         )
 
         device_types = self.config.get("device_types", {})
@@ -149,30 +163,26 @@ class TestScheduler:
 
         # Find compatible devices
         compatible_devices = self._find_compatible_devices(
-            firmware.target,
-            firmware.subtarget,
-            firmware.profile,
+            target,
+            subtarget,
+            profile,
             device_types,
         )
 
         if not compatible_devices:
             logger.warning(
                 "No compatible devices for firmware",
-                firmware_id=firmware.id,
-                target=firmware.target,
+                firmware_id=firmware_id,
+                target=target,
             )
             return
-
-        # Determine priority based on source
-        source_priorities = scheduler_config.get("priorities", {})
-        priority = source_priorities.get(firmware.source.value, 5)
 
         # Create jobs for each compatible device
         for device_name, device_config in compatible_devices.items():
             # Get test plans for this device
             test_plans = self._get_test_plans_for_device(
                 device_config,
-                firmware.source.value,
+                source,
                 scheduler_config,
             )
 
@@ -191,24 +201,19 @@ class TestScheduler:
                     )
                     continue
 
-                # Create the job
+                # Create the job using Node-based API
                 try:
-                    job = JobCreate(
-                        firmware_id=firmware.id,
+                    created = await self.api_client.create_test_job(
+                        firmware_node_id=firmware_id,
                         device_type=device_name,
                         test_plan=plan_name,
                         tests=plan_config.get("tests", []),
-                        priority=priority,
                         timeout=plan_config.get("timeout", 1800),
-                        skip_firmware_flash=plan_config.get(
-                            "skip_firmware_flash", False
-                        ),
                     )
-
-                    created = await self.api_client.create_job(job)
+                    job_id = created.get("id") or created.get("_id")
                     logger.info(
                         "Created job",
-                        job_id=created.id,
+                        job_id=job_id,
                         device=device_name,
                         test_plan=plan_name,
                     )

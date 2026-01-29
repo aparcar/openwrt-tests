@@ -375,24 +375,6 @@ class KernelCIClient:
         # This would call GitHub API directly or through a webhook
         logger.info(f"GitHub status: {repo}@{commit_sha[:7]} {state} - {description}")
 
-    # =========================================================================
-    # Pub/Sub Events
-    # =========================================================================
-
-    async def subscribe(
-        self,
-        channel: str = "node",
-    ):
-        """
-        Subscribe to pub/sub events.
-
-        KernelCI uses CloudEvents format for events. This would typically
-        use WebSocket or Server-Sent Events.
-
-        Yields:
-            CloudEvent objects for node changes
-        """
-        # In production, this would connect to the pub/sub endpoint
-        # For now, we implement polling as fallback
-        logger.warning("Pub/sub not implemented, use polling instead")
-        pass
+    # Note: Pub/Sub events would be implemented via WebSocket or SSE
+    # connection to the KernelCI event endpoint. For OpenWrt testing,
+    # the polling approach in test_scheduler.py is sufficient.

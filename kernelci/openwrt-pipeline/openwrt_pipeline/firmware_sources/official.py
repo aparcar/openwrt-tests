@@ -16,7 +16,7 @@ import httpx
 
 from ..models import Firmware, FirmwareArtifacts
 from ..models import FirmwareSource as FirmwareSourceEnum
-from .base import FirmwareSource
+from .base import FirmwareSource, generate_firmware_id
 
 logger = logging.getLogger(__name__)
 
@@ -137,14 +137,15 @@ class OfficialReleaseSource(FirmwareSource):
         source_name: str,
     ) -> AsyncIterator[Firmware]:
         """Scan all available targets (by listing directory)."""
-        # This is a more expensive operation
-        # For now, log a warning and skip
+        # Full target scan not implemented - would require directory listing
+        # which downloads.openwrt.org doesn't support well
         logger.warning(
             f"Full target scan not implemented for {source_name}. "
             "Please configure specific targets in pipeline.yaml"
         )
-        return
-        yield  # Make this an async generator
+        # Empty async generator
+        if False:
+            yield  # type: ignore
 
     def _create_firmware(
         self,
@@ -221,8 +222,7 @@ class OfficialReleaseSource(FirmwareSource):
         git_commit: str | None = None,
     ) -> str:
         """Generate a unique firmware ID."""
-        # Create a deterministic ID based on firmware attributes
-        id_parts = [
+        parts = [
             "openwrt",
             version.lower().replace(".", "-"),
             target,
@@ -230,15 +230,10 @@ class OfficialReleaseSource(FirmwareSource):
             profile,
         ]
         if git_commit:
-            id_parts.append(git_commit[:8])
+            parts.append(git_commit[:8])
 
-        base_id = ":".join(id_parts)
-
-        # Add a short hash for uniqueness
         hash_input = f"{version}:{target}:{subtarget}:{profile}:{git_commit or ''}"
-        short_hash = hashlib.sha256(hash_input.encode()).hexdigest()[:8]
-
-        return f"{base_id}:{short_hash}"
+        return generate_firmware_id(*parts, hash_input=hash_input)
 
     def _extract_features(self, packages: list[str]) -> list[str]:
         """Extract device features from package list."""

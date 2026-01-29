@@ -2,22 +2,20 @@
 Test Executor for Labgrid
 
 Executes test jobs using labgrid for device control and pytest
-for test execution. Handles:
-- Firmware downloading and flashing
-- Test execution with proper isolation
-- Result collection and formatting
-- Console log capture
+for test execution. Uses pytest's programmatic API for execution
+and result collection.
 """
 
-import asyncio
-import json
+import io
 import logging
 import os
 import tempfile
+from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
 from pathlib import Path
 
 import httpx
+import pytest
 from minio import Minio
 
 from .config import settings
@@ -26,28 +24,64 @@ from .models import JobResult, TestResult, TestStatus
 logger = logging.getLogger(__name__)
 
 
+class ResultCollectorPlugin:
+    """
+    Pytest plugin to collect test results programmatically.
+
+    Captures test outcomes, durations, and error messages without
+    requiring external JSON report files.
+    """
+
+    def __init__(self):
+        self.results: list[dict] = []
+        self.start_time: datetime | None = None
+        self.end_time: datetime | None = None
+
+    def pytest_sessionstart(self, session):
+        self.start_time = datetime.utcnow()
+
+    def pytest_sessionfinish(self, session, exitstatus):
+        self.end_time = datetime.utcnow()
+
+    def pytest_runtest_logreport(self, report):
+        """Collect test results from each test phase."""
+        # Only capture the 'call' phase (actual test execution)
+        # Skip 'setup' and 'teardown' phases
+        if report.when != "call":
+            return
+
+        result = {
+            "nodeid": report.nodeid,
+            "outcome": report.outcome,
+            "duration": report.duration,
+            "error_message": None,
+        }
+
+        if report.failed:
+            if hasattr(report, "longreprtext"):
+                result["error_message"] = report.longreprtext
+            elif hasattr(report.longrepr, "reprcrash"):
+                result["error_message"] = str(report.longrepr.reprcrash)
+
+        self.results.append(result)
+
+    def pytest_collection_modifyitems(self, items):
+        """Log collected test items."""
+        logger.info(f"Collected {len(items)} tests")
+
+
 class TestExecutor:
     """
     Executes test jobs using labgrid and pytest.
 
     The executor:
     1. Downloads firmware artifacts
-    2. Acquires the labgrid target
-    3. Flashes firmware (if needed)
-    4. Runs pytest with the specified tests
-    5. Collects results and logs
-    6. Releases the target
+    2. Runs pytest with labgrid plugin for device control
+    3. Collects results via custom plugin
+    4. Uploads logs to storage
     """
 
     def __init__(self, lab_name: str, targets_dir: Path, tests_dir: Path):
-        """
-        Initialize the test executor.
-
-        Args:
-            lab_name: Name of this lab
-            targets_dir: Directory containing labgrid target YAML files
-            tests_dir: Directory containing pytest test files
-        """
         self.lab_name = lab_name
         self.targets_dir = targets_dir
         self.tests_dir = tests_dir
@@ -60,7 +94,7 @@ class TestExecutor:
     async def initialize(self) -> None:
         """Initialize HTTP client and storage client."""
         self._http_client = httpx.AsyncClient(
-            timeout=httpx.Timeout(300.0),  # 5 minutes for firmware download
+            timeout=httpx.Timeout(300.0),
             follow_redirects=True,
         )
 
@@ -79,7 +113,6 @@ class TestExecutor:
 
     @property
     def http_client(self) -> httpx.AsyncClient:
-        """Get HTTP client."""
         if self._http_client is None:
             raise RuntimeError("Executor not initialized")
         return self._http_client
@@ -94,71 +127,55 @@ class TestExecutor:
         Returns:
             JobResult with test results
         """
-        job_id = job["id"]
-        firmware_id = job.get("firmware_id")
-        device_type = job["device_type"]
-        test_plan = job.get("test_plan", "base")
-        tests = job.get("tests", [])
-        skip_flash = job.get("skip_firmware_flash", False)
-        timeout = job.get("timeout", 1800)
+        job_id = job.get("id") or job.get("_id")
+        job_data = job.get("data", {})
+        device_type = job_data.get("device_type")
+        tests = job_data.get("tests", [])
+        timeout = job_data.get("timeout", 1800)
 
-        logger.info(
-            f"Executing job {job_id}",
-            extra={
-                "device": device_type,
-                "firmware": firmware_id,
-                "test_plan": test_plan,
-            },
-        )
+        # Get firmware info from parent node if available
+        firmware_id = job.get("parent", "")
+        firmware_url = job_data.get("firmware_url")
+
+        logger.info(f"Executing job {job_id} on device {device_type}")
 
         start_time = datetime.utcnow()
         test_results: list[TestResult] = []
-        console_log_path: Path | None = None
+        console_log_url = None
 
         try:
-            # Create temporary directory for this job
             with tempfile.TemporaryDirectory(prefix=f"job-{job_id}-") as tmpdir:
                 tmpdir_path = Path(tmpdir)
                 console_log_path = tmpdir_path / "console.log"
 
-                # Download firmware if needed
+                # Download firmware if URL provided
                 firmware_path = None
-                if not skip_flash and firmware_id:
-                    firmware_info = job.get("firmware", {})
+                if firmware_url:
                     firmware_path = await self._download_firmware(
-                        firmware_id=firmware_id,
-                        firmware_info=firmware_info,
+                        url=firmware_url,
                         dest_dir=tmpdir_path,
                     )
 
-                # Build pytest command
-                pytest_args = self._build_pytest_args(
+                # Run pytest and collect results
+                collector, output = self._run_pytest(
                     device_type=device_type,
                     tests=tests,
                     firmware_path=firmware_path,
-                    results_dir=tmpdir_path,
-                    skip_flash=skip_flash,
-                )
-
-                # Run pytest
-                await self._run_pytest(
-                    pytest_args=pytest_args,
                     timeout=timeout,
-                    console_log=console_log_path,
                 )
 
-                # Parse results
-                results_file = tmpdir_path / "results.json"
-                if results_file.exists():
-                    test_results = self._parse_results(
-                        results_file=results_file,
-                        job_id=job_id,
-                        firmware_id=firmware_id or "",
-                        device_type=device_type,
-                    )
+                # Save console output
+                console_log_path.write_text(output)
+
+                # Convert collected results
+                test_results = self._convert_results(
+                    collector=collector,
+                    job_id=job_id,
+                    firmware_id=firmware_id,
+                    device_type=device_type,
+                )
 
                 # Upload console log
-                console_log_url = None
                 if console_log_path.exists():
                     console_log_url = await self._upload_log(
                         log_path=console_log_path,
@@ -166,13 +183,12 @@ class TestExecutor:
                     )
 
         except Exception as e:
-            logger.exception(f"Job {job_id} failed with error: {e}")
-            # Create error result
+            logger.exception(f"Job {job_id} failed: {e}")
             test_results = [
                 TestResult(
                     id=f"{job_id}:error",
                     job_id=job_id,
-                    firmware_id=firmware_id or "",
+                    firmware_id=firmware_id,
                     device_type=device_type,
                     lab_name=self.lab_name,
                     test_name="job_execution",
@@ -186,7 +202,6 @@ class TestExecutor:
         end_time = datetime.utcnow()
         duration = (end_time - start_time).total_seconds()
 
-        # Calculate summary
         passed = sum(1 for r in test_results if r.status == TestStatus.PASS)
         failed = sum(1 for r in test_results if r.status == TestStatus.FAIL)
         skipped = sum(1 for r in test_results if r.status == TestStatus.SKIP)
@@ -194,10 +209,10 @@ class TestExecutor:
 
         return JobResult(
             job_id=job_id,
-            firmware_id=firmware_id or "",
+            firmware_id=firmware_id,
             device_type=device_type,
             lab_name=self.lab_name,
-            status="complete" if errors == 0 and failed == 0 else "failed",
+            status="pass" if (errors == 0 and failed == 0) else "fail",
             total_tests=len(test_results),
             passed_tests=passed,
             failed_tests=failed,
@@ -210,187 +225,120 @@ class TestExecutor:
             console_log_url=console_log_url,
         )
 
-    async def _download_firmware(
-        self,
-        firmware_id: str,
-        firmware_info: dict,
-        dest_dir: Path,
-    ) -> Path | None:
-        """Download firmware to local cache."""
-        artifacts = firmware_info.get("artifacts", {})
+    async def _download_firmware(self, url: str, dest_dir: Path) -> Path | None:
+        """Download firmware from URL to cache directory."""
+        filename = url.split("/")[-1]
+        cache_path = self.cache_dir / filename
+        if cache_path.exists():
+            logger.info(f"Using cached firmware: {cache_path}")
+            return cache_path
 
-        # Prefer initramfs for testing, then sysupgrade
-        for artifact_type in ["initramfs", "sysupgrade", "factory"]:
-            url = artifacts.get(artifact_type)
-            if not url:
-                continue
+        logger.info(f"Downloading firmware: {url}")
+        try:
+            response = await self.http_client.get(url)
+            response.raise_for_status()
+            cache_path.write_bytes(response.content)
+            return cache_path
+        except Exception as e:
+            logger.warning(f"Failed to download firmware: {e}")
+            return None
 
-            # Check cache
-            cache_key = f"{firmware_id}_{artifact_type}"
-            cache_path = self.cache_dir / cache_key
-            if cache_path.exists():
-                logger.info(f"Using cached firmware: {cache_path}")
-                return cache_path
-
-            # Download
-            logger.info(f"Downloading firmware: {url}")
-            try:
-                response = await self.http_client.get(url)
-                response.raise_for_status()
-
-                # Save to cache
-                cache_path.write_bytes(response.content)
-                logger.info(f"Firmware cached: {cache_path}")
-                return cache_path
-
-            except Exception as e:
-                logger.warning(f"Failed to download {artifact_type}: {e}")
-                continue
-
-        logger.warning(f"No firmware artifacts available for {firmware_id}")
-        return None
-
-    def _build_pytest_args(
+    def _run_pytest(
         self,
         device_type: str,
         tests: list[str],
         firmware_path: Path | None,
-        results_dir: Path,
-        skip_flash: bool,
-    ) -> list[str]:
-        """Build pytest command arguments."""
+        timeout: int,
+    ) -> tuple[ResultCollectorPlugin, str]:
+        """
+        Run pytest programmatically and collect results.
+
+        Returns:
+            Tuple of (result collector plugin, console output)
+        """
         target_file = self.targets_dir / f"{device_type}.yaml"
 
+        # Build pytest arguments
         args = [
-            "pytest",
             str(self.tests_dir),
             "-v",
             "--tb=short",
             f"--lg-env={target_file}",
-            f"--junitxml={results_dir / 'junit.xml'}",
-            "--json-report",
-            f"--json-report-file={results_dir / 'results.json'}",
         ]
 
-        # Add specific tests if provided
+        # Filter specific tests if provided
         if tests:
-            for test in tests:
-                args.extend(["-k", test])
+            args.extend(["-k", " or ".join(tests)])
 
-        # Set firmware path in environment
+        # Set firmware path via environment
+        env_backup = os.environ.copy()
+        os.environ["LG_COORDINATOR"] = settings.lg_coordinator
         if firmware_path:
-            args.extend(["--lg-firmware", str(firmware_path)])
+            os.environ["LG_FIRMWARE"] = str(firmware_path)
 
-        # Skip firmware flash if requested
-        if skip_flash:
-            args.append("--lg-skip-flash")
+        # Create result collector plugin
+        collector = ResultCollectorPlugin()
 
-        return args
+        # Capture stdout/stderr
+        output_buffer = io.StringIO()
 
-    async def _run_pytest(
+        try:
+            with redirect_stdout(output_buffer), redirect_stderr(output_buffer):
+                # Run pytest with our plugin
+                # Note: pytest.main() returns exit code, not raises
+                exit_code = pytest.main(args, plugins=[collector])
+
+            logger.info(f"pytest completed with exit code: {exit_code}")
+
+        finally:
+            # Restore environment
+            os.environ.clear()
+            os.environ.update(env_backup)
+
+        return collector, output_buffer.getvalue()
+
+    def _convert_results(
         self,
-        pytest_args: list[str],
-        timeout: int,
-        console_log: Path,
-    ) -> int:
-        """Run pytest and capture output."""
-        logger.info(f"Running pytest: {' '.join(pytest_args)}")
-
-        env = os.environ.copy()
-        env["PYTHONUNBUFFERED"] = "1"
-        env["LG_CONSOLE"] = "internal"
-        # Set labgrid coordinator address (gRPC)
-        env["LG_COORDINATOR"] = settings.lg_coordinator
-
-        with open(console_log, "w") as log_file:
-            try:
-                process = await asyncio.create_subprocess_exec(
-                    *pytest_args,
-                    stdout=log_file,
-                    stderr=asyncio.subprocess.STDOUT,
-                    env=env,
-                )
-
-                try:
-                    returncode = await asyncio.wait_for(
-                        process.wait(),
-                        timeout=timeout,
-                    )
-                except asyncio.TimeoutError:
-                    logger.warning(f"pytest timed out after {timeout}s")
-                    process.kill()
-                    await process.wait()
-                    returncode = -1
-
-            except Exception as e:
-                logger.exception(f"Error running pytest: {e}")
-                returncode = -1
-
-        logger.info(f"pytest completed with return code: {returncode}")
-        return returncode
-
-    def _parse_results(
-        self,
-        results_file: Path,
+        collector: ResultCollectorPlugin,
         job_id: str,
         firmware_id: str,
         device_type: str,
     ) -> list[TestResult]:
-        """Parse pytest JSON results."""
-        with open(results_file) as f:
-            data = json.load(f)
-
+        """Convert collected pytest results to TestResult objects."""
         test_results = []
-        tests = data.get("tests", [])
 
-        for test in tests:
-            nodeid = test.get("nodeid", "")
-            outcome = test.get("outcome", "error")
-            duration = test.get("duration", 0)
+        status_map = {
+            "passed": TestStatus.PASS,
+            "failed": TestStatus.FAIL,
+            "skipped": TestStatus.SKIP,
+        }
 
-            # Map pytest outcome to TestStatus
-            status_map = {
-                "passed": TestStatus.PASS,
-                "failed": TestStatus.FAIL,
-                "skipped": TestStatus.SKIP,
-                "error": TestStatus.ERROR,
-            }
-            status = status_map.get(outcome, TestStatus.ERROR)
-
-            # Extract test name from nodeid
+        for result in collector.results:
+            nodeid = result["nodeid"]
             test_name = nodeid.split("::")[-1] if "::" in nodeid else nodeid
+            status = status_map.get(result["outcome"], TestStatus.ERROR)
 
-            # Get error message if failed
-            error_message = None
-            if outcome in ("failed", "error"):
-                call_info = test.get("call", {})
-                error_message = call_info.get("longrepr", "")
-                if isinstance(error_message, dict):
-                    error_message = error_message.get("reprcrash", {}).get(
-                        "message", ""
-                    )
-
-            result = TestResult(
-                id=f"{job_id}:{test_name}",
-                job_id=job_id,
-                firmware_id=firmware_id,
-                device_type=device_type,
-                lab_name=self.lab_name,
-                test_name=test_name,
-                test_path=nodeid,
-                status=status,
-                duration=duration,
-                start_time=datetime.utcnow(),  # Approximate
-                error_message=error_message,
+            test_results.append(
+                TestResult(
+                    id=f"{job_id}:{test_name}",
+                    job_id=job_id,
+                    firmware_id=firmware_id,
+                    device_type=device_type,
+                    lab_name=self.lab_name,
+                    test_name=test_name,
+                    test_path=nodeid,
+                    status=status,
+                    duration=result["duration"],
+                    start_time=collector.start_time or datetime.utcnow(),
+                    error_message=result.get("error_message"),
+                )
             )
-            test_results.append(result)
 
         return test_results
 
     async def _upload_log(self, log_path: Path, job_id: str) -> str | None:
         """Upload console log to storage."""
         if not self._minio:
-            logger.debug("MinIO not configured, skipping log upload")
             return None
 
         try:
@@ -401,11 +349,7 @@ class TestExecutor:
                 file_path=str(log_path),
                 content_type="text/plain",
             )
-
-            url = f"http://{settings.minio_endpoint}/openwrt-logs/{object_name}"
-            logger.info(f"Uploaded console log: {url}")
-            return url
-
+            return f"http://{settings.minio_endpoint}/openwrt-logs/{object_name}"
         except Exception as e:
             logger.warning(f"Failed to upload log: {e}")
             return None

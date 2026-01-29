@@ -2,6 +2,7 @@
 Base class for firmware sources.
 """
 
+import hashlib
 import logging
 from abc import ABC, abstractmethod
 from typing import AsyncIterator
@@ -9,6 +10,47 @@ from typing import AsyncIterator
 from ..models import Firmware
 
 logger = logging.getLogger(__name__)
+
+
+def generate_firmware_id(
+    *parts: str,
+    hash_input: str | None = None,
+) -> str:
+    """
+    Generate a unique firmware ID from parts.
+
+    Args:
+        *parts: ID components (e.g., "openwrt", version, target)
+        hash_input: Optional string to hash for uniqueness suffix
+
+    Returns:
+        Colon-separated ID with optional hash suffix
+    """
+    base_id = ":".join(p for p in parts if p)
+    if hash_input:
+        short_hash = hashlib.sha256(hash_input.encode()).hexdigest()[:8]
+        return f"{base_id}:{short_hash}"
+    return base_id
+
+
+def detect_firmware_type(filename: str) -> str | None:
+    """
+    Detect firmware type from filename.
+
+    Returns:
+        Firmware type (sysupgrade, factory, initramfs) or None
+    """
+    filename_lower = filename.lower()
+
+    if "sysupgrade" in filename_lower:
+        return "sysupgrade"
+    elif "factory" in filename_lower:
+        return "factory"
+    elif "initramfs" in filename_lower or "kernel" in filename_lower:
+        return "initramfs"
+    elif filename_lower.endswith((".bin", ".img", ".itb")):
+        return "unknown"
+    return None
 
 
 class FirmwareSource(ABC):

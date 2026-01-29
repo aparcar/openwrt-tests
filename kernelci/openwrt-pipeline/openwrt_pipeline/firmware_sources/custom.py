@@ -6,6 +6,7 @@ for testing on the OpenWrt KernelCI infrastructure.
 """
 
 import hashlib
+import io
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -18,6 +19,7 @@ from pydantic import BaseModel
 from ..config import settings
 from ..models import Firmware, FirmwareArtifacts
 from ..models import FirmwareSource as FirmwareSourceEnum
+from .base import detect_firmware_type as _detect_firmware_type
 
 logger = logging.getLogger(__name__)
 
@@ -88,16 +90,8 @@ class CustomFirmwareUploader:
 
     def detect_firmware_type(self, filename: str) -> str:
         """Detect firmware type from filename."""
-        filename_lower = filename.lower()
-
-        if "sysupgrade" in filename_lower:
-            return "sysupgrade"
-        elif "factory" in filename_lower:
-            return "factory"
-        elif "initramfs" in filename_lower or "kernel" in filename_lower:
-            return "initramfs"
-        else:
-            return "sysupgrade"  # Default assumption
+        detected = _detect_firmware_type(filename)
+        return detected if detected and detected != "unknown" else "sysupgrade"
 
     async def upload_firmware(
         self,
@@ -140,8 +134,6 @@ class CustomFirmwareUploader:
 
         # Upload to MinIO
         logger.info(f"Uploading {filename} to MinIO: {storage_path}")
-
-        import io
 
         self.minio.put_object(
             bucket_name="openwrt-firmware",

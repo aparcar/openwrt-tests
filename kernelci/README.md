@@ -70,7 +70,7 @@ The stack provides:
          ▼                    ▼                    ▼
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
 │    Dashboard    │  │   KernelCI API  │  │   MinIO Console │
-│    (React)      │  │   (FastAPI)     │  │   (S3 Storage)  │
+│   (KernelCI)    │  │   (Maestro)     │  │   (S3 Storage)  │
 │    :3000        │  │   :8001         │  │   :9001         │
 └─────────────────┘  └─────────────────┘  └─────────────────┘
                               │
@@ -108,11 +108,32 @@ Labs connect using the **pull-mode** architecture:
 1. Lab runs the `labgrid-adapter` service
 2. Adapter polls API for pending jobs (`kind=job`, `state=available`)
 3. Jobs are claimed by setting `state=running`
-4. Tests run via pytest with labgrid
+4. Tests run via pytest with labgrid plugin
 5. Results submitted as test nodes under job
 6. Health checks run automatically every 24 hours
 
 See `labgrid-adapter/` for the lab-side component.
+
+### Test Execution
+
+Tests are executed using pytest's programmatic API with the labgrid plugin:
+
+```python
+# The executor runs pytest programmatically
+pytest.main([
+    str(tests_dir),
+    "-v",
+    "--tb=short",
+    f"--lg-env={target_file}",
+], plugins=[result_collector])
+```
+
+The `ResultCollectorPlugin` captures test outcomes, durations, and error
+messages without requiring external JSON report files. Results are then
+converted to KernelCI test nodes and submitted to the API.
+
+Labgrid handles firmware flashing via its pytest fixtures (e.g., `@pytest.fixture`
+with `SSHDriver`, `ShellDriver`, etc.).
 
 ### Lab Configuration
 
@@ -172,17 +193,6 @@ MongoDB initialization:
 - Creates collections
 - Sets up indexes
 - Optimizes queries
-
-## Lab Integration
-
-Labs connect using the **pull-mode** architecture:
-
-1. Lab runs the `labgrid-adapter` service
-2. Adapter polls API for pending jobs
-3. Jobs are executed using labgrid
-4. Results are submitted back to API
-
-See `labgrid-adapter/` for the lab-side component.
 
 ## API Reference
 
@@ -327,12 +337,13 @@ Check scheduler logs:
 docker compose logs -f pipeline-scheduler
 ```
 
-### Health checks failing
+### Device health checks failing
 
-Check health service logs:
+Health checks run on the lab-side adapter, not centrally.
+Check the adapter logs on your lab server:
 
 ```bash
-docker compose logs -f pipeline-health
+docker logs labgrid-adapter
 ```
 
 ### TLS certificate issues

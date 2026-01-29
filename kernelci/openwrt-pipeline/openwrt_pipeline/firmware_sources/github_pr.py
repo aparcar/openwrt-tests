@@ -5,7 +5,6 @@ Watches GitHub PRs for firmware artifacts from CI builds.
 Supports triggering tests on PRs with specific labels.
 """
 
-import hashlib
 import io
 import logging
 import zipfile
@@ -20,7 +19,7 @@ from github.WorkflowRun import WorkflowRun
 from ..config import settings
 from ..models import Firmware, FirmwareArtifacts
 from ..models import FirmwareSource as FirmwareSourceEnum
-from .base import FirmwareSource
+from .base import FirmwareSource, detect_firmware_type, generate_firmware_id
 
 logger = logging.getLogger(__name__)
 
@@ -224,8 +223,9 @@ class GitHubPRSource(FirmwareSource):
     ) -> str:
         """Generate a unique firmware ID for a PR."""
         hash_input = f"pr:{pr_number}:{target}:{subtarget}:{commit}"
-        short_hash = hashlib.sha256(hash_input.encode()).hexdigest()[:8]
-        return f"openwrt:pr-{pr_number}:{target}:{subtarget}:{short_hash}"
+        return generate_firmware_id(
+            "openwrt", f"pr-{pr_number}", target, subtarget, hash_input=hash_input
+        )
 
     async def download_artifact(
         self,
@@ -298,18 +298,7 @@ class GitHubPRSource(FirmwareSource):
 
     def _detect_firmware_type(self, filename: str) -> str | None:
         """Detect firmware type from filename."""
-        filename_lower = filename.lower()
-
-        if "sysupgrade" in filename_lower:
-            return "sysupgrade"
-        elif "factory" in filename_lower:
-            return "factory"
-        elif "initramfs" in filename_lower or "kernel" in filename_lower:
-            return "initramfs"
-        elif filename_lower.endswith((".bin", ".img", ".itb")):
-            return "unknown"
-
-        return None
+        return detect_firmware_type(filename)
 
     async def add_pr_comment(
         self,
