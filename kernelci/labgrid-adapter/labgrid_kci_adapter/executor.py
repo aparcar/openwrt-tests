@@ -363,14 +363,15 @@ class TestExecutor:
             return None
 
         try:
+            bucket = settings.minio_logs_bucket
             object_name = f"logs/{job_id}/console.log"
             self._minio.fput_object(
-                bucket_name="openwrt-logs",
+                bucket_name=bucket,
                 object_name=object_name,
                 file_path=str(log_path),
                 content_type="text/plain",
             )
-            return f"http://{settings.minio_endpoint}/openwrt-logs/{object_name}"
+            return f"http://{settings.minio_endpoint}/{bucket}/{object_name}"
         except Exception as e:
             logger.warning(f"Failed to upload log: {e}")
             return None

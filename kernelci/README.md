@@ -3,6 +3,19 @@
 This directory contains the Docker Compose stack for running a self-hosted
 KernelCI instance tailored for OpenWrt firmware testing.
 
+## Modular Architecture
+
+The system is split into two components:
+
+| Component | Description | Reusable? |
+|-----------|-------------|-----------|
+| `labgrid-adapter/` | Generic adapter connecting labgrid to KernelCI | **Yes** - usable by any project |
+| `openwrt-pipeline/` | OpenWrt-specific firmware triggers and scheduling | No - OpenWrt specific |
+
+The **labgrid-kci-adapter** is designed to be project-agnostic and can be used
+by other projects that want to connect labgrid-managed devices to KernelCI.
+See `labgrid-adapter/README.md` for details.
+
 ## Overview
 
 The stack provides:

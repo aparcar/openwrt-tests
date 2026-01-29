@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     minio_access_key: str = Field(default="")
     minio_secret_key: str = Field(default="")
     minio_secure: bool = Field(default=False)
+    minio_logs_bucket: str = Field(
+        default="test-logs",
+        description="MinIO bucket name for test logs",
+    )
 
     # Polling configuration
     poll_interval: int = Field(
