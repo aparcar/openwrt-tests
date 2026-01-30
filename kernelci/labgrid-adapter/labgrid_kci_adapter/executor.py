@@ -138,11 +138,18 @@ class TestExecutor:
         firmware_id = job.get("parent", "")
         firmware_url = job_data.get("firmware_url")
 
+        # Test type for logging/debugging
+        test_type = job_data.get("test_type", "firmware")
+
         # Tests can be fetched per-job (LAVA pattern) or use static tests_dir
         tests_repo_url = job_data.get("tests_repo")
         tests_repo_branch = job_data.get("tests_branch", "main")
+        tests_subdir = job_data.get("tests_subdir")  # Override for kselftest, etc.
 
-        logger.info(f"Executing job {job_id} on device {device_type}")
+        logger.info(
+            f"Executing job {job_id} on device {device_type} "
+            f"(test_type={test_type})"
+        )
 
         start_time = datetime.utcnow()
         test_results: list[TestResult] = []
@@ -155,9 +162,11 @@ class TestExecutor:
 
                 # Ensure tests are up-to-date before execution
                 # Uses per-job repo if specified, otherwise uses configured repo
+                # tests_subdir can be overridden per-job (e.g., for kselftest)
                 tests_dir = await ensure_tests(
                     repo_url=tests_repo_url,
                     branch=tests_repo_branch,
+                    subdir=tests_subdir,
                 )
 
                 # Download firmware if URL provided

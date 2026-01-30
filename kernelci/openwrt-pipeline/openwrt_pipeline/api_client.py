@@ -254,21 +254,39 @@ class KernelCIClient:
         test_plan: str,
         tests: list[str] | None = None,
         timeout: int = 1800,
+        test_type: str = "firmware",
+        firmware_url: str | None = None,
+        tests_subdir: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a test job node (kind=job).
 
         Jobs are containers for test runs on a specific device.
         Inherits tree/branch from parent firmware node.
+
+        Args:
+            firmware_node_id: Parent firmware node ID
+            device_type: Target device type
+            test_plan: Name of the test plan
+            tests: Specific test names to run (optional)
+            timeout: Job timeout in seconds
+            test_type: Type of tests (firmware, kselftest)
+            firmware_url: Custom firmware URL (for kselftest images)
+            tests_subdir: Subdirectory containing tests
         """
         # Get parent node to inherit tree/branch info
         parent = await self.get_node(firmware_node_id)
         parent_data = parent.get("data", {}) if parent else {}
         kernel_rev = parent_data.get("kernel_revision", {})
 
+        # Use custom firmware URL or get from parent artifacts
+        if not firmware_url:
+            artifacts = parent_data.get("artifacts", {})
+            firmware_url = artifacts.get("sysupgrade") or artifacts.get("factory")
+
         node = {
             "kind": "job",
-            "name": f"openwrt-test-{device_type}-{test_plan}",
+            "name": f"openwrt-{test_type}-{device_type}-{test_plan}",
             "parent": firmware_node_id,
             "group": OPENWRT_TREE,
             "state": "available",  # Ready to be picked up by a lab
@@ -276,11 +294,21 @@ class KernelCIClient:
                 "kernel_revision": kernel_rev,
                 "device_type": device_type,
                 "test_plan": test_plan,
+                "test_type": test_type,
                 "tests": tests or [],
                 "timeout": timeout,
                 "runtime": "labgrid",  # Indicates labgrid runtime
             },
         }
+
+        # Add firmware URL if available
+        if firmware_url:
+            node["data"]["firmware_url"] = firmware_url
+
+        # Add tests subdirectory if specified
+        if tests_subdir:
+            node["data"]["tests_subdir"] = tests_subdir
+
         return await self.create_node(node)
 
     async def claim_job(

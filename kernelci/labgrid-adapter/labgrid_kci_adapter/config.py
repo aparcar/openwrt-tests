@@ -91,8 +91,18 @@ class Settings(BaseSettings):
         description="Subdirectory within tests repository containing tests",
     )
 
+    # Test type configuration
+    supported_test_types: str = Field(
+        default="firmware",
+        description="Comma-separated list of test types this lab supports",
+    )
+
     # Logging
     log_level: str = Field(default="INFO")
+
+    def get_supported_test_types(self) -> list[str]:
+        """Get list of supported test types."""
+        return [t.strip() for t in self.supported_test_types.split(",") if t.strip()]
 
     class Config:
         env_prefix = ""

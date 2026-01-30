@@ -206,6 +206,47 @@ test_plans:
     required_features: []
     skip_firmware_flash: true
 
+  # ==========================================================================
+  # Kernel Selftest Plans
+  # ==========================================================================
+  # These require custom images with kselftest packages installed
+
+  kselftest_net:
+    name: Kernel Network Tests
+    description: Linux kernel networking subsystem tests
+    tests:
+      - kselftest_net
+    timeout: 1800
+    required_features: []
+    test_type: kselftest
+
+  kselftest_timers:
+    name: Kernel Timer Tests
+    description: Linux kernel timer subsystem tests
+    tests:
+      - kselftest_timers
+    timeout: 600
+    required_features: []
+    test_type: kselftest
+
+  kselftest_seccomp:
+    name: Kernel Seccomp Tests
+    description: Linux kernel seccomp filter tests
+    tests:
+      - kselftest_seccomp
+    timeout: 600
+    required_features: []
+    test_type: kselftest
+
+  kselftest_size:
+    name: Kernel Size Tests
+    description: Linux kernel binary size validation
+    tests:
+      - kselftest_size
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
 # =============================================================================
 # Scheduler Configuration
 # =============================================================================
@@ -219,6 +260,13 @@ scheduler:
 
   # Job timeout (seconds) - jobs exceeding this are marked failed
   job_timeout: 3600
+
+  # Enabled test types
+  # - firmware: Standard OpenWrt functionality tests
+  # - kselftest: Linux kernel validation tests (requires custom images)
+  enabled_test_types:
+    - firmware
+    # - kselftest  # Enable when kselftest packages are available
 
   # Priority values (higher = more urgent)
   priorities:
@@ -301,8 +349,19 @@ health_check:
 # Maps labgrid target names to OpenWrt target/subtarget/profile
 # This allows the scheduler to match firmware to compatible devices
 #
+# Each device has:
+#   - target/subtarget/profile: OpenWrt build target
+#   - features: Used for firmware test plan selection
+#   - capabilities: Used for test type filtering (firmware vs kselftest)
+#
+# Capabilities for test types:
+#   - serial_console: Required for all tests
+#   - isolated_network: Required for kselftest_net (no external network)
+#   - loopback_ethernet: Optional for some network tests
+#   - high_memory: Device has >= 512MB RAM
+#
 device_types:
-  # QEMU targets
+  # QEMU targets - good for kselftest (isolated, configurable resources)
   qemu_x86-64:
     target: x86
     subtarget: "64"
@@ -310,6 +369,10 @@ device_types:
     features:
       - wan_port
       - rootfs
+    capabilities:
+      - serial_console
+      - isolated_network
+      - high_memory
 
   qemu_malta-be:
     target: malta
@@ -317,6 +380,9 @@ device_types:
     profile: generic
     features:
       - wan_port
+    capabilities:
+      - serial_console
+      - isolated_network
 
   qemu_armsr-armv8:
     target: armsr
@@ -324,8 +390,13 @@ device_types:
     profile: generic
     features:
       - wan_port
+    capabilities:
+      - serial_console
+      - isolated_network
+      - high_memory
 
-  # Real hardware (examples - extend based on labnet.yaml)
+  # Real hardware - primarily for firmware testing
+  # Add isolated_network capability if device is on dedicated test network
   openwrt_one:
     target: mediatek
     subtarget: filogic
@@ -333,6 +404,8 @@ device_types:
     features:
       - wifi
       - wan_port
+    capabilities:
+      - serial_console
 
   bananapi_bpi-r4:
     target: mediatek
@@ -341,6 +414,9 @@ device_types:
     features:
       - wifi
       - wan_port
+    capabilities:
+      - serial_console
+      - high_memory
 
   linksys_e8450:
     target: mediatek
@@ -349,6 +425,8 @@ device_types:
     features:
       - wifi
       - wan_port
+    capabilities:
+      - serial_console
 
   glinet_gl-mt6000:
     target: mediatek
@@ -357,6 +435,9 @@ device_types:
     features:
       - wifi
       - wan_port
+    capabilities:
+      - serial_console
+      - high_memory
 
   tplink_archer-c7-v2:
     target: ath79
@@ -365,6 +446,8 @@ device_types:
     features:
       - wifi
       - wan_port
+    capabilities:
+      - serial_console
 
   raspberry_pi_4:
     target: bcm27xx
@@ -372,6 +455,9 @@ device_types:
     profile: rpi-4
     features:
       - wan_port
+    capabilities:
+      - serial_console
+      - high_memory
 
 # =============================================================================
 # Results Collection
