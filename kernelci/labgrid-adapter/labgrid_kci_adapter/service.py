@@ -19,6 +19,7 @@ import yaml
 
 from .config import settings
 from .executor import TestExecutor
+from .labgrid_client import LabgridClient
 from .models import JobResult
 from .poller import JobPoller
 
@@ -58,6 +59,7 @@ class LabgridKCIAdapter:
         self.poller: JobPoller | None = None
         self.executor: TestExecutor | None = None
         self._api_client: httpx.AsyncClient | None = None
+        self._labgrid_client: LabgridClient | None = None
         self._running = False
         self._health_check_task: asyncio.Task | None = None
 
@@ -90,12 +92,18 @@ class LabgridKCIAdapter:
         # Initially assume all devices are healthy (health check will verify)
         self.healthy_devices = set(self.devices)
 
+        # Initialize labgrid client for querying available places
+        self._labgrid_client = LabgridClient()
+
         # Initialize poller with healthy devices only
+        # Poller uses labgrid client to support parallel execution
+        # when multiple physical devices of same type are available
         self.poller = JobPoller(
             lab_name=self.lab_name,
             devices=list(self.healthy_devices),
             features=self.features,
             on_job=self._handle_job,
+            labgrid_client=self._labgrid_client,
         )
         await self.poller.connect()
 
