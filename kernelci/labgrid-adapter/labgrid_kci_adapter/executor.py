@@ -4,6 +4,9 @@ Test Executor for Labgrid
 Executes test jobs using labgrid for device control and pytest
 for test execution. Uses pytest's programmatic API for execution
 and result collection.
+
+For kselftest jobs, the executor parses KTAP output from test stdout
+to extract individual subtest results.
 """
 
 import io
@@ -19,6 +22,7 @@ import pytest
 from minio import Minio
 
 from .config import settings
+from .ktap_parser import parse_ktap, ktap_results_to_dict
 from .models import JobResult, TestResult, TestStatus
 from .test_sync import ensure_tests
 
@@ -31,6 +35,9 @@ class ResultCollectorPlugin:
 
     Captures test outcomes, durations, and error messages without
     requiring external JSON report files.
+
+    For kselftest tests, also captures stdout which may contain KTAP
+    output for subtest parsing.
     """
 
     def __init__(self):
@@ -56,6 +63,8 @@ class ResultCollectorPlugin:
             "outcome": report.outcome,
             "duration": report.duration,
             "error_message": None,
+            "stdout": None,
+            "stderr": None,
         }
 
         if report.failed:
@@ -63,6 +72,19 @@ class ResultCollectorPlugin:
                 result["error_message"] = report.longreprtext
             elif hasattr(report.longrepr, "reprcrash"):
                 result["error_message"] = str(report.longrepr.reprcrash)
+
+        # Capture stdout/stderr for KTAP parsing
+        if hasattr(report, "capstdout") and report.capstdout:
+            result["stdout"] = report.capstdout
+        if hasattr(report, "capstderr") and report.capstderr:
+            result["stderr"] = report.capstderr
+
+        # Also check sections for captured output
+        for section_name, content in report.sections:
+            if "stdout" in section_name.lower() and content:
+                result["stdout"] = content
+            elif "stderr" in section_name.lower() and content:
+                result["stderr"] = content
 
         self.results.append(result)
 
@@ -334,7 +356,13 @@ class TestExecutor:
         firmware_id: str,
         device_type: str,
     ) -> list[TestResult]:
-        """Convert collected pytest results to TestResult objects."""
+        """
+        Convert collected pytest results to TestResult objects.
+
+        For tests that contain KTAP output in their stdout, parse the
+        KTAP to extract individual subtest results. This is used for
+        kselftest tests that run multiple subtests and report via KTAP.
+        """
         test_results = []
 
         status_map = {
@@ -346,25 +374,88 @@ class TestExecutor:
         for result in collector.results:
             nodeid = result["nodeid"]
             test_name = nodeid.split("::")[-1] if "::" in nodeid else nodeid
-            status = status_map.get(result["outcome"], TestStatus.ERROR)
+            stdout = result.get("stdout", "")
 
-            test_results.append(
-                TestResult(
-                    id=f"{job_id}:{test_name}",
-                    job_id=job_id,
-                    firmware_id=firmware_id,
-                    device_type=device_type,
-                    lab_name=self.lab_name,
-                    test_name=test_name,
-                    test_path=nodeid,
-                    status=status,
-                    duration=result["duration"],
-                    start_time=collector.start_time or datetime.utcnow(),
-                    error_message=result.get("error_message"),
+            # Check if stdout contains KTAP output
+            ktap_results = self._try_parse_ktap(stdout, test_name)
+
+            if ktap_results:
+                # Expand KTAP subtests into individual TestResult objects
+                for ktap in ktap_results:
+                    ktap_status = status_map.get(ktap["status"], TestStatus.ERROR)
+                    test_results.append(
+                        TestResult(
+                            id=f"{job_id}:{ktap['name']}",
+                            job_id=job_id,
+                            firmware_id=firmware_id,
+                            device_type=device_type,
+                            lab_name=self.lab_name,
+                            test_name=ktap["name"],
+                            test_path=f"{nodeid}::{ktap['name']}",
+                            status=ktap_status,
+                            duration=ktap.get("duration", 0),
+                            start_time=collector.start_time or datetime.utcnow(),
+                            error_message=ktap.get("error_message"),
+                        )
+                    )
+            else:
+                # Standard pytest result (no KTAP)
+                status = status_map.get(result["outcome"], TestStatus.ERROR)
+                test_results.append(
+                    TestResult(
+                        id=f"{job_id}:{test_name}",
+                        job_id=job_id,
+                        firmware_id=firmware_id,
+                        device_type=device_type,
+                        lab_name=self.lab_name,
+                        test_name=test_name,
+                        test_path=nodeid,
+                        status=status,
+                        duration=result["duration"],
+                        start_time=collector.start_time or datetime.utcnow(),
+                        error_message=result.get("error_message"),
+                    )
                 )
-            )
 
         return test_results
+
+    def _try_parse_ktap(
+        self, output: str, prefix: str = ""
+    ) -> list[dict] | None:
+        """
+        Try to parse KTAP output from test stdout.
+
+        Returns parsed results if KTAP is detected, None otherwise.
+
+        Args:
+            output: Test stdout that may contain KTAP
+            prefix: Prefix for test names (usually the parent test name)
+
+        Returns:
+            List of dicts with 'name', 'status', 'duration', 'error_message'
+            or None if no KTAP detected
+        """
+        if not output:
+            return None
+
+        # Check for KTAP/TAP markers
+        if not any(
+            marker in output
+            for marker in ["KTAP version", "TAP version", "1.."]
+        ):
+            return None
+
+        try:
+            ktap_results = parse_ktap(output, prefix=prefix)
+            if ktap_results:
+                logger.info(
+                    f"Parsed {len(ktap_results)} subtests from KTAP output"
+                )
+                return ktap_results_to_dict(ktap_results)
+        except Exception as e:
+            logger.warning(f"Failed to parse KTAP output: {e}")
+
+        return None
 
     async def _upload_log(self, log_path: Path, job_id: str) -> str | None:
         """Upload console log to storage."""
