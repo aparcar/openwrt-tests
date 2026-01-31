@@ -210,16 +210,19 @@ test_plans:
   # Kernel Selftest Plans
   # ==========================================================================
   # These require custom images with kselftest packages installed
+  # Package names: kselftests-{subsystem}
 
+  # Networking
   kselftest_net:
     name: Kernel Network Tests
-    description: Linux kernel networking subsystem tests
+    description: Linux kernel networking stack tests
     tests:
       - kselftest_net
     timeout: 1800
     required_features: []
     test_type: kselftest
 
+  # Timers and RTC
   kselftest_timers:
     name: Kernel Timer Tests
     description: Linux kernel timer subsystem tests
@@ -229,18 +232,112 @@ test_plans:
     required_features: []
     test_type: kselftest
 
-  kselftest_seccomp:
-    name: Kernel Seccomp Tests
-    description: Linux kernel seccomp filter tests
+  kselftest_rtc:
+    name: Kernel RTC Tests
+    description: Real-time clock tests
     tests:
-      - kselftest_seccomp
+      - kselftest_rtc
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  # Syscalls
+  kselftest_clone3:
+    name: Kernel clone3 Tests
+    description: clone3 syscall tests
+    tests:
+      - kselftest_clone3
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  kselftest_openat2:
+    name: Kernel openat2 Tests
+    description: openat2 syscall tests
+    tests:
+      - kselftest_openat2
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  kselftest_exec:
+    name: Kernel exec Tests
+    description: Program execution tests
+    tests:
+      - kselftest_exec
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  kselftest_mincore:
+    name: Kernel mincore Tests
+    description: mincore syscall tests
+    tests:
+      - kselftest_mincore
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  kselftest_splice:
+    name: Kernel splice Tests
+    description: splice syscall tests
+    tests:
+      - kselftest_splice
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  kselftest_sync:
+    name: Kernel sync Tests
+    description: sync_file_range tests
+    tests:
+      - kselftest_sync
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  # IPC
+  kselftest_futex:
+    name: Kernel futex Tests
+    description: Futex tests
+    tests:
+      - kselftest_futex
     timeout: 600
     required_features: []
     test_type: kselftest
 
+  kselftest_mqueue:
+    name: Kernel mqueue Tests
+    description: POSIX message queue tests
+    tests:
+      - kselftest_mqueue
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  kselftest_sigaltstack:
+    name: Kernel sigaltstack Tests
+    description: Signal alternate stack tests
+    tests:
+      - kselftest_sigaltstack
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  # Process
+  kselftest_kcmp:
+    name: Kernel kcmp Tests
+    description: Process comparison tests
+    tests:
+      - kselftest_kcmp
+    timeout: 300
+    required_features: []
+    test_type: kselftest
+
+  # Size
   kselftest_size:
     name: Kernel Size Tests
-    description: Linux kernel binary size validation
+    description: Binary size test
     tests:
       - kselftest_size
     timeout: 300

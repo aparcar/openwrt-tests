@@ -90,10 +90,21 @@ IMAGE_PROFILES: dict[str, ImageProfile] = {
             # Process utilities
             "procps-ng",
             "coreutils",
-            # Kselftest packages (when available)
+            # Kselftest packages
             "kselftests-net",
             "kselftests-timers",
-            "kselftests-seccomp",
+            "kselftests-size",
+            "kselftests-rtc",
+            "kselftests-futex",
+            "kselftests-exec",
+            "kselftests-clone3",
+            "kselftests-openat2",
+            "kselftests-mincore",
+            "kselftests-mqueue",
+            "kselftests-kcmp",
+            "kselftests-sigaltstack",
+            "kselftests-splice",
+            "kselftests-sync",
         ],
         use_standard_image=False,
     ),
@@ -105,6 +116,7 @@ IMAGE_PROFILES: dict[str, ImageProfile] = {
             "iproute2-full",
             "kselftests-net",
             "kselftests-timers",
+            "kselftests-size",
         ],
         use_standard_image=False,
     ),
@@ -136,9 +148,25 @@ TEST_TYPE_CONFIGS: dict[TestType, TestTypeConfig] = {
         description="Linux kernel selftests",
         image_profile="kselftest",
         test_plans=[
+            # Networking
             "kselftest_net",
+            # Timers and RTC
             "kselftest_timers",
-            "kselftest_seccomp",
+            "kselftest_rtc",
+            # Syscalls
+            "kselftest_clone3",
+            "kselftest_openat2",
+            "kselftest_exec",
+            "kselftest_mincore",
+            "kselftest_splice",
+            "kselftest_sync",
+            # IPC
+            "kselftest_futex",
+            "kselftest_mqueue",
+            "kselftest_sigaltstack",
+            # Process
+            "kselftest_kcmp",
+            # Size
             "kselftest_size",
         ],
         required_capabilities=[
