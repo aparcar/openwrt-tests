@@ -275,3 +275,160 @@ class TestTestExecutor:
         assert result.job_id == "job-123"
         assert result.lab_name == "test-lab"
         assert result.device_type == "test-device"
+
+    def test_try_parse_ktap_with_valid_ktap(self, executor):
+        """Test _try_parse_ktap with valid KTAP output."""
+        ktap_output = """KTAP version 1
+1..3
+ok 1 - test_pass
+not ok 2 - test_fail
+ok 3 - test_skip # SKIP not supported
+"""
+        results = executor._try_parse_ktap(ktap_output, prefix="kselftest")
+
+        assert results is not None
+        assert len(results) == 3
+        assert results[0]["name"] == "kselftest.test_pass"
+        assert results[0]["status"] == "pass"
+        assert results[1]["name"] == "kselftest.test_fail"
+        assert results[1]["status"] == "fail"
+        assert results[2]["name"] == "kselftest.test_skip"
+        assert results[2]["status"] == "skip"
+
+    def test_try_parse_ktap_with_nested_subtests(self, executor):
+        """Test _try_parse_ktap with nested KTAP subtests."""
+        ktap_output = """KTAP version 1
+1..1
+  KTAP version 1
+  1..2
+  ok 1 - child_a
+  not ok 2 - child_b
+ok 1 - parent_test
+"""
+        results = executor._try_parse_ktap(ktap_output, prefix="net")
+
+        assert results is not None
+        assert len(results) == 2
+        assert results[0]["name"] == "net.parent_test.child_a"
+        assert results[0]["status"] == "pass"
+        assert results[1]["name"] == "net.parent_test.child_b"
+        assert results[1]["status"] == "fail"
+
+    def test_try_parse_ktap_with_no_ktap(self, executor):
+        """Test _try_parse_ktap returns None for non-KTAP output."""
+        regular_output = "Running tests...\nAll tests passed!\n"
+        results = executor._try_parse_ktap(regular_output, prefix="test")
+
+        assert results is None
+
+    def test_try_parse_ktap_with_empty_output(self, executor):
+        """Test _try_parse_ktap returns None for empty output."""
+        assert executor._try_parse_ktap("", prefix="test") is None
+        assert executor._try_parse_ktap(None, prefix="test") is None
+
+    def test_convert_results_with_ktap_output(self, executor):
+        """Test _convert_results expands KTAP results into multiple TestResults."""
+        collector = ResultCollectorPlugin()
+        collector.start_time = datetime(2024, 1, 1, 12, 0, 0)
+        collector.results = [
+            {
+                "nodeid": "test_kselftest.py::test_kselftest_net",
+                "outcome": "passed",
+                "duration": 10.0,
+                "error_message": None,
+                "stdout": """KTAP version 1
+1..3
+ok 1 - socket_test
+not ok 2 - bind_test # FAIL address in use
+ok 3 - listen_test # SKIP requires root
+""",
+                "stderr": None,
+            },
+        ]
+
+        results = executor._convert_results(
+            collector=collector,
+            job_id="job-123",
+            firmware_id="fw-456",
+            device_type="test-device",
+        )
+
+        # Should expand to 3 KTAP subtests
+        assert len(results) == 3
+
+        # Check each subtest result
+        assert results[0].test_name == "test_kselftest_net.socket_test"
+        assert results[0].status == TestStatus.PASS
+
+        assert results[1].test_name == "test_kselftest_net.bind_test"
+        assert results[1].status == TestStatus.FAIL
+        assert results[1].error_message == "FAIL address in use"
+
+        assert results[2].test_name == "test_kselftest_net.listen_test"
+        assert results[2].status == TestStatus.SKIP
+
+    def test_convert_results_mixed_ktap_and_regular(self, executor):
+        """Test _convert_results handles mix of KTAP and regular tests."""
+        collector = ResultCollectorPlugin()
+        collector.start_time = datetime(2024, 1, 1, 12, 0, 0)
+        collector.results = [
+            # Regular pytest test (no KTAP)
+            {
+                "nodeid": "test_boot.py::test_boot_success",
+                "outcome": "passed",
+                "duration": 5.0,
+                "error_message": None,
+                "stdout": "Device booted successfully\n",
+                "stderr": None,
+            },
+            # KTAP kselftest
+            {
+                "nodeid": "test_kselftest.py::test_kselftest_timers",
+                "outcome": "passed",
+                "duration": 10.0,
+                "error_message": None,
+                "stdout": """TAP version 13
+1..2
+ok 1 - timer_create
+ok 2 - timer_delete
+""",
+                "stderr": None,
+            },
+        ]
+
+        results = executor._convert_results(
+            collector=collector,
+            job_id="job-123",
+            firmware_id="fw-456",
+            device_type="test-device",
+        )
+
+        # Should have 1 regular + 2 KTAP = 3 results
+        assert len(results) == 3
+
+        # First is regular pytest result
+        assert results[0].test_name == "test_boot_success"
+        assert results[0].status == TestStatus.PASS
+
+        # Next two are KTAP subtests
+        assert results[1].test_name == "test_kselftest_timers.timer_create"
+        assert results[2].test_name == "test_kselftest_timers.timer_delete"
+
+    def test_result_collector_captures_stdout(self):
+        """Test ResultCollectorPlugin captures stdout from report sections."""
+        plugin = ResultCollectorPlugin()
+
+        report = MagicMock()
+        report.when = "call"
+        report.nodeid = "test_example.py::test_ktap"
+        report.outcome = "passed"
+        report.duration = 1.0
+        report.failed = False
+        report.sections = [
+            ("Captured stdout call", "KTAP version 1\n1..1\nok 1 - test\n"),
+        ]
+
+        plugin.pytest_runtest_logreport(report)
+
+        assert len(plugin.results) == 1
+        assert plugin.results[0]["stdout"] == "KTAP version 1\n1..1\nok 1 - test\n"

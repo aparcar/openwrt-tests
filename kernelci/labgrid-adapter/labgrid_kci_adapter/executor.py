@@ -365,10 +365,19 @@ class TestExecutor:
         """
         test_results = []
 
-        status_map = {
+        # Pytest uses past tense: "passed", "failed", "skipped"
+        pytest_status_map = {
             "passed": TestStatus.PASS,
             "failed": TestStatus.FAIL,
             "skipped": TestStatus.SKIP,
+        }
+
+        # KTAP uses present tense: "pass", "fail", "skip", "error"
+        ktap_status_map = {
+            "pass": TestStatus.PASS,
+            "fail": TestStatus.FAIL,
+            "skip": TestStatus.SKIP,
+            "error": TestStatus.ERROR,
         }
 
         for result in collector.results:
@@ -382,7 +391,9 @@ class TestExecutor:
             if ktap_results:
                 # Expand KTAP subtests into individual TestResult objects
                 for ktap in ktap_results:
-                    ktap_status = status_map.get(ktap["status"], TestStatus.ERROR)
+                    ktap_status = ktap_status_map.get(
+                        ktap["status"], TestStatus.ERROR
+                    )
                     test_results.append(
                         TestResult(
                             id=f"{job_id}:{ktap['name']}",
@@ -400,7 +411,7 @@ class TestExecutor:
                     )
             else:
                 # Standard pytest result (no KTAP)
-                status = status_map.get(result["outcome"], TestStatus.ERROR)
+                status = pytest_status_map.get(result["outcome"], TestStatus.ERROR)
                 test_results.append(
                     TestResult(
                         id=f"{job_id}:{test_name}",

@@ -31,12 +31,18 @@ Note: In KTAP, subtests appear BEFORE the parent result line.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 
 class TestStatus(str, Enum):
-    """Test result status."""
+    """
+    Test result status.
+
+    Note: This enum mirrors models.TestStatus. They are kept separate to
+    avoid a pydantic dependency in the KTAP parser module. The string
+    values ("pass", "fail", "skip", "error") must stay in sync.
+    """
 
     PASS = "pass"
     FAIL = "fail"
