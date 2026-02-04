@@ -19,8 +19,86 @@ KCIDB_ORIGIN = os.environ.get("KCIDB_ORIGIN", "openwrt")
 KCIDB_SECRET = os.environ.get("KCIDB_SECRET", "")
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "60"))
 
+# Maximum size for log_excerpt (KCIDB limit is 16384)
+MAX_LOG_EXCERPT_SIZE = 16000
+
 # Cache for resolved commit hashes
 _commit_cache: dict[str, str] = {}
+
+# Cache for fetched log excerpts
+_log_cache: dict[str, str] = {}
+
+
+async def fetch_log_excerpt(log_url: str) -> str | None:
+    """
+    Fetch log content from URL and extract a relevant excerpt.
+    
+    Returns up to MAX_LOG_EXCERPT_SIZE characters, prioritizing:
+    1. Test results section (PASSED/FAILED summary)
+    2. Error messages and failures
+    3. Last portion of the log if nothing specific found
+    """
+    if not log_url:
+        return None
+    
+    if log_url in _log_cache:
+        return _log_cache[log_url]
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(log_url)
+            if resp.status_code != 200:
+                logger.warning(f"Failed to fetch log: {resp.status_code}")
+                return None
+            
+            content = resp.text
+            excerpt = extract_log_excerpt(content)
+            _log_cache[log_url] = excerpt
+            return excerpt
+    except Exception as e:
+        logger.warning(f"Failed to fetch log from {log_url}: {e}")
+        return None
+
+
+def extract_log_excerpt(content: str) -> str:
+    """
+    Extract the most relevant portion of a log file.
+    
+    Prioritizes pytest test results and error messages.
+    """
+    if not content:
+        return ""
+    
+    lines = content.split('\n')
+    
+    # Look for pytest summary section (most relevant for test results)
+    summary_start = -1
+    for i, line in enumerate(lines):
+        # pytest summary markers
+        if '====' in line and ('passed' in line.lower() or 'failed' in line.lower() or 'error' in line.lower()):
+            summary_start = max(0, i - 50)  # Include 50 lines before summary
+            break
+        if line.startswith('FAILED ') or line.startswith('ERROR '):
+            summary_start = max(0, i - 20)
+            break
+    
+    if summary_start >= 0:
+        # Get from summary to end
+        excerpt_lines = lines[summary_start:]
+        excerpt = '\n'.join(excerpt_lines)
+    else:
+        # No summary found - take the last portion of the log
+        excerpt = content
+    
+    # Truncate to max size
+    if len(excerpt) > MAX_LOG_EXCERPT_SIZE:
+        excerpt = excerpt[-MAX_LOG_EXCERPT_SIZE:]
+        # Find first newline to avoid cutting mid-line
+        first_newline = excerpt.find('\n')
+        if first_newline > 0:
+            excerpt = excerpt[first_newline + 1:]
+    
+    return excerpt
 
 
 def generate_kcidb_token():
@@ -255,6 +333,11 @@ class KCIDBBridge:
             lab_name = data.get("lab_name", "unknown")
             log_url = data.get("log_url")
 
+            # Fetch log excerpt if log_url is available
+            log_excerpt = None
+            if log_url:
+                log_excerpt = await fetch_log_excerpt(log_url)
+
             # Check if job has individual test results
             test_results = data.get("test_results", [])
 
@@ -282,9 +365,11 @@ class KCIDBBridge:
                         },
                     }
 
-                    # Add log URL if available (job-level log for all tests)
+                    # Add log URL and excerpt if available
                     if log_url:
                         test_entry["log_url"] = log_url
+                    if log_excerpt:
+                        test_entry["log_excerpt"] = log_excerpt
 
                     # Add error message if test failed
                     if test_result.get("error_message"):
@@ -313,6 +398,8 @@ class KCIDBBridge:
 
                 if log_url:
                     test_entry["log_url"] = log_url
+                if log_excerpt:
+                    test_entry["log_excerpt"] = log_excerpt
 
                 tests.append(test_entry)
 
