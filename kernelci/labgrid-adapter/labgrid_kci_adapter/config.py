@@ -63,6 +63,16 @@ class Settings(BaseSettings):
         description="Enable automatic health checks",
     )
 
+    # Device discovery configuration
+    device_discovery_interval: int = Field(
+        default=300,
+        description="Seconds between device discovery refreshes (default: 5min)",
+    )
+    require_target_files: bool = Field(
+        default=True,
+        description="Only accept jobs for devices with target YAML files",
+    )
+
     # Paths
     targets_dir: Path = Field(
         default=Path("/app/targets"),
@@ -105,6 +115,7 @@ class Settings(BaseSettings):
         return [t.strip() for t in self.supported_test_types.split(",") if t.strip()]
 
     class Config:
+        env_file = ".env"
         env_prefix = ""
         case_sensitive = False
 

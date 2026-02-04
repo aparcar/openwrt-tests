@@ -16,6 +16,8 @@ This service runs continuously and:
 """
 
 import asyncio
+import logging
+import sys
 
 import structlog
 
@@ -31,7 +33,14 @@ from .test_types import (
     needs_custom_image,
 )
 
-# Configure logging
+# Configure stdlib logging first (required for structlog.stdlib)
+logging.basicConfig(
+    format="%(message)s",
+    stream=sys.stdout,
+    level=logging.INFO,
+)
+
+# Configure structlog
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,

@@ -1,0 +1,34 @@
+targets:
+  main:
+    features:
+      - wifi
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      NetworkPowerDriver: {}
+      SerialDriver:
+        txdelay: 0.01
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 120
+        post_login_settle_time: 5
+        username: root
+      SmallUBootDriver:
+        boot_expression: "Autobooting in 1 seconds"
+        prompt: "ap143-2.0>"
+        boot_secret: "tpl"
+        init_commands:
+          - tftp 0x82000000
+      UBootStrategy: {}
+      SSHDriver:
+        connection_timeout: 120.0
+        explicit_scp_mode: True
+
+images:
+  root: !template $LG_IMAGE
+
+imports:
+  - ../strategies/tftpstrategy.py

@@ -15,9 +15,9 @@ import signal
 
 import httpx
 import structlog
-import yaml
 
 from .config import settings
+from .device_discovery import DeviceDiscoveryManager
 from .executor import TestExecutor
 from .labgrid_client import LabgridClient
 from .models import JobResult
@@ -60,16 +60,29 @@ class LabgridKCIAdapter:
         self.executor: TestExecutor | None = None
         self._api_client: httpx.AsyncClient | None = None
         self._labgrid_client: LabgridClient | None = None
+        self._discovery_manager: DeviceDiscoveryManager | None = None
         self._running = False
         self._health_check_task: asyncio.Task | None = None
+        self._discovery_task: asyncio.Task | None = None
 
     async def initialize(self) -> None:
         """Initialize the adapter."""
         logger.info(f"Initializing Labgrid KCI Adapter for lab: {self.lab_name}")
 
-        # Discover devices from target files
-        self.devices, self.features = self._discover_devices()
-        logger.info(f"Discovered {len(self.devices)} devices")
+        # Initialize labgrid client first (needed for discovery)
+        self._labgrid_client = LabgridClient()
+
+        # Discover devices from coordinator
+        self._discovery_manager = DeviceDiscoveryManager(
+            labgrid_client=self._labgrid_client,
+            targets_dir=settings.targets_dir,
+            refresh_interval=settings.device_discovery_interval,
+            require_target_files=settings.require_target_files,
+        )
+        devices = await self._discovery_manager.discover()
+        self.devices = list(devices.keys())
+        self.features = self._discovery_manager.get_all_features()
+        logger.info(f"Discovered {len(self.devices)} device types from coordinator")
 
         # Initialize API client
         self._api_client = httpx.AsyncClient(
@@ -91,9 +104,6 @@ class LabgridKCIAdapter:
 
         # Initially assume all devices are healthy (health check will verify)
         self.healthy_devices = set(self.devices)
-
-        # Initialize labgrid client for querying available places
-        self._labgrid_client = LabgridClient()
 
         # Initialize poller with healthy devices only
         # Poller uses labgrid client to support parallel execution
@@ -120,77 +130,6 @@ class LabgridKCIAdapter:
 
         if self._api_client:
             await self._api_client.aclose()
-
-    def _discover_devices(self) -> tuple[list[str], list[str]]:
-        """
-        Discover available devices from labgrid target files.
-
-        Returns:
-            Tuple of (device names, aggregated features)
-        """
-        devices = []
-        all_features = set()
-
-        targets_dir = settings.targets_dir
-        if not targets_dir.exists():
-            logger.warning(f"Targets directory not found: {targets_dir}")
-            return [], []
-
-        for target_file in targets_dir.glob("*.yaml"):
-            try:
-                with open(target_file) as f:
-                    config = yaml.safe_load(f)
-
-                # Get device name from filename
-                device_name = target_file.stem
-
-                # Check if device is available
-                # In a real implementation, we'd check with the labgrid coordinator
-                devices.append(device_name)
-
-                # Extract features from target config
-                features = self._extract_features(config)
-                all_features.update(features)
-
-                logger.debug(f"Discovered device: {device_name}", features=features)
-
-            except Exception as e:
-                logger.warning(f"Error reading target {target_file}: {e}")
-
-        return devices, list(all_features)
-
-    def _extract_features(self, config: dict) -> list[str]:
-        """Extract features from a labgrid target configuration."""
-        features = []
-
-        # Check for explicit features in config
-        if "features" in config:
-            features.extend(config["features"])
-            return features
-
-        # Infer features from resources/drivers
-        targets = config.get("targets", {})
-        for target_name, target_config in targets.items():
-            resources = target_config.get("resources", {})
-            drivers = target_config.get("drivers", {})
-
-            # WiFi detection
-            if "NetworkService" in resources or "WifiAP" in resources:
-                features.append("wifi")
-
-            # WAN port detection
-            if "EthernetInterface" in resources:
-                features.append("wan_port")
-
-            # USB detection
-            if any("USB" in r for r in resources):
-                features.append("usb")
-
-            # QEMU detection (for hwsim)
-            if "QEMUDriver" in drivers:
-                features.append("hwsim")
-
-        return list(set(features))
 
     async def _handle_job(self, job: dict) -> None:
         """
@@ -231,9 +170,26 @@ class LabgridKCIAdapter:
         logger.info(f"Submitting results for job: {result.job_id}")
 
         try:
-            response = await self._api_client.post(
-                f"/api/v1/jobs/{result.job_id}/complete",
-                json=result.model_dump(mode="json"),
+            # Get the current node
+            response = await self._api_client.get(f"/latest/node/{result.job_id}")
+            response.raise_for_status()
+            node = response.json()
+
+            # Update node with results
+            node["state"] = "done"
+            node["result"] = result.status.value if hasattr(result.status, 'value') else result.status
+            node_data = node.get("data", {})
+            node_data["completed_at"] = result.completed_at.isoformat() if result.completed_at else None
+            node_data["duration"] = result.duration
+            node_data["test_results"] = [t.model_dump(mode="json") for t in result.test_results]
+            if result.console_log_url:
+                node_data["log_url"] = result.console_log_url
+            node["data"] = node_data
+
+            # PUT the updated node
+            response = await self._api_client.put(
+                f"/latest/node/{result.job_id}",
+                json=node,
             )
             response.raise_for_status()
             logger.info(f"Results submitted for job: {result.job_id}")
@@ -245,12 +201,22 @@ class LabgridKCIAdapter:
     async def _mark_job_failed(self, job_id: str, error: str) -> None:
         """Mark a job as failed."""
         try:
-            response = await self._api_client.patch(
-                f"/api/v1/jobs/{job_id}",
-                json={
-                    "status": "failed",
-                    "error_message": error,
-                },
+            # Get the current node
+            response = await self._api_client.get(f"/latest/node/{job_id}")
+            response.raise_for_status()
+            node = response.json()
+
+            # Update node with failure
+            node["state"] = "done"
+            node["result"] = "fail"
+            node_data = node.get("data", {})
+            node_data["error_message"] = error
+            node["data"] = node_data
+
+            # PUT the updated node
+            response = await self._api_client.put(
+                f"/latest/node/{job_id}",
+                json=node,
             )
             response.raise_for_status()
         except Exception as e:
@@ -294,7 +260,11 @@ class LabgridKCIAdapter:
         self, device: str, target_file: os.PathLike
     ) -> tuple[bool, str]:
         """
-        Check if a device is accessible via labgrid.
+        Check if a device is accessible via labgrid coordinator.
+
+        Uses place-based acquisition (labgrid-client -p <place>) instead of
+        config file-based, since target files require template variables
+        (LG_IMAGE, etc.) that are only available at job execution time.
 
         Returns:
             Tuple of (is_healthy, message)
@@ -303,11 +273,16 @@ class LabgridKCIAdapter:
             env = os.environ.copy()
             env["LG_COORDINATOR"] = settings.lg_coordinator
 
-            # Try to acquire the target
+            # Construct place name from lab name and device
+            # Place naming convention: {lab_name}-{device_type}
+            # Lab name already includes full prefix (e.g., "labgrid-aparcar")
+            place_name = f"{self.lab_name}-{device}"
+
+            # Try to acquire the place
             proc = await asyncio.create_subprocess_exec(
                 "labgrid-client",
-                "-c",
-                str(target_file),
+                "-p",
+                place_name,
                 "acquire",
                 env=env,
                 stdout=asyncio.subprocess.PIPE,
@@ -327,8 +302,8 @@ class LabgridKCIAdapter:
             # Release immediately
             release_proc = await asyncio.create_subprocess_exec(
                 "labgrid-client",
-                "-c",
-                str(target_file),
+                "-p",
+                place_name,
                 "release",
                 env=env,
                 stdout=asyncio.subprocess.PIPE,
@@ -358,12 +333,60 @@ class LabgridKCIAdapter:
                 # Continue running despite errors
                 await asyncio.sleep(60)
 
+    async def _discovery_refresh_loop(self) -> None:
+        """Background task that refreshes device discovery periodically."""
+        while self._running:
+            try:
+                await asyncio.sleep(settings.device_discovery_interval)
+                if self._running and self._discovery_manager:
+                    old_devices = set(self.devices)
+                    devices = await self._discovery_manager.discover(force_refresh=True)
+                    new_devices = set(devices.keys())
+
+                    # Log changes
+                    added = new_devices - old_devices
+                    removed = old_devices - new_devices
+
+                    if added:
+                        logger.info(f"New devices discovered: {added}")
+                    if removed:
+                        logger.info(f"Devices removed: {removed}")
+
+                    # Update device list
+                    self.devices = list(new_devices)
+                    self.features = self._discovery_manager.get_all_features()
+
+                    # Update healthy devices (remove any that no longer exist)
+                    self.healthy_devices &= new_devices
+
+                    # Update poller device list
+                    if self.poller:
+                        self.poller.devices = [
+                            d for d in self.devices if d in self.healthy_devices
+                        ]
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.exception(f"Error in discovery refresh loop: {e}")
+                await asyncio.sleep(60)
+
     async def run(self) -> None:
         """Main service loop."""
         self._running = True
         logger.info("Starting Labgrid KCI Adapter")
 
         try:
+            # Start discovery refresh loop in background
+            if self._discovery_manager:
+                self._discovery_task = asyncio.create_task(
+                    self._discovery_refresh_loop()
+                )
+                logger.info(
+                    f"Device discovery refresh interval: "
+                    f"{settings.device_discovery_interval}s"
+                )
+
             # Start health check loop in background
             if settings.health_check_enabled:
                 self._health_check_task = asyncio.create_task(self._health_check_loop())
@@ -380,6 +403,12 @@ class LabgridKCIAdapter:
         except Exception as e:
             logger.exception(f"Adapter error: {e}")
         finally:
+            if self._discovery_task:
+                self._discovery_task.cancel()
+                try:
+                    await self._discovery_task
+                except asyncio.CancelledError:
+                    pass
             if self._health_check_task:
                 self._health_check_task.cancel()
                 try:

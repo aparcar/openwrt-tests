@@ -1,0 +1,27 @@
+---
+- name: Generate labgrid environment files from labnet.yaml
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - ../labnet.yaml
+
+  tasks:
+    - name: Ensure env directory exists
+      file:
+        path: ../env
+        state: directory
+        mode: '0755'
+
+    - name: Generate env files for each lab-device combination
+      copy:
+        dest: "../env/{{ item.0.key }}-{{ item.1 }}.env"
+        mode: '0644'
+        content: |
+          export LG_IMAGE=/Users/user/src/openwrt/tests/firmware/openwrt-{{ devices[item.1].target }}-{{ item.1 }}-{{ devices[item.1].firmware }}
+          export LG_PLACE={{ item.0.key }}-{{ item.1 }}
+          export LG_PROXY={{ item.0.value.proxy }}
+          export LG_ENV=targets/{{ item.1 }}.yaml
+      with_subelements:
+        - "{{ labs | dict2items }}"
+        - value.devices
+        - skip_missing: yes

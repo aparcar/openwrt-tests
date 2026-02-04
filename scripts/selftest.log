@@ -1,0 +1,772 @@
+TEST: Locked port ipv4                                              [FAIL]
+	Ping did not work after unlocking port and removing FDB entry.
+TEST: Locked port ipv6                                              [FAIL]
+	Ping6 did not work after unlocking port and removing FDB entry
+TEST: Locked port vlan                                              [FAIL]
+	Ping through vlan did not work after unlocking port and removing FDB entry
+TEST: Locked port MAB                                               [FAIL]
+	Ping did not work after replacing FDB entry
+TEST: Locked port MAB roam                                          [FAIL]
+	No locked entry on first injection
+TEST: Locked port MAB configuration                                 [FAIL]
+	Failed to enable MAB when port is locked and has learning enabled
+TEST: Locked port MAB FDB flush                                     [FAIL]
+	Failed to create locked FDB entry on second port
+TEST: Locked port MAB redirect                                      [FAIL]
+	Locked entry not created after deleting filter
+
+INFO: # Host entries configuration tests
+TEST: Common host entries configuration tests (IPv4)                [ OK ]
+TEST: Common host entries configuration tests (IPv6)                [ OK ]
+TEST: Common host entries configuration tests (L2)                  [ OK ]
+
+INFO: # Port group entries configuration tests - (*, G)
+TEST: Common port group entries configuration tests (IPv4 (*, G))   [ OK ]
+TEST: Common port group entries configuration tests (IPv6 (*, G))   [ OK ]
+TEST: IPv4 (*, G) port group entries configuration tests            [ OK ]
+TEST: IPv6 (*, G) port group entries configuration tests            [ OK ]
+
+INFO: # Port group entries configuration tests - (S, G)
+TEST: Common port group entries configuration tests (IPv4 (S, G))   [ OK ]
+TEST: Common port group entries configuration tests (IPv6 (S, G))   [ OK ]
+TEST: IPv4 (S, G) port group entries configuration tests            [ OK ]
+TEST: IPv6 (S, G) port group entries configuration tests            [ OK ]
+
+INFO: # Port group entries configuration tests - L2
+TEST: Common port group entries configuration tests (L2 (*, G))     [ OK ]
+TEST: L2 (*, G) port group entries configuration tests              [ OK ]
+
+INFO: # Large scale dump tests
+TEST: IPv4 large scale dump tests                                   [FAIL]
+	Wrong number of entries in br-test2
+TEST: IPv6 large scale dump tests                                   [FAIL]
+	Wrong number of entries in br-test2
+TEST: L2 large scale dump tests                                     [FAIL]
+	Wrong number of entries in br-test2
+TEST: Flush tests                                                   [FAIL]
+	Wrong number of entries in br-test2
+
+INFO: # Forwarding tests
+TEST: IPv4 host entries forwarding tests                            [ OK ]
+TEST: IPv6 host entries forwarding tests                            [ OK ]
+TEST: L2 host entries forwarding tests                              [ OK ]
+TEST: IPv4 port group "exclude" entries forwarding tests            [FAIL]
+	Packet from invalid source received on H2 after deleting entry
+TEST: IPv6 port group "exclude" entries forwarding tests            [FAIL]
+	Packet from invalid source received on H2 after deleting entry
+TEST: IPv4 port group "include" entries forwarding tests            [FAIL]
+	Packet from invalid source received on H2 after deleting entry
+TEST: IPv6 port group "include" entries forwarding tests            [FAIL]
+	Packet from invalid source received on H2 after deleting entry
+TEST: L2 port entries forwarding tests                              [ OK ]
+
+INFO: # Control packets tests
+TEST: IGMPv3 MODE_IS_INCLUDE tests                                  [ OK ]
+TEST: MLDv2 MODE_IS_INCLUDE tests                                   [ OK ]
+TEST: MLDv2 report ff02::cc is_include                              [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::3, ff02::cc)
+TEST: MLDv2 report ff02::cc include -> allow                        [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::12, ff02::cc)
+TEST: MLDv2 report ff02::cc include -> is_include                   [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::12, ff02::cc)
+TEST: MLDv2 report ff02::cc include -> is_exclude                   [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::100, ff02::cc)
+TEST: MLDv2 report ff02::cc include -> to_exclude                   [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::100, ff02::cc)
+TEST: MLDv2 report ff02::cc exclude -> allow                        [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::100, ff02::cc)
+TEST: MLDv2 report ff02::cc exclude -> is_include                   [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::100, ff02::cc)
+TEST: MLDv2 report ff02::cc exclude -> is_exclude                   [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::100, ff02::cc)
+TEST: MLDv2 report ff02::cc exclude -> to_exclude                   [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::100, ff02::cc)
+TEST: MLDv2 report ff02::cc include -> block                        [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::3, ff02::cc)
+TEST: MLDv2 report ff02::cc exclude -> block                        [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::100, ff02::cc)
+TEST: MLDv2 group ff02::cc exclude timeout                          [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::30, ff02::cc)
+TEST: MLDv2 S,G port entry automatic add to a *,G port              [FAIL]
+	Didn't forward traffic from S,G (2001:db8:1::3, ff02::cc)
+TEST: per vlan snooping with port stp state change                  [ OK ]
+TEST: per vlan snooping with vlan stp state change                  [ OK ]
+TEST: ping                                                          [ OK ]
+TEST: ping6                                                         [ OK ]
+TEST: FDB learning                                                  [FAIL]
+	Found FDB record when should not
+TEST: Unknown unicast flood                                         [FAIL]
+	Packet was not flooded when should
+TEST: Unregistered multicast flood                                  [ OK ]
+INFO: Add and delete a VLAN on bridge port lan2
+TEST: ping                                                          [ OK ]
+TEST: ping6                                                         [ OK ]
+TEST: Externally learned FDB entry - ageing & roaming               [ OK ]
+TEST: FDB entry in PVID for VLAN-tagged with other TPID             [ OK ]
+TEST: Reception of VLAN with other TPID as untagged                 [FAIL]
+	Packet was not forwarded when it should
+TEST: Reception of VLAN with other TPID as untagged (no PVID)       [FAIL]
+	Packet was forwarded when should not
+TEST: Reception of 802.1p-tagged traffic                            [ OK ]
+TEST: Dropping of untagged and 802.1p-tagged traffic with no PVID   [ OK ]
+TEST: Vlan multicast snooping enable                                [ OK ]
+TEST: Vlan global options existence                                 [ OK ]
+TEST: Vlan mcast_snooping global option default value               [ OK ]
+TEST: Vlan 10 multicast snooping control                            [ OK ]
+TEST: Vlan mcast_querier global option default value                [ OK ]
+TEST: Vlan 10 multicast querier enable                              [ OK ]
+TEST: Vlan 10 tagged IGMPv2 general query sent                      [ OK ]
+TEST: Vlan 10 tagged MLD general query sent                         [ OK ]
+TEST: Vlan mcast_igmp_version global option default value           [ OK ]
+TEST: Vlan mcast_mld_version global option default value            [ OK ]
+TEST: Vlan 10 mcast_igmp_version option changed to 3                [ OK ]
+TEST: Vlan 10 tagged IGMPv3 general query sent                      [ OK ]
+TEST: Vlan 10 mcast_mld_version option changed to 2                 [ OK ]
+TEST: Vlan 10 tagged MLDv2 general query sent                       [ OK ]
+TEST: Vlan mcast_last_member_count global option default value      [ OK ]
+TEST: Vlan mcast_last_member_interval global option default value   [ OK ]
+TEST: Vlan 10 mcast_last_member_count option changed to 3           [ OK ]
+TEST: Vlan 10 mcast_last_member_interval option changed to 200      [ OK ]
+TEST: Vlan mcast_startup_query_interval global option default value   [ OK ]
+TEST: Vlan mcast_startup_query_count global option default value    [ OK ]
+TEST: Vlan 10 mcast_startup_query_interval option changed to 100    [ OK ]
+TEST: Vlan 10 mcast_startup_query_count option changed to 3         [ OK ]
+TEST: Vlan mcast_membership_interval global option default value    [ OK ]
+TEST: Vlan 10 mcast_membership_interval option changed to 200       [ OK ]
+TEST: Vlan 10 mcast_membership_interval mdb entry expire            [ OK ]
+TEST: Vlan mcast_querier_interval global option default value       [ OK ]
+TEST: Vlan 10 mcast_querier_interval option changed to 100          [ OK ]
+TEST: Vlan 10 mcast_querier_interval expire after outside query     [ OK ]
+TEST: Vlan mcast_query_interval global option default value         [ OK ]
+TEST: Vlan 10 mcast_query_interval option changed to 200            [ OK ]
+TEST: Vlan mcast_query_response_interval global option default value   [ OK ]
+TEST: Vlan 10 mcast_query_response_interval option changed to 200   [ OK ]
+TEST: Port vlan 10 option mcast_router default value                [ OK ]
+TEST: Port vlan 10 mcast_router option changed to 2                 [ OK ]
+TEST: Flood unknown vlan multicast packets to router port only      [ OK ]
+TEST: Disable multicast vlan snooping when vlan filtering is disabled   [ OK ]
+TEST: ping                                                          [FAIL]
+TEST: ping6                                                         [FAIL]
+TEST: FDB learning                                                  [FAIL]
+	Found FDB record when should not
+TEST: Unknown unicast flood                                         [FAIL]
+	Packet was not flooded when should
+TEST: Unregistered multicast flood                                  [FAIL]
+	Packet was not flooded when should
+TEST: ping with bridge port lan2 PVID changed                       [FAIL]
+TEST: ping6 with bridge port lan2 PVID changed                      [FAIL]
+TEST: ping with bridge port lan2 PVID deleted                       [FAIL]
+TEST: ping6 with bridge port lan2 PVID deleted                      [FAIL]
+TEST: lan2: Unicast IPv4 to primary MAC address                     [FAIL]
+	reception failed
+TEST: lan2: Unicast IPv4 to macvlan MAC address                     [FAIL]
+	reception failed
+TEST: lan2: Unicast IPv4 to unknown MAC address                     [ OK ]
+TEST: lan2: Unicast IPv4 to unknown MAC address, promisc            [ OK ]
+TEST: lan2: Unicast IPv4 to unknown MAC address, allmulti           [ OK ]
+TEST: lan2: Multicast IPv4 to joined group                          [ OK ]
+TEST: lan2: Multicast IPv4 to unknown group                         [XFAIL]
+	reception succeeded, but should have failed
+TEST: lan2: Multicast IPv4 to unknown group, promisc                [ OK ]
+TEST: lan2: Multicast IPv4 to unknown group, allmulti               [ OK ]
+TEST: lan2: Multicast IPv6 to joined group                          [ OK ]
+TEST: lan2: Multicast IPv6 to unknown group                         [XFAIL]
+	reception succeeded, but should have failed
+TEST: lan2: Multicast IPv6 to unknown group, promisc                [ OK ]
+TEST: lan2: Multicast IPv6 to unknown group, allmulti               [ OK ]
+TEST: lan2: 1588v2 over L2 transport, Sync                          [ OK ]
+TEST: lan2: 1588v2 over L2 transport, Follow-Up                     [ OK ]
+TEST: lan2: 1588v2 over L2 transport, Peer Delay Request            [ OK ]
+TEST: lan2: 1588v2 over IPv4, Sync                                  [FAIL]
+	reception failed
+TEST: lan2: 1588v2 over IPv4, Follow-Up                             [FAIL]
+	reception failed
+TEST: lan2: 1588v2 over IPv4, Peer Delay Request                    [FAIL]
+	reception failed
+TEST: lan2: 1588v2 over IPv6, Sync                                  [FAIL]
+	reception failed
+TEST: lan2: 1588v2 over IPv6, Follow-Up                             [FAIL]
+	reception failed
+TEST: lan2: 1588v2 over IPv6, Peer Delay Request                    [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Unicast IPv4 to primary MAC address   [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Unicast IPv4 to macvlan MAC address   [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Unicast IPv4 to unknown MAC address   [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Unicast IPv4 to unknown MAC address, promisc   [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Unicast IPv4 to unknown MAC address, allmulti   [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Multicast IPv4 to joined group       [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Multicast IPv4 to unknown group      [ OK ]
+TEST: vlan_filtering=0 bridge: Multicast IPv4 to unknown group, promisc   [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Multicast IPv4 to unknown group, allmulti   [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Multicast IPv6 to joined group       [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Multicast IPv6 to unknown group      [ OK ]
+TEST: vlan_filtering=0 bridge: Multicast IPv6 to unknown group, promisc   [FAIL]
+	reception failed
+TEST: vlan_filtering=0 bridge: Multicast IPv6 to unknown group, allmulti   [FAIL]
+	reception failed
+TEST: vlan_filtering=1 bridge: Unicast IPv4 to primary MAC address   [ OK ]
+TEST: vlan_filtering=1 bridge: Unicast IPv4 to macvlan MAC address   [ OK ]
+TEST: vlan_filtering=1 bridge: Unicast IPv4 to unknown MAC address   [ OK ]
+TEST: vlan_filtering=1 bridge: Unicast IPv4 to unknown MAC address, promisc   [ OK ]
+TEST: vlan_filtering=1 bridge: Unicast IPv4 to unknown MAC address, allmulti   [ OK ]
+TEST: vlan_filtering=1 bridge: Multicast IPv4 to joined group       [ OK ]
+TEST: vlan_filtering=1 bridge: Multicast IPv4 to unknown group      [XFAIL]
+	reception succeeded, but should have failed
+TEST: vlan_filtering=1 bridge: Multicast IPv4 to unknown group, promisc   [ OK ]
+TEST: vlan_filtering=1 bridge: Multicast IPv4 to unknown group, allmulti   [ OK ]
+TEST: vlan_filtering=1 bridge: Multicast IPv6 to joined group       [ OK ]
+TEST: vlan_filtering=1 bridge: Multicast IPv6 to unknown group      [XFAIL]
+	reception succeeded, but should have failed
+TEST: vlan_filtering=1 bridge: Multicast IPv6 to unknown group, promisc   [ OK ]
+TEST: vlan_filtering=1 bridge: Multicast IPv6 to unknown group, allmulti   [ OK ]
+TEST: VLAN upper: Unicast IPv4 to primary MAC address               [ OK ]
+TEST: VLAN upper: Unicast IPv4 to macvlan MAC address               [ OK ]
+TEST: VLAN upper: Unicast IPv4 to unknown MAC address               [ OK ]
+TEST: VLAN upper: Unicast IPv4 to unknown MAC address, promisc      [ OK ]
+TEST: VLAN upper: Unicast IPv4 to unknown MAC address, allmulti     [ OK ]
+TEST: VLAN upper: Multicast IPv4 to joined group                    [ OK ]
+TEST: VLAN upper: Multicast IPv4 to unknown group                   [XFAIL]
+	reception succeeded, but should have failed
+TEST: VLAN upper: Multicast IPv4 to unknown group, promisc          [ OK ]
+TEST: VLAN upper: Multicast IPv4 to unknown group, allmulti         [ OK ]
+TEST: VLAN upper: Multicast IPv6 to joined group                    [ OK ]
+TEST: VLAN upper: Multicast IPv6 to unknown group                   [XFAIL]
+	reception succeeded, but should have failed
+TEST: VLAN upper: Multicast IPv6 to unknown group, promisc          [ OK ]
+TEST: VLAN upper: Multicast IPv6 to unknown group, allmulti         [ OK ]
+TEST: VLAN upper: 1588v2 over L2 transport, Sync                    [ OK ]
+TEST: VLAN upper: 1588v2 over L2 transport, Follow-Up               [ OK ]
+TEST: VLAN upper: 1588v2 over L2 transport, Peer Delay Request      [FAIL]
+	reception failed
+TEST: VLAN upper: 1588v2 over IPv4, Sync                            [FAIL]
+	reception failed
+TEST: VLAN upper: 1588v2 over IPv4, Follow-Up                       [FAIL]
+	reception failed
+TEST: VLAN upper: 1588v2 over IPv4, Peer Delay Request              [FAIL]
+	reception failed
+TEST: VLAN upper: 1588v2 over IPv6, Sync                            [FAIL]
+	reception failed
+TEST: VLAN upper: 1588v2 over IPv6, Follow-Up                       [FAIL]
+	reception failed
+TEST: VLAN upper: 1588v2 over IPv6, Peer Delay Request              [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Unicast IPv4 to primary MAC address   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Unicast IPv4 to macvlan MAC address   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Unicast IPv4 to unknown MAC address   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Unicast IPv4 to unknown MAC address, promisc   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Unicast IPv4 to unknown MAC address, allmulti   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Multicast IPv4 to joined group   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Multicast IPv4 to unknown group   [ OK ]
+TEST: VLAN over vlan_filtering=0 bridged port: Multicast IPv4 to unknown group, promisc   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Multicast IPv4 to unknown group, allmulti   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Multicast IPv6 to joined group   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Multicast IPv6 to unknown group   [ OK ]
+TEST: VLAN over vlan_filtering=0 bridged port: Multicast IPv6 to unknown group, promisc   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: Multicast IPv6 to unknown group, allmulti   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: 1588v2 over L2 transport, Sync   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: 1588v2 over L2 transport, Follow-Up   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: 1588v2 over L2 transport, Peer Delay Request   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: 1588v2 over IPv4, Sync   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: 1588v2 over IPv4, Follow-Up   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: 1588v2 over IPv4, Peer Delay Request   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: 1588v2 over IPv6, Sync   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: 1588v2 over IPv6, Follow-Up   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridged port: 1588v2 over IPv6, Peer Delay Request   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=1 bridged port: Unicast IPv4 to primary MAC address   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: Unicast IPv4 to macvlan MAC address   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: Unicast IPv4 to unknown MAC address   [FAIL]
+	reception succeeded, but should have failed
+TEST: VLAN over vlan_filtering=1 bridged port: Unicast IPv4 to unknown MAC address, promisc   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: Unicast IPv4 to unknown MAC address, allmulti   [FAIL]
+	reception succeeded, but should have failed
+TEST: VLAN over vlan_filtering=1 bridged port: Multicast IPv4 to joined group   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: Multicast IPv4 to unknown group   [XFAIL]
+	reception succeeded, but should have failed
+TEST: VLAN over vlan_filtering=1 bridged port: Multicast IPv4 to unknown group, promisc   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: Multicast IPv4 to unknown group, allmulti   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: Multicast IPv6 to joined group   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: Multicast IPv6 to unknown group   [XFAIL]
+	reception succeeded, but should have failed
+TEST: VLAN over vlan_filtering=1 bridged port: Multicast IPv6 to unknown group, promisc   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: Multicast IPv6 to unknown group, allmulti   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: 1588v2 over L2 transport, Sync   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: 1588v2 over L2 transport, Follow-Up   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridged port: 1588v2 over L2 transport, Peer Delay Request   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=1 bridged port: 1588v2 over IPv4, Sync   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=1 bridged port: 1588v2 over IPv4, Follow-Up   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=1 bridged port: 1588v2 over IPv4, Peer Delay Request   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=1 bridged port: 1588v2 over IPv6, Sync   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=1 bridged port: 1588v2 over IPv6, Follow-Up   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=1 bridged port: 1588v2 over IPv6, Peer Delay Request   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Unicast IPv4 to primary MAC address   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Unicast IPv4 to macvlan MAC address   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Unicast IPv4 to unknown MAC address   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Unicast IPv4 to unknown MAC address, promisc   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Unicast IPv4 to unknown MAC address, allmulti   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Multicast IPv4 to joined group   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Multicast IPv4 to unknown group   [ OK ]
+TEST: VLAN over vlan_filtering=0 bridge: Multicast IPv4 to unknown group, promisc   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Multicast IPv4 to unknown group, allmulti   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Multicast IPv6 to joined group   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Multicast IPv6 to unknown group   [ OK ]
+TEST: VLAN over vlan_filtering=0 bridge: Multicast IPv6 to unknown group, promisc   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=0 bridge: Multicast IPv6 to unknown group, allmulti   [FAIL]
+	reception failed
+TEST: VLAN over vlan_filtering=1 bridge: Unicast IPv4 to primary MAC address   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Unicast IPv4 to macvlan MAC address   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Unicast IPv4 to unknown MAC address   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Unicast IPv4 to unknown MAC address, promisc   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Unicast IPv4 to unknown MAC address, allmulti   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Multicast IPv4 to joined group   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Multicast IPv4 to unknown group   [XFAIL]
+	reception succeeded, but should have failed
+TEST: VLAN over vlan_filtering=1 bridge: Multicast IPv4 to unknown group, promisc   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Multicast IPv4 to unknown group, allmulti   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Multicast IPv6 to joined group   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Multicast IPv6 to unknown group   [XFAIL]
+	reception succeeded, but should have failed
+TEST: VLAN over vlan_filtering=1 bridge: Multicast IPv6 to unknown group, promisc   [ OK ]
+TEST: VLAN over vlan_filtering=1 bridge: Multicast IPv6 to unknown group, allmulti   [ OK ]
+Standalone switch ports: Sending packets
+Standalone switch ports: Checking which packets were received
+TEST: Standalone switch ports: Unicast non-IP untagged              [ OK ]
+TEST: Standalone switch ports: Multicast non-IP untagged            [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP untagged            [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 untagged                [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 untagged              [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 untagged                [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 untagged              [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 0                 [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 0               [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 0               [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 0                   [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 0                 [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 0                   [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 0                 [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 1                 [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 1               [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 1               [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 1                   [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 1                 [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 1                   [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 1                 [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 2                 [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 2               [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 2               [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 2                   [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 2                 [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 2                   [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 2                 [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 5                 [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 5               [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 5               [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 5                   [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 5                 [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 5                   [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 5                 [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 10                [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 10              [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 10              [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 10                  [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 10                [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 10                  [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 10                [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 20                [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 20              [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 20              [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 20                  [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 20                [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 20                  [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 20                [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 50                [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 50              [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 50              [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 50                  [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 50                [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 50                  [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 50                [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 100               [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 100             [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 100             [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 100                 [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 100               [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 100                 [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 100               [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 200               [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 200             [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 200             [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 200                 [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 200               [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 200                 [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 200               [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 500               [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 500             [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 500             [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 500                 [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 500               [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 500                 [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 500               [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 1000              [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 1000            [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 1000            [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 1000                [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 1000              [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 1000                [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 1000              [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 1000              [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 1000            [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 1000            [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 1000                [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 1000              [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 1000                [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 1000              [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 2000              [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 2000            [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 2000            [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 2000                [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 2000              [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 2000                [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 2000              [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 4000              [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 4000            [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 4000            [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 4000                [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 4000              [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 4000                [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 4000              [ OK ]
+TEST: Standalone switch ports: Unicast non-IP VID 4094              [ OK ]
+TEST: Standalone switch ports: Multicast non-IP VID 4094            [ OK ]
+TEST: Standalone switch ports: Broadcast non-IP VID 4094            [ OK ]
+TEST: Standalone switch ports: Unicast IPv4 VID 4094                [ OK ]
+TEST: Standalone switch ports: Multicast IPv4 VID 4094              [ OK ]
+TEST: Standalone switch ports: Unicast IPv6 VID 4094                [ OK ]
+TEST: Standalone switch ports: Multicast IPv6 VID 4094              [ OK ]
+Switch ports in different bridges: Sending packets
+Switch ports in different bridges: Checking which packets were received
+TEST: Switch ports in different bridges: Unicast non-IP untagged    [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP untagged   [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP untagged   [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 untagged      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 untagged    [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 untagged      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 untagged    [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 0       [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 0     [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 0     [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 0         [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 0       [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 0         [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 0       [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 1       [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 1     [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 1     [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 1         [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 1       [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 1         [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 1       [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 2       [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 2     [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 2     [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 2         [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 2       [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 2         [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 2       [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 5       [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 5     [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 5     [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 5         [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 5       [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 5         [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 5       [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 10      [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 10    [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 10    [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 10        [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 10      [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 10        [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 10      [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 20      [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 20    [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 20    [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 20        [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 20      [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 20        [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 20      [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 50      [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 50    [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 50    [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 50        [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 50      [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 50        [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 50      [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 100     [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 100   [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 100   [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 100       [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 100     [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 100       [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 100     [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 200     [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 200   [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 200   [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 200       [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 200     [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 200       [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 200     [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 500     [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 500   [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 500   [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 500       [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 500     [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 500       [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 500     [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 1000    [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 1000   [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 1000   [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 1000      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 1000    [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 1000      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 1000    [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 1000    [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 1000   [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 1000   [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 1000      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 1000    [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 1000      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 1000    [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 2000    [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 2000   [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 2000   [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 2000      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 2000    [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 2000      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 2000    [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 4000    [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 4000   [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 4000   [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 4000      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 4000    [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 4000      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 4000    [ OK ]
+TEST: Switch ports in different bridges: Unicast non-IP VID 4094    [ OK ]
+TEST: Switch ports in different bridges: Multicast non-IP VID 4094   [ OK ]
+TEST: Switch ports in different bridges: Broadcast non-IP VID 4094   [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv4 VID 4094      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv4 VID 4094    [ OK ]
+TEST: Switch ports in different bridges: Unicast IPv6 VID 4094      [ OK ]
+TEST: Switch ports in different bridges: Multicast IPv6 VID 4094    [ OK ]
+Switch ports in VLAN-aware bridge with different PVIDs: Sending packets
+Switch ports in VLAN-aware bridge with different PVIDs: Checking which packets were received
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP untagged   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP untagged   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP untagged   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 untagged   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 untagged   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 untagged   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 untagged   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 0   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 0   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 0   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 0   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 0   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 0   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 0   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 1   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 1   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 1   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 1   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 1   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 1   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 1   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 2   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 2   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 2   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 2   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 2   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 2   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 2   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 5   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 5   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 5   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 5   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 5   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 5   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 5   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 10   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 10   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 10   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 10   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 10   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 10   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 10   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 20   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 20   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 20   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 20   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 20   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 20   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 20   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 50   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 50   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 50   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 50   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 50   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 50   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 50   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 100   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 100   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 100   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 100   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 100   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 100   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 100   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 200   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 200   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 200   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 200   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 200   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 200   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 200   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 500   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 500   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 500   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 500   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 500   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 500   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 500   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 1000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 2000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 2000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 2000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 2000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 2000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 2000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 2000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 4000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 4000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 4000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 4000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 4000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 4000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 4000   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast non-IP VID 4094   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast non-IP VID 4094   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Broadcast non-IP VID 4094   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv4 VID 4094   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv4 VID 4094   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Unicast IPv6 VID 4094   [ OK ]
+TEST: Switch ports in VLAN-aware bridge with different PVIDs: Multicast IPv6 VID 4094   [ OK ]
+TEST: ncat not installed                                            [SKIP]
+TEST: isochron not installed                                        [SKIP]
+Cannot find device "br0"
+2% complete...
+4% complete...
+6% complete...
+8% complete...
+10% complete...
+12% complete...
+14% complete...
+16% complete...
+18% complete...
+20% complete...
+22% complete...
+24% complete...
+26% complete...
+28% complete...
+30% complete...
+32% complete...
+34% complete...
+36% complete...
+38% complete...
+40% complete...
+42% complete...
+44% complete...
+46% complete...
+48% complete...
+50% complete...
+52% complete...
+54% complete...
+56% complete...
+58% complete...
+60% complete...
+62% complete...
+64% complete...
+66% complete...
+68% complete...
+70% complete...
+72% complete...
+74% complete...
+76% complete...
+78% complete...
+80% complete...
+82% complete...
+84% complete...
+86% complete...
+88% complete...
+90% complete...
+92% complete...
+94% complete...
+96% complete...
+98% complete...
+100% complete...
+Cleaning up
+Please check kernel log for errors

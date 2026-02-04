@@ -23,7 +23,7 @@ class TestResult(BaseModel):
 
     id: str
     job_id: str
-    firmware_id: str
+    firmware_id: str | None = None
     device_type: str
     lab_name: str
 
@@ -44,7 +44,7 @@ class JobResult(BaseModel):
     """Complete job result."""
 
     job_id: str
-    firmware_id: str
+    firmware_id: str | None = None
     device_type: str
     lab_name: str
 

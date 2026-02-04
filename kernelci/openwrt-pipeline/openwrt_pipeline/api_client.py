@@ -137,12 +137,14 @@ class KernelCIClient:
         Returns:
             Created node with generated 'id'
         """
-        return await self._request("POST", "/latest/nodes", json=node)
+        # KernelCI API uses /node (singular) for creating nodes
+        return await self._request("POST", "/latest/node", json=node)
 
     async def get_node(self, node_id: str) -> dict[str, Any] | None:
         """Get node by ID."""
         try:
-            return await self._request("GET", f"/latest/nodes/{node_id}")
+            # KernelCI API uses /node/{id} (singular) for single node operations
+            return await self._request("GET", f"/latest/node/{node_id}")
         except APIError as e:
             if e.status_code == 404:
                 return None
@@ -152,7 +154,8 @@ class KernelCIClient:
         self, node_id: str, updates: dict[str, Any]
     ) -> dict[str, Any]:
         """Update an existing node."""
-        return await self._request("PUT", f"/latest/nodes/{node_id}", json=updates)
+        # KernelCI API uses /node/{id} (singular) for single node operations
+        return await self._request("PUT", f"/latest/node/{node_id}", json=updates)
 
     async def query_nodes(
         self,
@@ -284,12 +287,23 @@ class KernelCIClient:
             artifacts = parent_data.get("artifacts", {})
             firmware_url = artifacts.get("sysupgrade") or artifacts.get("factory")
 
+        # Build path from parent path or construct from kernel_revision
+        parent_path = parent.get("path", []) if parent else []
+        if not parent_path:
+            # Fallback: construct from kernel_revision
+            branch = kernel_rev.get("branch", "main")
+            parent_path = [OPENWRT_TREE, branch]
+
+        # Extend path with job-specific info
+        job_path = parent_path + [test_type, device_type, test_plan]
+
         node = {
             "kind": "job",
             "name": f"openwrt-{test_type}-{device_type}-{test_plan}",
+            "path": job_path,
             "parent": firmware_node_id,
             "group": OPENWRT_TREE,
-            "state": "available",  # Ready to be picked up by a lab
+            "state": "available",  # Lab adapter will claim and transition to closing->done
             "data": {
                 "kernel_revision": kernel_rev,
                 "device_type": device_type,

@@ -1,0 +1,71 @@
+- hosts: coordinator
+  become: true
+  tasks:
+    - name: Create a user account called labgrid-dev
+      user:
+        name: labgrid-dev
+        state: present
+
+    - name: Add SSH keys to labgrid-dev based on labnet.yaml
+      authorized_key:
+        user: labgrid-dev
+        state: present
+        key: "{{ item.value.sshkey }}"
+        comment: "{{ item.key }}"
+      loop: "{{ hostvars[inventory_hostname]['developers'] | dict2items | default([]) }}"
+
+    # - name: Add labs to /etc/hosts
+    #   lineinfile:
+    #     path: /etc/hosts
+    #     line: "{{ hostvars[item].wireguard_ip }} {{ item }}"
+    #     state: present
+    #   loop: "{{ groups['labs'] }}"
+
+    - name: Create .ssh directory
+      file:
+        path: /home/labgrid-dev/.ssh
+        state: directory
+        mode: "0700"
+
+    # - name: Add .ssh/config
+    #   blockinfile:
+    #     path: /home/labgrid-dev/.ssh/config
+    #     block: |
+    #       Host {{ item }}
+    #         HostName {{ hostvars[item].wireguard_ip }}
+    #         User labgrid-dev
+    #     state: present
+    #     marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
+    #     create: true
+    #   loop: "{{ groups['labs'] }}"
+
+    # - name: Add .ssh/config
+    #   blockinfile:
+    #     path: /home/labgrid-dev/.ssh/config
+    #     block: |
+    #       Host {{ item }}
+    #         HostName {{ hostvars[item].wireguard_ip }}
+    #         User labgrid-dev
+    #     state: present
+    #     marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
+    #     create: true
+    #   loop: "{{ groups['labs'] }}"
+
+    # - name: Add .ssh/config
+    #   blockinfile:
+    #     path: /home/{{ ansible_ssh_user }}/.ssh/config
+    #     block: |
+    #       Host {{ item }}
+    #         HostName {{ hostvars[item].wireguard_ip }}
+    #         User labgrid-dev
+    #     state: present
+    #     marker: "# {mark} ANSIBLE MANAGED BLOCK {{ item }}"
+    #     create: true
+    #   loop: "{{ groups['labs'] }}"
+
+    - name: Install required packages
+      apt:
+        name:
+          - nmap
+        state: present
+        update_cache: yes

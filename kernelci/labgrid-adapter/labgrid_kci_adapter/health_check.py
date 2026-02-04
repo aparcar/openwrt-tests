@@ -17,28 +17,38 @@ from pathlib import Path
 from .config import settings
 
 
-def check_device(target_file: Path) -> tuple[str, bool, str]:
+def check_device(device_name: str) -> tuple[str, bool, str]:
     """
-    Run basic health check on a device.
+    Run basic health check on a device using place-based acquisition.
+
+    Uses labgrid-client -p <place> to check if the device is accessible
+    via the coordinator, without needing to parse target config files.
 
     Returns:
         Tuple of (device_name, passed, message)
     """
-    device_name = target_file.stem
+    import os
 
     try:
-        # Try to acquire and release the target via labgrid-client
+        env = os.environ.copy()
+        env["LG_COORDINATOR"] = settings.lg_coordinator
+
+        # Construct place name from lab name and device
+        # Lab name already includes the full prefix (e.g., "labgrid-aparcar")
+        place_name = f"{settings.lab_name}-{device_name}"
+
+        # Try to acquire the place
         result = subprocess.run(
             [
                 "labgrid-client",
-                "-c",
-                str(target_file),
+                "-p",
+                place_name,
                 "acquire",
             ],
             capture_output=True,
             text=True,
             timeout=30,
-            env={"LG_COORDINATOR": settings.lg_coordinator},
+            env=env,
         )
 
         if result.returncode != 0:
@@ -48,13 +58,13 @@ def check_device(target_file: Path) -> tuple[str, bool, str]:
         subprocess.run(
             [
                 "labgrid-client",
-                "-c",
-                str(target_file),
+                "-p",
+                place_name,
                 "release",
             ],
             capture_output=True,
             timeout=10,
-            env={"LG_COORDINATOR": settings.lg_coordinator},
+            env=env,
         )
 
         return (device_name, True, "OK")
@@ -65,9 +75,39 @@ def check_device(target_file: Path) -> tuple[str, bool, str]:
         return (device_name, False, str(e))
 
 
-def list_devices(targets_dir: Path) -> list[Path]:
-    """List all device target files."""
-    return list(targets_dir.glob("*.yaml"))
+def list_devices_from_targets(targets_dir: Path) -> list[str]:
+    """List device names from target YAML files."""
+    return [f.stem for f in targets_dir.glob("*.yaml")]
+
+
+def list_devices_from_coordinator() -> list[str]:
+    """List device names from labgrid coordinator places."""
+    import os
+
+    env = os.environ.copy()
+    env["LG_COORDINATOR"] = settings.lg_coordinator
+
+    result = subprocess.run(
+        ["labgrid-client", "places"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        env=env,
+    )
+
+    if result.returncode != 0:
+        return []
+
+    # Parse place names and extract device names for this lab
+    # Place format: {lab_name}-{device_name} (lab_name includes full prefix)
+    prefix = f"{settings.lab_name}-"
+    devices = []
+    for line in result.stdout.strip().split("\n"):
+        place = line.strip()
+        if place.startswith(prefix):
+            device = place[len(prefix) :]
+            devices.append(device)
+    return devices
 
 
 def main():
@@ -80,7 +120,7 @@ def main():
         "--targets-dir",
         type=Path,
         default=settings.targets_dir,
-        help="Directory containing target YAML files",
+        help="Directory containing target YAML files (optional)",
     )
     args = parser.parse_args()
 
@@ -88,29 +128,29 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    targets_dir = args.targets_dir
-    if not targets_dir.exists():
-        print(f"Error: Targets directory not found: {targets_dir}")
-        sys.exit(1)
-
     # Get devices to check
     if args.all:
-        target_files = list_devices(targets_dir)
+        # First try to get devices from coordinator
+        devices = list_devices_from_coordinator()
+        if not devices:
+            # Fall back to target files
+            targets_dir = args.targets_dir
+            if targets_dir.exists():
+                devices = list_devices_from_targets(targets_dir)
+            else:
+                print("Error: No devices found from coordinator or targets directory")
+                sys.exit(1)
     else:
-        target_file = targets_dir / f"{args.device}.yaml"
-        if not target_file.exists():
-            print(f"Error: Device not found: {args.device}")
-            sys.exit(1)
-        target_files = [target_file]
+        devices = [args.device]
 
     # Run checks
-    print(f"Checking {len(target_files)} device(s)...\n")
+    print(f"Checking {len(devices)} device(s)...\n")
 
     passed = 0
     failed = 0
 
-    for target_file in target_files:
-        name, ok, message = check_device(target_file)
+    for device in devices:
+        name, ok, message = check_device(device)
         status = "✓" if ok else "✗"
         print(f"  {status} {name}: {message}")
 

@@ -27,15 +27,16 @@ class Place:
     @property
     def device_type(self) -> str | None:
         """Extract device type from place tags or name."""
-        if self.tags and "device_type" in self.tags:
-            return self.tags["device_type"]
-        # Try to extract from name pattern: lab-devicetype or lab-devicetype-N
-        # e.g., "aparcar-openwrt_one-1" -> "openwrt_one"
+        if self.tags:
+            # Check common tag names for device type
+            if "device_type" in self.tags:
+                return self.tags["device_type"]
+            if "device" in self.tags:
+                return self.tags["device"]
+        # Fallback: try to extract from name (unreliable, prefer tags)
         parts = self.name.split("-", 1)
         if len(parts) > 1:
-            # Remove trailing instance number if present
             device_part = parts[1]
-            # Handle "openwrt_one-1" -> "openwrt_one"
             match = re.match(r"(.+?)(?:-\d+)?$", device_part)
             if match:
                 return match.group(1)
@@ -57,7 +58,10 @@ class LabgridClient:
 
     async def _run_labgrid_client(self, *args: str) -> tuple[int, str, str]:
         """Run labgrid-client command."""
-        env = {"LG_COORDINATOR": self.coordinator_url}
+        import os
+
+        env = os.environ.copy()
+        env["LG_COORDINATOR"] = self.coordinator_url
 
         proc = await asyncio.create_subprocess_exec(
             "labgrid-client",
@@ -89,76 +93,89 @@ class LabgridClient:
         ):
             return self._places_cache
 
-        returncode, stdout, stderr = await self._run_labgrid_client("places")
+        # Use -v for verbose output with all place details
+        returncode, stdout, stderr = await self._run_labgrid_client("-v", "places")
 
         if returncode != 0:
             logger.warning(f"Failed to list places: {stderr}")
             return self._places_cache or {}
 
-        places = self._parse_places_output(stdout)
+        places = self._parse_verbose_places_output(stdout)
         self._places_cache = places
         self._cache_time = now
 
         return places
 
-    def _parse_places_output(self, output: str) -> dict[str, Place]:
+    def _parse_verbose_places_output(self, output: str) -> dict[str, Place]:
         """
-        Parse output of 'labgrid-client places' command.
+        Parse output of 'labgrid-client -v places' command.
 
         Example output:
-        Place 'aparcar-openwrt_one':
-          acquired: user/host
-          tags:
-            device_type: openwrt_one
-        Place 'aparcar-openwrt_one-2':
-          acquired:
-          tags:
-            device_type: openwrt_one
+        Place 'labgrid-aparcar-openwrt_one':
+          tags: device=openwrt_one
+          matches:
+            */labgrid-aparcar-openwrt_one/*
+          acquired: None
+          acquired resources:
+          created: 2025-12-17 23:56:47
+          changed: 2026-02-03 01:48:12.311304
+        Place 'labgrid-aparcar-rpi-4':
+          tags: device=rpi-4
+          ...
         """
         places = {}
-        current_place = None
+        current_name = None
         current_tags = {}
-        in_tags = False
+        current_acquired = False
+        current_acquired_by = None
 
         for line in output.split("\n"):
-            line = line.rstrip()
-
-            # New place
+            # New place starts with "Place '"
             if line.startswith("Place '"):
                 # Save previous place
-                if current_place:
-                    places[current_place.name] = current_place
-                    current_place.tags = current_tags if current_tags else None
+                if current_name:
+                    places[current_name] = Place(
+                        name=current_name,
+                        acquired=current_acquired,
+                        acquired_by=current_acquired_by,
+                        tags=current_tags if current_tags else None,
+                    )
 
-                # Parse place name
+                # Parse new place name
                 match = re.match(r"Place '([^']+)':", line)
                 if match:
-                    current_place = Place(
-                        name=match.group(1),
-                        acquired=False,
-                        acquired_by=None,
-                    )
+                    current_name = match.group(1)
                     current_tags = {}
-                    in_tags = False
+                    current_acquired = False
+                    current_acquired_by = None
 
-            elif current_place and line.strip().startswith("acquired:"):
-                acquired_value = line.split(":", 1)[1].strip()
-                current_place.acquired = bool(acquired_value)
-                current_place.acquired_by = acquired_value if acquired_value else None
-                in_tags = False
+            elif current_name:
+                line = line.strip()
 
-            elif current_place and line.strip() == "tags:":
-                in_tags = True
+                # Parse tags line: "tags: device=openwrt_one key2=value2"
+                if line.startswith("tags:"):
+                    tag_str = line.split(":", 1)[1].strip()
+                    if tag_str:
+                        for tag in tag_str.split():
+                            if "=" in tag:
+                                k, v = tag.split("=", 1)
+                                current_tags[k] = v
 
-            elif current_place and in_tags and ":" in line:
-                # Parse tag
-                key, value = line.strip().split(":", 1)
-                current_tags[key.strip()] = value.strip()
+                # Parse acquired line
+                elif line.startswith("acquired:"):
+                    value = line.split(":", 1)[1].strip()
+                    if value and value != "None":
+                        current_acquired = True
+                        current_acquired_by = value
 
         # Don't forget the last place
-        if current_place:
-            current_place.tags = current_tags if current_tags else None
-            places[current_place.name] = current_place
+        if current_name:
+            places[current_name] = Place(
+                name=current_name,
+                acquired=current_acquired,
+                acquired_by=current_acquired_by,
+                tags=current_tags if current_tags else None,
+            )
 
         return places
 
@@ -243,3 +260,45 @@ class LabgridClient:
             logger.warning(f"Failed to release {place_name}: {stderr}")
             return False
         return True
+
+    async def get_places_for_lab(
+        self, lab_name: str, refresh: bool = False
+    ) -> list[Place]:
+        """
+        Get all places belonging to a specific lab.
+
+        Filters places by:
+        1. tags.lab == lab_name (explicit tag)
+        2. place.name starts with "{lab_name}-" (naming convention)
+
+        Args:
+            lab_name: The lab name to filter by
+            refresh: Force refresh of cached data
+
+        Returns:
+            List of Place objects belonging to this lab
+        """
+        places = await self.get_places(refresh=refresh)
+        lab_places = []
+
+        for place in places.values():
+            # Check explicit lab tag first
+            if place.tags and place.tags.get("lab") == lab_name:
+                lab_places.append(place)
+            # Fall back to name prefix matching
+            elif place.name.startswith(f"{lab_name}-"):
+                lab_places.append(place)
+
+        return lab_places
+
+    def get_unique_device_types(self, places: list[Place]) -> set[str]:
+        """
+        Extract unique device types from a list of places.
+
+        Args:
+            places: List of Place objects
+
+        Returns:
+            Set of unique device type strings
+        """
+        return {p.device_type for p in places if p.device_type}

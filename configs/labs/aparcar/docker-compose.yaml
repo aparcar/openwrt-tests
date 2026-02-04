@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  labgrid-kci-adapter:
+    image: ghcr.io/openwrt/labgrid-kci-adapter:latest
+    build:
+      context: ../../../kernelci/labgrid-adapter
+      dockerfile: Dockerfile
+    container_name: labgrid-kci-adapter-aparcar
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Override paths for container
+      TARGETS_DIR: /app/targets
+      TESTS_DIR: /app/tests
+      FIRMWARE_CACHE: /app/cache
+    volumes:
+      # Mount labgrid target definitions (read-only)
+      - ../../../targets:/app/targets:ro
+      # Mount test suite (read-only)
+      - ../../../tests:/app/tests:ro
+      # Mount strategies for custom labgrid drivers (read-only)
+      - ../../../strategies:/app/strategies:ro
+      # Firmware cache (persistent volume)
+      - firmware-cache:/app/cache
+    # Host network required for:
+    # - Labgrid coordinator gRPC connection
+    # - Serial port access to devices
+    # - Network access to device VLANs
+    network_mode: host
+    # Privileged mode for USB serial port access
+    privileged: true
+    devices:
+      - /dev:/dev
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  firmware-cache:
+    name: labgrid-aparcar-firmware-cache

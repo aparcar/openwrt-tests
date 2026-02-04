@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  adapter:
+    build: .
+    container_name: kernelci-adapter
+    restart: unless-stopped
+    environment:
+      # Lab identification
+      LAB_NAME: "${LAB_NAME:-labgrid-aparcar}"
+
+      # KernelCI API connection
+      KCI_API_URL: "${KCI_API_URL:-https://api.openwrt-kci.aparcar.org}"
+      KCI_API_TOKEN: "${KCI_API_TOKEN}"
+
+      # Labgrid coordinator
+      LG_COORDINATOR: "${LG_COORDINATOR:-localhost:20408}"
+
+      # Polling and execution
+      POLL_INTERVAL: "${POLL_INTERVAL:-30}"
+      MAX_CONCURRENT_JOBS: "${MAX_CONCURRENT_JOBS:-3}"
+
+      # Health checks
+      HEALTH_CHECK_ENABLED: "${HEALTH_CHECK_ENABLED:-true}"
+      HEALTH_CHECK_INTERVAL: "${HEALTH_CHECK_INTERVAL:-86400}"
+
+      # Test types this lab supports
+      SUPPORTED_TEST_TYPES: "${SUPPORTED_TEST_TYPES:-firmware}"
+
+      # Optional: MinIO for log storage
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT:-}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY:-}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY:-}"
+      MINIO_LOGS_BUCKET: "${MINIO_LOGS_BUCKET:-test-logs}"
+
+    volumes:
+      # Mount labgrid target definitions
+      - ../../targets:/app/targets:ro
+      # Mount test suite
+      - ../../tests:/app/tests:ro
+      # Mount conftest and strategies
+      - ../../strategies:/app/strategies:ro
+      # Firmware cache (persistent)
+      - firmware-cache:/app/cache
+
+    # Host network for labgrid serial/network access
+    network_mode: host
+
+    # For USB serial port access
+    privileged: true
+    devices:
+      - /dev:/dev
+
+volumes:
+  firmware-cache:

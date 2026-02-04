@@ -9,20 +9,19 @@ For kselftest jobs, the executor parses KTAP output from test stdout
 to extract individual subtest results.
 """
 
-import io
+import asyncio
 import logging
 import os
 import tempfile
-from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime
 from pathlib import Path
 
 import httpx
-import pytest
 from minio import Minio
 
 from .config import settings
 from .ktap_parser import parse_ktap, ktap_results_to_dict
+from .labgrid_client import LabgridClient
 from .models import JobResult, TestResult, TestStatus
 from .test_sync import ensure_tests
 
@@ -113,6 +112,7 @@ class TestExecutor:
 
         self._http_client: httpx.AsyncClient | None = None
         self._minio: Minio | None = None
+        self._labgrid_client = LabgridClient()
 
     async def initialize(self) -> None:
         """Initialize HTTP client and storage client."""
@@ -157,7 +157,7 @@ class TestExecutor:
         timeout = job_data.get("timeout", 1800)
 
         # Get firmware info from parent node if available
-        firmware_id = job.get("parent", "")
+        firmware_id = job.get("parent")  # None if no parent
         firmware_url = job_data.get("firmware_url")
 
         # Test type for logging/debugging
@@ -177,7 +177,15 @@ class TestExecutor:
         test_results: list[TestResult] = []
         console_log_url = None
 
+        # Construct place name
+        place_name = f"{self.lab_name}-{device_type}"
+
         try:
+            # Acquire the labgrid place before running tests
+            logger.info(f"Acquiring place: {place_name}")
+            if not await self._labgrid_client.acquire_place(place_name):
+                raise RuntimeError(f"Failed to acquire place: {place_name}")
+
             with tempfile.TemporaryDirectory(prefix=f"job-{job_id}-") as tmpdir:
                 tmpdir_path = Path(tmpdir)
                 console_log_path = tmpdir_path / "console.log"
@@ -200,7 +208,7 @@ class TestExecutor:
                     )
 
                 # Run pytest and collect results
-                collector, output = self._run_pytest(
+                collector, output = await self._run_pytest(
                     device_type=device_type,
                     tests=tests,
                     tests_dir=tests_dir,
@@ -242,6 +250,11 @@ class TestExecutor:
                     error_message=str(e),
                 )
             ]
+
+        finally:
+            # Always release the place after test execution
+            logger.info(f"Releasing place: {place_name}")
+            await self._labgrid_client.release_place(place_name)
 
         end_time = datetime.utcnow()
         duration = (end_time - start_time).total_seconds()
@@ -287,7 +300,7 @@ class TestExecutor:
             logger.warning(f"Failed to download firmware: {e}")
             return None
 
-    def _run_pytest(
+    async def _run_pytest(
         self,
         device_type: str,
         tests: list[str],
@@ -296,7 +309,10 @@ class TestExecutor:
         timeout: int,
     ) -> tuple[ResultCollectorPlugin, str]:
         """
-        Run pytest programmatically and collect results.
+        Run pytest as a subprocess and collect results.
+
+        Uses subprocess to avoid event loop conflicts with labgrid's
+        async coordinator session.
 
         Args:
             device_type: Device type for labgrid target selection
@@ -312,6 +328,7 @@ class TestExecutor:
 
         # Build pytest arguments
         args = [
+            "pytest",
             str(tests_dir),
             "-v",
             "--tb=short",
@@ -322,32 +339,101 @@ class TestExecutor:
         if tests:
             args.extend(["-k", " or ".join(tests)])
 
-        # Set firmware path via environment
-        env_backup = os.environ.copy()
-        os.environ["LG_COORDINATOR"] = settings.lg_coordinator
+        # Set labgrid environment variables
+        env = os.environ.copy()
+        env["LG_COORDINATOR"] = settings.lg_coordinator
+        # LG_PLACE is the labgrid place name for remote device access
+        env["LG_PLACE"] = f"{settings.lab_name}-{device_type}"
         if firmware_path:
-            os.environ["LG_FIRMWARE"] = str(firmware_path)
+            # LG_IMAGE is used by target YAML templates for firmware path
+            env["LG_IMAGE"] = str(firmware_path)
+            # Also set LG_FIRMWARE for backwards compatibility
+            env["LG_FIRMWARE"] = str(firmware_path)
 
-        # Create result collector plugin
-        collector = ResultCollectorPlugin()
-
-        # Capture stdout/stderr
-        output_buffer = io.StringIO()
+        # Run pytest as subprocess
+        logger.info(f"Running pytest: {' '.join(args)}")
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            cwd=str(self.targets_dir.parent),  # Run from labgrid-adapter dir
+        )
 
         try:
-            with redirect_stdout(output_buffer), redirect_stderr(output_buffer):
-                # Run pytest with our plugin
-                # Note: pytest.main() returns exit code, not raises
-                exit_code = pytest.main(args, plugins=[collector])
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            logger.error(f"pytest timed out after {timeout}s")
+            stdout = b"pytest timed out"
 
-            logger.info(f"pytest completed with exit code: {exit_code}")
+        output = stdout.decode("utf-8", errors="replace")
+        exit_code = proc.returncode
 
-        finally:
-            # Restore environment
-            os.environ.clear()
-            os.environ.update(env_backup)
+        logger.info(f"pytest completed with exit code: {exit_code}")
 
-        return collector, output_buffer.getvalue()
+        # Log output if pytest failed or had issues
+        if exit_code != 0:
+            logger.warning(f"pytest output:\n{output[-2000:]}")  # Last 2000 chars
+
+        # Parse results from pytest output
+        # Create a collector to hold results (parsed from output)
+        collector = ResultCollectorPlugin()
+        collector.start_time = datetime.utcnow()
+        collector.end_time = datetime.utcnow()
+
+        # Try to parse pytest output for test results
+        collector.results = self._parse_pytest_output(output)
+
+        return collector, output
+
+    def _parse_pytest_output(self, output: str) -> list[dict]:
+        """
+        Parse pytest verbose output to extract test results.
+
+        Looks for lines like:
+        tests/test_base.py::test_shell PASSED
+        tests/test_base.py::test_uname FAILED
+
+        Args:
+            output: Raw pytest output
+
+        Returns:
+            List of result dicts with nodeid, outcome, duration
+        """
+        import re
+        results = []
+
+        # Match pytest verbose output: nodeid STATUS [duration]
+        # Examples:
+        #   test_base.py::test_shell PASSED                      [ 50%]
+        #   test_base.py::test_uname FAILED                      [100%]
+        pattern = r'^([\w/\-_\.]+::\w+)\s+(PASSED|FAILED|SKIPPED|ERROR)'
+
+        for line in output.split('\n'):
+            match = re.search(pattern, line)
+            if match:
+                nodeid = match.group(1)
+                status = match.group(2).lower()
+                # Map to pytest internal format
+                outcome_map = {
+                    'passed': 'passed',
+                    'failed': 'failed',
+                    'skipped': 'skipped',
+                    'error': 'failed',
+                }
+                results.append({
+                    'nodeid': nodeid,
+                    'outcome': outcome_map.get(status, 'failed'),
+                    'duration': 0,  # Not available from verbose output
+                    'error_message': None,
+                    'stdout': None,
+                    'stderr': None,
+                })
+
+        logger.info(f"Parsed {len(results)} test results from output")
+        return results
 
     def _convert_results(
         self,
@@ -482,7 +568,9 @@ class TestExecutor:
                 file_path=str(log_path),
                 content_type="text/plain",
             )
-            return f"http://{settings.minio_endpoint}/{bucket}/{object_name}"
+            # Use https if minio_secure is enabled
+            scheme = "https" if settings.minio_secure else "http"
+            return f"{scheme}://{settings.minio_endpoint}/{bucket}/{object_name}"
         except Exception as e:
             logger.warning(f"Failed to upload log: {e}")
             return None

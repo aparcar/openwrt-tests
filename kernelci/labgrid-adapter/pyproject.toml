@@ -1,0 +1,43 @@
+[project]
+name = "labgrid-kci-adapter"
+version = "0.1.0"
+description = "Adapter connecting labgrid test infrastructure to KernelCI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "labgrid @ git+https://github.com/aparcar/labgrid.git@aparcar/staging",
+    "httpx>=0.27.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "pyyaml>=6.0.1",
+    "minio>=7.2.0",
+    "structlog>=24.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+labgrid-kci-adapter = "labgrid_kci_adapter.service:run"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["labgrid_kci_adapter*"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

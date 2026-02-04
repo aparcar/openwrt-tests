@@ -99,7 +99,9 @@ async def ensure_tests(
     else:
         # Clone fresh
         logger.info(f"Cloning tests from {repo_url}")
-        if dest_dir.exists():
+        if dest_dir.is_symlink():
+            dest_dir.unlink()
+        elif dest_dir.exists():
             shutil.rmtree(dest_dir)
 
         returncode, output = await _run_git(

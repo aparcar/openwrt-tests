@@ -141,7 +141,9 @@ class JobPoller:
                     )
                     continue
 
-                # Query for available jobs (up to number of free slots)
+                # Query for available jobs to claim (up to number of free slots)
+                # KernelCI state machine: available -> closing -> done
+                # We use 'closing' state to indicate job is being executed
                 params = {
                     "kind": "job",
                     "state": "available",
@@ -170,22 +172,40 @@ class JobPoller:
 
     async def _claim_job(self, job_id: str, device: str) -> bool:
         """
-        Claim a job by updating its state to 'running'.
+        Claim a job by marking it with our lab info and changing state to closing.
+
+        KernelCI state machine allows: available -> closing -> done
+        We use 'closing' state to indicate a job is being executed.
 
         Returns True if successfully claimed, False if already taken.
         """
         try:
+            # First GET the current node
+            node = await self._api_request("GET", f"/latest/node/{job_id}")
+
+            # Check if already claimed by another lab
+            node_data = node.get("data", {})
+            if node_data.get("lab_name") and node_data.get("lab_name") != self.lab_name:
+                logger.debug(f"Job {job_id} already claimed by {node_data.get('lab_name')}")
+                return False
+
+            # Check if available to claim
+            if node.get("state") != "available":
+                logger.debug(f"Job {job_id} not claimable: {node.get('state')}")
+                return False
+
+            # Claim the job: set state to 'closing' (execution in progress)
+            # and mark with our lab info
+            node["state"] = "closing"
+            node_data["lab_name"] = self.lab_name
+            node_data["device_id"] = device
+            node_data["started_at"] = datetime.utcnow().isoformat()
+            node["data"] = node_data
+
             await self._api_request(
                 "PUT",
-                f"/latest/nodes/{job_id}",
-                json={
-                    "state": "running",
-                    "data": {
-                        "lab_name": self.lab_name,
-                        "device_id": device,
-                        "started_at": datetime.utcnow().isoformat(),
-                    },
-                },
+                f"/latest/node/{job_id}",
+                json=node,
             )
             logger.info(f"Claimed job {job_id} for device {device}")
             return True

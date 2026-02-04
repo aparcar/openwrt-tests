@@ -139,9 +139,8 @@ TEST_TYPE_CONFIGS: dict[TestType, TestTypeConfig] = {
             "packages",
             "system",
         ],
-        required_capabilities=[
-            "serial_console",
-        ],
+        # All labgrid devices have serial console, no need to require explicitly
+        required_capabilities=[],
     ),
     TestType.KSELFTEST: TestTypeConfig(
         test_type=TestType.KSELFTEST,

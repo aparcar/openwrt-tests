@@ -73,12 +73,14 @@ async def fetch_versions(
 async def get_active_branches(
     include_snapshot: bool = True,
     include_oldstable: bool = True,
+    include_upcoming: bool = True,
 ) -> list[BranchInfo]:
     """
     Get list of active branches to test.
 
     Fetches .versions.json and returns:
     - main (SNAPSHOT) - always latest development
+    - upcoming - release candidate (e.g., 25.12.0-rc4)
     - stable - current release (e.g., 24.10.0)
     - oldstable - previous release series (e.g., 23.05.5)
 
@@ -101,9 +103,20 @@ async def get_active_branches(
     try:
         data = await fetch_versions()
         stable_version = data.get("stable_version", "")
+        upcoming_version = data.get("upcoming_version", "")
         versions_list = data.get("versions_list", [])
 
-        logger.info(f"Fetched versions: stable={stable_version}, all={versions_list}")
+        logger.info(f"Fetched versions: stable={stable_version}, upcoming={upcoming_version}, all={versions_list}")
+
+        # Add upcoming version (release candidate) if available
+        if include_upcoming and upcoming_version:
+            branches.append(
+                BranchInfo(
+                    name=version_to_branch(upcoming_version),
+                    version=upcoming_version,
+                    url=f"{DOWNLOADS_BASE}/releases/{upcoming_version}/targets",
+                )
+            )
 
         # Add stable version
         if stable_version:

@@ -1,0 +1,16 @@
+[Unit]
+Description=Labgrid KernelCI Adapter
+After=network.target labgrid-coordinator.service
+
+[Service]
+User=labgrid-dev
+Group=labgrid-dev
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=/etc/labgrid/kci-adapter.env
+ExecStart=/usr/local/bin/labgrid-kci-adapter
+Restart=on-failure
+RestartSec=10
+WorkingDirectory=/etc/labgrid/
+
+[Install]
+WantedBy=multi-user.target

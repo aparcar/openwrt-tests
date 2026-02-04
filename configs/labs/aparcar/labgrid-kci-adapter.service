@@ -1,0 +1,28 @@
+[Unit]
+Description=Labgrid KernelCI Adapter
+Documentation=https://github.com/aparcar/openwrt-tests
+After=network.target labgrid-coordinator.service
+
+[Service]
+Type=simple
+User=labgrid-dev
+Group=labgrid-dev
+WorkingDirectory=/home/labgrid-dev/labgrid-kci-adapter
+
+# Load environment from .env file
+EnvironmentFile=/home/labgrid-dev/labgrid-kci-adapter/.env
+
+# Use pipx-installed adapter
+ExecStart=/opt/pipx/venvs/labgrid-kci-adapter/bin/labgrid-kci-adapter
+
+# Restart on failure
+Restart=on-failure
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=labgrid-kci-adapter
+
+[Install]
+WantedBy=multi-user.target

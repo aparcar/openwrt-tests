@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>OpenWrt Test Results - {{VERSION_TITLE}}</title>
+        <style>
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    "Helvetica Neue", Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+            .header {
+                background-color: white;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                margin-bottom: 30px;
+                text-align: center;
+            }
+            .header h1 {
+                color: #2c3e50;
+                margin-bottom: 10px;
+            }
+            .header .subtitle {
+                color: #7f8c8d;
+                font-size: 18px;
+            }
+            .navigation {
+                background-color: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                margin-bottom: 30px;
+                text-align: center;
+            }
+            .nav-links {
+                display: flex;
+                justify-content: center;
+                gap: 20px;
+                flex-wrap: wrap;
+            }
+            .nav-link {
+                padding: 10px 20px;
+                background-color: #3498db;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+                transition: background-color 0.3s;
+            }
+            .nav-link:hover {
+                background-color: #2980b9;
+            }
+            .nav-link.active {
+                background-color: #27ae60;
+            }
+            .results-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                gap: 20px;
+                margin-bottom: 30px;
+            }
+            .device-card {
+                background-color: white;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .device-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            }
+            .device-header {
+                padding: 20px;
+                background-color: #34495e;
+                color: white;
+            }
+            .device-header h3 {
+                margin: 0;
+                font-size: 18px;
+            }
+            .device-header .device-info {
+                font-size: 14px;
+                opacity: 0.8;
+                margin-top: 5px;
+            }
+            .device-content {
+                padding: 20px;
+            }
+            .status-badge {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin-bottom: 10px;
+            }
+            .status-success {
+                background-color: #d4edda;
+                color: #155724;
+            }
+            .status-failure {
+                background-color: #f8d7da;
+                color: #721c24;
+            }
+            .status-unknown {
+                background-color: #fff3cd;
+                color: #856404;
+            }
+            .test-links {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .test-link {
+                padding: 8px 16px;
+                background-color: #ecf0f1;
+                color: #2c3e50;
+                text-decoration: none;
+                border-radius: 4px;
+                font-size: 14px;
+                transition: background-color 0.3s;
+            }
+            .test-link:hover {
+                background-color: #bdc3c7;
+            }
+            .loading {
+                text-align: center;
+                padding: 40px;
+                color: #7f8c8d;
+                font-size: 18px;
+            }
+            .error {
+                background-color: #f8d7da;
+                color: #721c24;
+                padding: 20px;
+                border-radius: 8px;
+                margin: 20px 0;
+                text-align: center;
+            }
+            .footer {
+                text-align: center;
+                margin-top: 40px;
+                color: #7f8c8d;
+                font-size: 14px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>OpenWrt Test Results</h1>
+            <div class="subtitle" id="version-title">{{VERSION_TITLE}}</div>
+        </div>
+
+        <div class="navigation">
+            <div class="nav-links">
+                <a href="../" class="nav-link">← Back to Overview</a>
+                <a href="../snapshot/" class="nav-link" id="nav-snapshot">Development Snapshots</a>
+                <a href="../stable/" class="nav-link" id="nav-stable">Current Stable</a>
+                <a href="../oldstable/" class="nav-link" id="nav-oldstable">Previous Stable</a>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">Loading test results...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="results" class="results-grid" style="display: none;"></div>
+
+        <div class="footer">
+            <p>
+                OpenWrt Tests Repository •
+                <a href="https://github.com/aparcar/openwrt-tests" target="_blank">GitHub</a> •
+                Generated at <span id="timestamp"></span>
+            </p>
+        </div>
+
+        <script>
+            // Set current timestamp
+            document.getElementById('timestamp').textContent = new Date().toLocaleString();
+
+            // Highlight current navigation
+            function highlightCurrentNav() {
+                const currentPath = window.location.pathname;
+                const navLinks = document.querySelectorAll('.nav-link');
+
+                navLinks.forEach(link => {
+                    if (currentPath.includes('snapshot') && link.id === 'nav-snapshot') {
+                        link.classList.add('active');
+                    } else if (currentPath.includes('stable/') && link.id === 'nav-stable') {
+                        link.classList.add('active');
+                    } else if (currentPath.includes('oldstable') && link.id === 'nav-oldstable') {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            // Load and display test results
+            async function loadResults() {
+                try {
+                    const response = await fetch('devices.json');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const devices = await response.json();
+                    displayResults(devices);
+                } catch (error) {
+                    console.error('Failed to load results:', error);
+                    showError('Failed to load test results. Please check if devices.json exists and is properly formatted.');
+                }
+            }
+
+            function displayResults(devices) {
+                const loadingEl = document.getElementById('loading');
+                const resultsEl = document.getElementById('results');
+
+                loadingEl.style.display = 'none';
+                resultsEl.style.display = 'grid';
+
+                if (!devices || devices.length === 0) {
+                    showError('No test results found.');
+                    return;
+                }
+
+                devices.forEach(device => {
+                    const deviceCard = createDeviceCard(device);
+                    resultsEl.appendChild(deviceCard);
+                });
+            }
+
+            function createDeviceCard(device) {
+                const card = document.createElement('div');
+                card.className = 'device-card';
+
+                // Determine status from available files (simplified logic)
+                const status = 'unknown'; // Would need to check actual test results
+                const statusClass = `status-${status}`;
+
+                card.innerHTML = `
+                    <div class="device-header">
+                        <h3>${device.name || device.device}</h3>
+                        <div class="device-info">
+                            Target: ${device.target || 'Unknown'} •
+                            Version: ${device.version_name || 'Unknown'}
+                        </div>
+                    </div>
+                    <div class="device-content">
+                        <div class="status-badge ${statusClass}">
+                            ${status.charAt(0).toUpperCase() + status.slice(1)}
+                        </div>
+                        <div class="test-links">
+                            <a href="results-${device.device}${device.version_name ? '-' + device.version_name : ''}/report.xml"
+                               class="test-link" target="_blank">Test Report</a>
+                            <a href="results-${device.device}${device.version_name ? '-' + device.version_name : ''}/"
+                               class="test-link" target="_blank">Logs</a>
+                        </div>
+                    </div>
+                `;
+
+                return card;
+            }
+
+            function showError(message) {
+                const loadingEl = document.getElementById('loading');
+                const errorEl = document.getElementById('error');
+
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = message;
+            }
+
+            // Initialize page
+            highlightCurrentNav();
+            loadResults();
+        </script>
+    </body>
+</html>

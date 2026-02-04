@@ -1,0 +1,232 @@
+name: Kernel Selftests
+
+on:
+  issue_comment:
+    types: [created]
+
+env:
+  PYTHONUNBUFFERED: 1
+  PYTEST_ADDOPTS: "--tb=short"
+  LG_CONSOLE: 1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  parse-comment:
+    name: Parse test request
+    runs-on: ubuntu-latest
+    if: github.event.issue.pull_request == null && contains(github.event.comment.body, '/test-kernel-selftests')
+    outputs:
+      device: ${{ steps.parse.outputs.device }}
+      command: ${{ steps.parse.outputs.command }}
+      firmware-url: ${{ steps.parse.outputs.firmware-url }}
+      valid: ${{ steps.parse.outputs.valid }}
+    steps:
+      - name: Parse comment
+        id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          # Extract parameters from comment
+          device=$(echo "$COMMENT_BODY" | grep -oP 'device:\s*\K\S+' || echo "")
+          command=$(echo "$COMMENT_BODY" | grep -oP 'command:\s*\K.*' || echo "")
+          firmware_url=$(echo "$COMMENT_BODY" | grep -oP 'firmware:\s*\K\S+' || echo "")
+
+          echo "Parsed parameters:"
+          echo "Device: $device"
+          echo "Command: $command"
+          echo "Firmware URL: $firmware_url"
+
+          # Validate parameters
+          valid="true"
+          if [[ "$device" != "bananapi_bpi-r64-kernel" ]]; then
+            echo "Error: Only bananapi_bpi-r64-kernel is supported currently"
+            valid="false"
+          fi
+
+          if [[ -z "$command" ]]; then
+            echo "Error: Command is required"
+            valid="false"
+          fi
+
+          if [[ -z "$firmware_url" ]]; then
+            echo "Error: Firmware URL is required"
+            valid="false"
+          fi
+
+          echo "device=$device" >> $GITHUB_OUTPUT
+          echo "command=$command" >> $GITHUB_OUTPUT
+          echo "firmware-url=$firmware_url" >> $GITHUB_OUTPUT
+          echo "valid=$valid" >> $GITHUB_OUTPUT
+
+      - name: Add reaction to comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          comment-id: ${{ github.event.comment.id }}
+          reactions: eyes
+
+  run-kernel-selftests:
+    name: Run kernel selftests on ${{ needs.parse-comment.outputs.device }}
+    needs: parse-comment
+    runs-on: global-coordinator
+    if: needs.parse-comment.outputs.valid == 'true'
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set environment
+        env:
+          target: ${{ needs.parse-comment.outputs.device }}
+          FIRMWARE_URL: ${{ needs.parse-comment.outputs.firmware-url }}
+          TEST_COMMAND: ${{ needs.parse-comment.outputs.command }}
+        run: |
+          echo "TARGET=$target" >> $GITHUB_ENV
+          echo "LG_PLACE=$target" >> $GITHUB_ENV
+          echo "LG_ENV=targets/$target.yaml" >> $GITHUB_ENV
+          echo "SELFTESTS_COMMAND=$TEST_COMMAND" >> $GITHUB_ENV
+
+          # Download firmware
+          mkdir -p $GITHUB_WORKSPACE/tftp/$target
+          curl -L -o "$GITHUB_WORKSPACE/tftp/$target/firmware.bin" "$FIRMWARE_URL"
+
+          # Set image path for labgrid
+          echo "LG_IMAGE=$GITHUB_WORKSPACE/tftp/$target/firmware.bin" >> $GITHUB_ENV
+
+      - name: Wait for free device
+        run: |
+          source test-env.sh
+          echo "Waiting for device: $TARGET"
+          labgrid-client -c labnet.sh reserve name=$TARGET
+          echo "DEVICE_RESERVED=true" >> $GITHUB_ENV
+
+      - name: Run kernel selftests
+        run: |
+          source test-env.sh
+          mkdir -p results/
+          uv run pytest tests/test_kernel_selftests.py \
+            --lg-log results/ \
+            --junitxml=results/report.xml \
+            --lg-colored-steps \
+            --log-cli-level=INFO
+
+      - name: Poweroff and unlock device
+        if: always() && env.DEVICE_RESERVED == 'true'
+        run: |
+          source test-env.sh
+          labgrid-client -c labnet.sh off $TARGET || true
+          labgrid-client -c labnet.sh release $TARGET || true
+
+      - name: Parse results and create comment
+        if: always()
+        run: |
+          # Extract key information from pytest results
+          if [[ -f results/report.xml ]]; then
+            # Parse basic test results from JUnit XML
+            total=$(grep -o 'tests="[0-9]*"' results/report.xml | grep -o '[0-9]*' || echo "0")
+            failures=$(grep -o 'failures="[0-9]*"' results/report.xml | grep -o '[0-9]*' || echo "0")
+            errors=$(grep -o 'errors="[0-9]*"' results/report.xml | grep -o '[0-9]*' || echo "0")
+
+            # Calculate passed tests
+            passed=$((total - failures - errors))
+
+            # Determine status
+            if [[ $failures -eq 0 && $errors -eq 0 && $total -gt 0 ]]; then
+              status="✅ COMPLETED"
+            elif [[ $total -gt 0 ]]; then
+              status="⚠️ COMPLETED WITH ISSUES"
+            else
+              status="❌ FAILED"
+            fi
+          else
+            status="❌ FAILED"
+            total=0
+            passed=0
+            failures=1
+            errors=0
+          fi
+
+          # Create results comment
+          cat > comment.md << EOF
+          # 🧪 Kernel Selftests Results
+
+          **Status:** $status
+          **Device:** ${{ needs.parse-comment.outputs.device }}
+          **Command:** \`${{ needs.parse-comment.outputs.command }}\`
+          **Firmware:** ${{ needs.parse-comment.outputs.firmware-url }}
+          **Workflow Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+          ## Summary
+          - **Total Tests:** $total
+          - **Passed:** $passed ✅
+          - **Failed:** $failures ❌
+          - **Errors:** $errors 💥
+
+          ## Test Details
+
+          The kernel selftests were executed using pytest with labgrid. Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed output including the complete selftest results.
+
+          ### Next Steps
+          - Review the workflow logs for detailed test output
+          - Check individual test failures in the pytest results
+          - Verify your firmware includes necessary kernel configs for the tests
+
+          ---
+          *Results generated automatically by kernel-selftests workflow*
+          EOF
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-selftests-${{ needs.parse-comment.outputs.device }}
+          path: results/
+          retention-days: 30
+
+      - name: Comment results on issue
+        if: always()
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          body-path: comment.md
+
+  validation-error:
+    name: Report validation error
+    needs: parse-comment
+    runs-on: ubuntu-latest
+    if: needs.parse-comment.outputs.valid == 'false'
+    steps:
+      - name: Comment validation error
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            # ❌ Invalid Kernel Selftests Request
+
+            Your kernel selftests request could not be processed due to validation errors.
+
+            ## Required Format
+
+            Please format your comment like this:
+
+            ```
+            /test-kernel-selftests
+            device: bananapi_bpi-r64-kernel
+            command: make -C net run_tests
+            firmware: https://example.com/path/to/openwrt-image.bin
+            ```
+
+            ## Requirements
+
+            - **device**: Currently only `bananapi_bpi-r64-kernel` is supported
+            - **command**: Any valid shell command to run in the selftests directory
+            - **firmware**: Direct URL to an OpenWrt firmware image file
+
+            Please update your comment with the correct format and try again.
