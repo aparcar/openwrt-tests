@@ -176,7 +176,6 @@ class TestExecutor:
         start_time = datetime.utcnow()
         test_results: list[TestResult] = []
         console_log_url = None
-        boot_log_url = None
 
         # Construct place name
         place_name = f"{self.lab_name}-{device_type}"
@@ -231,19 +230,24 @@ class TestExecutor:
                     device_type=device_type,
                 )
 
-                # Upload console log (pytest output)
-                if console_log_path.exists():
+                # Find boot log (serial console output from labgrid)
+                boot_log_path = self._find_boot_log(lg_log_dir)
+
+                # Combine boot log + pytest output into single log file
+                combined_log_path = tmpdir_path / "combined.log"
+                await self._combine_logs(
+                    boot_log_path=boot_log_path,
+                    console_log_path=console_log_path,
+                    output_path=combined_log_path,
+                )
+
+                # Upload combined log
+                if combined_log_path.exists():
                     console_log_url = await self._upload_log(
-                        log_path=console_log_path,
+                        log_path=combined_log_path,
                         job_id=job_id,
                         log_name="console.log",
                     )
-
-                # Upload boot log (serial console output from labgrid)
-                boot_log_url = await self._upload_boot_log(
-                    log_dir=lg_log_dir,
-                    job_id=job_id,
-                )
 
         except Exception as e:
             logger.exception(f"Job {job_id} failed: {e}")
@@ -291,7 +295,6 @@ class TestExecutor:
             duration=duration,
             test_results=test_results,
             console_log_url=console_log_url,
-            boot_log_url=boot_log_url,
         )
 
     async def _download_firmware(self, url: str, dest_dir: Path) -> Path | None:
@@ -341,12 +344,18 @@ class TestExecutor:
         target_file = self.targets_dir / f"{device_type}.yaml"
 
         # Build pytest arguments
+        # Match Makefile approach: --lg-log --log-cli-level=CONSOLE --lg-colored-steps
+        # This streams all labgrid console output (boot log) directly to pytest output
         args = [
             "pytest",
             str(tests_dir),
             "-v",
             "--tb=short",
             f"--lg-env={target_file}",
+            # Stream all logging (including labgrid serial console) to output
+            "--log-cli-level=CONSOLE",
+            # Show labgrid step markers in output
+            "--lg-colored-steps",
         ]
 
         # Add labgrid logging to capture serial console (boot log)
@@ -595,16 +604,16 @@ class TestExecutor:
             logger.warning(f"Failed to upload log {log_name}: {e}")
             return None
 
-    async def _upload_boot_log(self, log_dir: Path, job_id: str) -> str | None:
+    def _find_boot_log(self, log_dir: Path) -> Path | None:
         """
-        Upload boot log (serial console output) from labgrid log directory.
+        Find boot log (serial console output) from labgrid log directory.
 
         Labgrid's --lg-log option creates files like:
-        - console_<target>_<timestamp>.log (serial console output)
+        - console_main (no .log extension)
 
-        This method finds and uploads the serial console log.
+        Returns the path to the boot log file, or None if not found.
         """
-        if not self._minio or not log_dir.exists():
+        if not log_dir.exists():
             return None
 
         try:
@@ -625,12 +634,44 @@ class TestExecutor:
             # Use the largest/most recent log file
             boot_log = max(console_logs, key=lambda p: p.stat().st_size)
             logger.info(f"Found boot log: {boot_log.name} ({boot_log.stat().st_size} bytes)")
-
-            return await self._upload_log(
-                log_path=boot_log,
-                job_id=job_id,
-                log_name="boot.log",
-            )
+            return boot_log
         except Exception as e:
-            logger.warning(f"Failed to upload boot log: {e}")
+            logger.warning(f"Failed to find boot log: {e}")
             return None
+
+    async def _combine_logs(
+        self,
+        boot_log_path: Path | None,
+        console_log_path: Path,
+        output_path: Path,
+    ) -> None:
+        """
+        Combine boot log and pytest console output into a single file.
+
+        The combined log shows:
+        1. Boot log (serial console during device boot)
+        2. Pytest output (test execution results)
+        """
+        try:
+            with open(output_path, "w") as outfile:
+                # Write boot log first (if available)
+                if boot_log_path and boot_log_path.exists():
+                    outfile.write("=" * 80 + "\n")
+                    outfile.write("BOOT LOG (Serial Console)\n")
+                    outfile.write("=" * 80 + "\n\n")
+                    outfile.write(boot_log_path.read_text(errors="replace"))
+                    outfile.write("\n\n")
+
+                # Write pytest output
+                if console_log_path.exists():
+                    outfile.write("=" * 80 + "\n")
+                    outfile.write("TEST OUTPUT (pytest)\n")
+                    outfile.write("=" * 80 + "\n\n")
+                    outfile.write(console_log_path.read_text(errors="replace"))
+
+            logger.info(f"Combined logs written to {output_path}")
+        except Exception as e:
+            logger.warning(f"Failed to combine logs: {e}")
+            # Fall back to just copying console log
+            if console_log_path.exists():
+                output_path.write_text(console_log_path.read_text(errors="replace"))
