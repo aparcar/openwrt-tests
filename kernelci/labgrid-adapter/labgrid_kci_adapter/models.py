@@ -61,4 +61,5 @@ class JobResult(BaseModel):
 
     test_results: list[TestResult] = Field(default_factory=list)
     console_log_url: str | None = None
+    boot_log_url: str | None = None
     environment: dict[str, Any] = Field(default_factory=dict)

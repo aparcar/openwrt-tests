@@ -176,6 +176,7 @@ class TestExecutor:
         start_time = datetime.utcnow()
         test_results: list[TestResult] = []
         console_log_url = None
+        boot_log_url = None
 
         # Construct place name
         place_name = f"{self.lab_name}-{device_type}"
@@ -189,6 +190,8 @@ class TestExecutor:
             with tempfile.TemporaryDirectory(prefix=f"job-{job_id}-") as tmpdir:
                 tmpdir_path = Path(tmpdir)
                 console_log_path = tmpdir_path / "console.log"
+                lg_log_dir = tmpdir_path / "labgrid-logs"
+                lg_log_dir.mkdir(exist_ok=True)
 
                 # Ensure tests are up-to-date before execution
                 # Uses per-job repo if specified, otherwise uses configured repo
@@ -214,6 +217,7 @@ class TestExecutor:
                     tests_dir=tests_dir,
                     firmware_path=firmware_path,
                     timeout=timeout,
+                    log_dir=lg_log_dir,
                 )
 
                 # Save console output
@@ -227,12 +231,19 @@ class TestExecutor:
                     device_type=device_type,
                 )
 
-                # Upload console log
+                # Upload console log (pytest output)
                 if console_log_path.exists():
                     console_log_url = await self._upload_log(
                         log_path=console_log_path,
                         job_id=job_id,
+                        log_name="console.log",
                     )
+
+                # Upload boot log (serial console output from labgrid)
+                boot_log_url = await self._upload_boot_log(
+                    log_dir=lg_log_dir,
+                    job_id=job_id,
+                )
 
         except Exception as e:
             logger.exception(f"Job {job_id} failed: {e}")
@@ -280,6 +291,7 @@ class TestExecutor:
             duration=duration,
             test_results=test_results,
             console_log_url=console_log_url,
+            boot_log_url=boot_log_url,
         )
 
     async def _download_firmware(self, url: str, dest_dir: Path) -> Path | None:
@@ -307,6 +319,7 @@ class TestExecutor:
         tests_dir: Path,
         firmware_path: Path | None,
         timeout: int,
+        log_dir: Path | None = None,
     ) -> tuple[ResultCollectorPlugin, str]:
         """
         Run pytest as a subprocess and collect results.
@@ -320,6 +333,7 @@ class TestExecutor:
             tests_dir: Directory containing pytest test files
             firmware_path: Path to firmware file (optional)
             timeout: Test timeout in seconds
+            log_dir: Directory to store labgrid serial logs (boot log)
 
         Returns:
             Tuple of (result collector plugin, console output)
@@ -334,6 +348,10 @@ class TestExecutor:
             "--tb=short",
             f"--lg-env={target_file}",
         ]
+
+        # Add labgrid logging to capture serial console (boot log)
+        if log_dir:
+            args.append(f"--lg-log={log_dir}")
 
         # Filter specific tests if provided
         if tests:
@@ -554,14 +572,16 @@ class TestExecutor:
 
         return None
 
-    async def _upload_log(self, log_path: Path, job_id: str) -> str | None:
-        """Upload console log to storage."""
+    async def _upload_log(
+        self, log_path: Path, job_id: str, log_name: str = "console.log"
+    ) -> str | None:
+        """Upload a log file to storage."""
         if not self._minio:
             return None
 
         try:
             bucket = settings.minio_logs_bucket
-            object_name = f"logs/{job_id}/console.log"
+            object_name = f"logs/{job_id}/{log_name}"
             self._minio.fput_object(
                 bucket_name=bucket,
                 object_name=object_name,
@@ -572,5 +592,45 @@ class TestExecutor:
             scheme = "https" if settings.minio_secure else "http"
             return f"{scheme}://{settings.minio_endpoint}/{bucket}/{object_name}"
         except Exception as e:
-            logger.warning(f"Failed to upload log: {e}")
+            logger.warning(f"Failed to upload log {log_name}: {e}")
+            return None
+
+    async def _upload_boot_log(self, log_dir: Path, job_id: str) -> str | None:
+        """
+        Upload boot log (serial console output) from labgrid log directory.
+
+        Labgrid's --lg-log option creates files like:
+        - console_<target>_<timestamp>.log (serial console output)
+
+        This method finds and uploads the serial console log.
+        """
+        if not self._minio or not log_dir.exists():
+            return None
+
+        try:
+            # Find console log files created by labgrid
+            # Labgrid creates files like "console_main" (no .log extension)
+            console_logs = list(log_dir.glob("console_*"))
+            if not console_logs:
+                # Try alternative patterns
+                console_logs = list(log_dir.glob("*serial*"))
+            if not console_logs:
+                # Fallback: any file in the directory
+                console_logs = [f for f in log_dir.iterdir() if f.is_file()]
+
+            if not console_logs:
+                logger.debug(f"No boot log found in {log_dir}")
+                return None
+
+            # Use the largest/most recent log file
+            boot_log = max(console_logs, key=lambda p: p.stat().st_size)
+            logger.info(f"Found boot log: {boot_log.name} ({boot_log.stat().st_size} bytes)")
+
+            return await self._upload_log(
+                log_path=boot_log,
+                job_id=job_id,
+                log_name="boot.log",
+            )
+        except Exception as e:
+            logger.warning(f"Failed to upload boot log: {e}")
             return None

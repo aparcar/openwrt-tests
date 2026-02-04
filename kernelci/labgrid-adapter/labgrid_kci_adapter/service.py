@@ -184,6 +184,8 @@ class LabgridKCIAdapter:
             node_data["test_results"] = [t.model_dump(mode="json") for t in result.test_results]
             if result.console_log_url:
                 node_data["log_url"] = result.console_log_url
+            if result.boot_log_url:
+                node_data["boot_log_url"] = result.boot_log_url
             node["data"] = node_data
 
             # PUT the updated node
