@@ -185,9 +185,18 @@ class OfficialReleaseSource(FirmwareSource):
             elif "initramfs" in image_type or "kernel" in image_type:
                 artifacts.initramfs = url
                 artifacts.initramfs_sha256 = sha256
+            elif "combined" in image_type and artifacts.combined is None:
+                # x86 targets use combined images (prefer combined-efi)
+                artifacts.combined = url
+                artifacts.combined_sha256 = sha256
 
         # Need at least one usable image
-        if not (artifacts.sysupgrade or artifacts.factory or artifacts.initramfs):
+        if not (
+            artifacts.sysupgrade
+            or artifacts.factory
+            or artifacts.initramfs
+            or artifacts.combined
+        ):
             return None
 
         # Generate firmware ID

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenWrt KernelCI Dashboard</title>
+  <style>
+    :root { --bg: #f5f5f5; --card: #fff; --border: #ddd; --text: #222; --muted: #666; --blue: #0057b7; --green: #2e7d32; --orange: #e65100; --red: #c62828; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    .header { background: #1a1a2e; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
+    .header h1 { font-size: 1.3rem; font-weight: 600; }
+    .header .refresh { margin-left: auto; background: rgba(255,255,255,0.15); border: none; color: #fff; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+    .header .refresh:hover { background: rgba(255,255,255,0.25); }
+    .header .last-updated { font-size: 0.8rem; color: rgba(255,255,255,0.6); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--card); border-radius: 8px; padding: 1.2rem; border: 1px solid var(--border); }
+    .stat-card .label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-card .value { font-size: 1.8rem; font-weight: 700; margin-top: 0.3rem; }
+    .section { margin-bottom: 2rem; }
+    .section h2 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--text); }
+    table { width: 100%; background: var(--card); border-radius: 8px; border: 1px solid var(--border); border-collapse: collapse; font-size: 0.9rem; }
+    th { text-align: left; padding: 0.7rem 1rem; background: #f9f9f9; border-bottom: 2px solid var(--border); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: var(--muted); }
+    td { padding: 0.6rem 1rem; border-bottom: 1px solid #eee; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 3px; font-size: 0.75rem; font-weight: 600; }
+    .badge-available { background: #e3f2fd; color: #1565c0; }
+    .badge-running { background: #fff3e0; color: #e65100; }
+    .badge-done { background: #e8f5e9; color: #2e7d32; }
+    .badge-closing { background: #fce4ec; color: #c62828; }
+    .badge-pass { background: #e8f5e9; color: #2e7d32; }
+    .badge-fail { background: #fce4ec; color: #c62828; }
+    .mono { font-family: "SF Mono", "Fira Code", monospace; font-size: 0.82rem; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .empty { text-align: center; padding: 2rem; color: var(--muted); }
+    .loading { text-align: center; padding: 3rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>OpenWrt KernelCI</h1>
+    <span class="last-updated" id="lastUpdated"></span>
+    <button class="refresh" onclick="loadAll()">Refresh</button>
+  </div>
+  <div class="container">
+    <div class="stats" id="stats">
+      <div class="stat-card"><div class="label">Firmware Builds</div><div class="value" id="statBuilds">-</div></div>
+      <div class="stat-card"><div class="label">Pending Jobs</div><div class="value" id="statPending">-</div></div>
+      <div class="stat-card"><div class="label">Completed Jobs</div><div class="value" id="statDone">-</div></div>
+      <div class="stat-card"><div class="label">Branches</div><div class="value" id="statBranches">-</div></div>
+    </div>
+
+    <div class="section">
+      <h2>Firmware Builds</h2>
+      <div id="builds"><div class="loading">Loading...</div></div>
+    </div>
+
+    <div class="section">
+      <h2>Test Jobs</h2>
+      <div id="jobs"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api';
+    const TOKEN = '';
+
+    async function apiFetch(path) {
+      const headers = {};
+      if (TOKEN) headers['Authorization'] = `Bearer ${TOKEN}`;
+      const r = await fetch(`${API}/${path}`, { headers });
+      if (!r.ok) throw new Error(`API error: ${r.status}`);
+      return r.json();
+    }
+
+    function timeSince(dateStr) {
+      const s = Math.floor((Date.now() - new Date(dateStr + 'Z').getTime()) / 1000);
+      if (s < 60) return `${s}s ago`;
+      if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+      if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+      return `${Math.floor(s / 86400)}d ago`;
+    }
+
+    function badge(state) {
+      const cls = { available: 'badge-available', running: 'badge-running', done: 'badge-done', closing: 'badge-closing', pass: 'badge-pass', fail: 'badge-fail' };
+      return `<span class="badge ${cls[state] || ''}">${state}</span>`;
+    }
+
+    async function loadBuilds() {
+      try {
+        const data = await apiFetch('nodes?kind=kbuild&limit=50');
+        const items = data.items || [];
+        document.getElementById('statBuilds').textContent = data.total || items.length;
+
+        const branches = new Set(items.map(n => n.data?.kernel_revision?.branch).filter(Boolean));
+        document.getElementById('statBranches').textContent = branches.size;
+
+        if (!items.length) {
+          document.getElementById('builds').innerHTML = '<div class="empty">No firmware builds found</div>';
+          return;
+        }
+
+        let html = '<table><thead><tr><th>Version</th><th>Target</th><th>Branch</th><th>Commit</th><th>State</th><th>Created</th><th>Artifact</th></tr></thead><tbody>';
+        for (const n of items) {
+          const d = n.data || {};
+          const rev = d.kernel_revision || {};
+          const arts = d.artifacts || {};
+          const artLink = arts.combined || arts.sysupgrade || arts.factory || arts.initramfs || '';
+          const artName = artLink ? artLink.split('/').pop() : '-';
+          html += `<tr>
+            <td><strong>${d.openwrt_version || '-'}</strong></td>
+            <td class="mono">${d.target || '-'}/${d.subtarget || '-'}</td>
+            <td>${rev.branch || '-'}</td>
+            <td class="mono">${rev.commit ? rev.commit.slice(0, 10) : '-'}</td>
+            <td>${badge(n.state)}</td>
+            <td>${n.created ? timeSince(n.created) : '-'}</td>
+            <td>${artLink ? `<a href="${artLink}" title="${artName}">Download</a>` : '-'}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('builds').innerHTML = html;
+      } catch (e) {
+        document.getElementById('builds').innerHTML = `<div class="empty">Error loading builds: ${e.message}</div>`;
+      }
+    }
+
+    async function loadJobs() {
+      try {
+        const data = await apiFetch('nodes?kind=job&limit=100');
+        const items = data.items || [];
+
+        const pending = items.filter(j => j.state === 'available').length;
+        const done = items.filter(j => j.state === 'done').length;
+        document.getElementById('statPending').textContent = pending;
+        document.getElementById('statDone').textContent = done;
+
+        if (!items.length) {
+          document.getElementById('jobs').innerHTML = '<div class="empty">No test jobs found</div>';
+          return;
+        }
+
+        let html = '<table><thead><tr><th>Job</th><th>Device</th><th>Test Plan</th><th>Branch</th><th>State</th><th>Result</th><th>Created</th></tr></thead><tbody>';
+        for (const n of items) {
+          const d = n.data || {};
+          const rev = d.kernel_revision || {};
+          html += `<tr>
+            <td class="mono">${n.name || '-'}</td>
+            <td>${d.device_type || '-'}</td>
+            <td>${d.test_plan || '-'}</td>
+            <td>${rev.branch || '-'}</td>
+            <td>${badge(n.state)}</td>
+            <td>${n.result ? badge(n.result) : '-'}</td>
+            <td>${n.created ? timeSince(n.created) : '-'}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('jobs').innerHTML = html;
+      } catch (e) {
+        document.getElementById('jobs').innerHTML = `<div class="empty">Error loading jobs: ${e.message}</div>`;
+      }
+    }
+
+    async function loadAll() {
+      document.getElementById('lastUpdated').textContent = 'Updating...';
+      await Promise.all([loadBuilds(), loadJobs()]);
+      document.getElementById('lastUpdated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    }
+
+    loadAll();
+    setInterval(loadAll, 30000);
+  </script>
+</body>
+</html>

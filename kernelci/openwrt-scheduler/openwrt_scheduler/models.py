@@ -80,12 +80,14 @@ class FirmwareArtifacts(BaseModel):
     initramfs: str | None = None
     kernel: str | None = None
     rootfs: str | None = None
+    combined: str | None = None
     manifest: str | None = None
 
     # SHA256 checksums
     sysupgrade_sha256: str | None = None
     factory_sha256: str | None = None
     initramfs_sha256: str | None = None
+    combined_sha256: str | None = None
 
 
 class Firmware(BaseModel):

@@ -12,11 +12,14 @@ This service runs continuously and:
 """
 
 import asyncio
+import logging
 from datetime import datetime
 
 import structlog
 import uvicorn
 from fastapi import FastAPI
+
+logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 from .api_client import APIError, KernelCIClient
 from .config import load_pipeline_config, settings
@@ -222,6 +225,8 @@ class FirmwareTriggerService:
                         artifacts["factory"] = firmware.artifacts.factory
                     if firmware.artifacts.initramfs:
                         artifacts["initramfs"] = firmware.artifacts.initramfs
+                    if firmware.artifacts.combined:
+                        artifacts["combined"] = firmware.artifacts.combined
 
                 await self.api_client.create_firmware_node(
                     name=node_name,

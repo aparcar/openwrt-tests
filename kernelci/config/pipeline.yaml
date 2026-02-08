@@ -68,12 +68,7 @@ firmware_sources:
     # Targets to scan for firmware
     # These are checked for all active branches
     targets:
-      - ath79/generic
-      - ramips/mt7621
-      - mediatek/filogic
       - x86/64
-      - armsr/armv8
-      - malta/be
 
   # GitHub Pull Request builds
   github_pr:
@@ -458,7 +453,6 @@ health_check:
 #   - high_memory: Device has >= 512MB RAM
 #
 device_types:
-  # QEMU targets - good for kselftest (isolated, configurable resources)
   qemu_x86-64:
     target: x86
     subtarget: "64"
@@ -469,91 +463,6 @@ device_types:
     capabilities:
       - serial_console
       - isolated_network
-      - high_memory
-
-  qemu_malta-be:
-    target: malta
-    subtarget: be
-    profile: generic
-    features:
-      - wan_port
-    capabilities:
-      - serial_console
-      - isolated_network
-
-  qemu_armsr-armv8:
-    target: armsr
-    subtarget: armv8
-    profile: generic
-    features:
-      - wan_port
-    capabilities:
-      - serial_console
-      - isolated_network
-      - high_memory
-
-  # Real hardware - primarily for firmware testing
-  # Add isolated_network capability if device is on dedicated test network
-  openwrt_one:
-    target: mediatek
-    subtarget: filogic
-    profile: openwrt_one
-    features:
-      - wifi
-      - wan_port
-    capabilities:
-      - serial_console
-
-  bananapi_bpi-r4:
-    target: mediatek
-    subtarget: filogic
-    profile: bananapi_bpi-r4
-    features:
-      - wifi
-      - wan_port
-    capabilities:
-      - serial_console
-      - high_memory
-
-  linksys_e8450:
-    target: mediatek
-    subtarget: mt7622
-    profile: linksys_e8450-ubi
-    features:
-      - wifi
-      - wan_port
-    capabilities:
-      - serial_console
-
-  glinet_gl-mt6000:
-    target: mediatek
-    subtarget: filogic
-    profile: glinet_gl-mt6000
-    features:
-      - wifi
-      - wan_port
-    capabilities:
-      - serial_console
-      - high_memory
-
-  tplink_archer-c7-v2:
-    target: ath79
-    subtarget: generic
-    profile: tplink_archer-c7-v2
-    features:
-      - wifi
-      - wan_port
-    capabilities:
-      - serial_console
-
-  raspberry_pi_4:
-    target: bcm27xx
-    subtarget: bcm2711
-    profile: rpi-4
-    features:
-      - wan_port
-    capabilities:
-      - serial_console
       - high_memory
 
 # =============================================================================
