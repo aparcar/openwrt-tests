@@ -20,10 +20,7 @@ from fastapi import FastAPI
 
 from .api_client import APIError, KernelCIClient
 from .config import load_pipeline_config, settings
-from .firmware_sources import GitHubPRSource, OfficialReleaseSource
-from .firmware_sources.custom import init_uploader
-from .firmware_sources.custom import router as upload_router
-
+from .firmware_sources.official import OfficialReleaseSource
 from .versions import get_active_branches
 
 # Configure logging
@@ -75,21 +72,6 @@ class FirmwareTriggerService:
         official_config = sources_config.get("official", {})
         if official_config.get("enabled", True):
             await self._init_official_sources(official_config)
-
-        # GitHub PR source
-        if "github_pr" in sources_config:
-            source = GitHubPRSource("github_pr", sources_config["github_pr"])
-            await source.initialize()
-            if source.is_enabled():
-                self.sources.append(source)
-                logger.info("Initialized GitHub PR source")
-            else:
-                logger.warning("GitHub PR source disabled (no token)")
-
-        # Custom upload source (initialized separately for FastAPI)
-        if "custom" in sources_config:
-            init_uploader(sources_config["custom"])
-            logger.info("Initialized custom upload handler")
 
         logger.info(f"Initialized {len(self.sources)} firmware sources")
 
@@ -288,9 +270,6 @@ app = FastAPI(
     description="Firmware source watcher and upload handler for OpenWrt KernelCI",
     version="0.1.0",
 )
-
-# Include upload router
-app.include_router(upload_router)
 
 # Service instance
 _service: FirmwareTriggerService | None = None
