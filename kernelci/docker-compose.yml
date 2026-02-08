@@ -144,7 +144,7 @@ services:
 
   pipeline-trigger:
     build:
-      context: ./openwrt-pipeline
+      context: ./openwrt-scheduler
       dockerfile: Dockerfile
     container_name: openwrt-kci-trigger
     depends_on:
@@ -160,14 +160,14 @@ services:
     volumes:
       - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
       - firmware_cache:/app/cache
-    command: ["python", "-m", "openwrt_pipeline.firmware_trigger"]
+    command: ["python", "-m", "openwrt_scheduler.firmware_trigger"]
     networks:
       - kci-internal
     restart: unless-stopped
 
   pipeline-scheduler:
     build:
-      context: ./openwrt-pipeline
+      context: ./openwrt-scheduler
       dockerfile: Dockerfile
     container_name: openwrt-kci-scheduler
     depends_on:
@@ -179,7 +179,7 @@ services:
       PYTHONUNBUFFERED: "1"
     volumes:
       - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
-    command: ["python", "-m", "openwrt_pipeline.test_scheduler"]
+    command: ["python", "-m", "openwrt_scheduler.test_scheduler"]
     networks:
       - kci-internal
     restart: unless-stopped

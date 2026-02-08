@@ -1,6 +1,6 @@
 # Aparcar Lab Deployment
 
-Configuration files for deploying the labgrid-kci-adapter on the aparcar lab host.
+Configuration files for deploying the labgrid-runner on the aparcar lab host.
 
 ## Prerequisites
 
@@ -26,8 +26,8 @@ Copy the generated token to the `.env` file.
 1. **Copy files to lab host:**
 
 ```bash
-scp .env labgrid-aparcar:/home/labgrid-dev/labgrid-kci-adapter/
-scp labgrid-kci-adapter.service labgrid-aparcar:/tmp/
+scp .env labgrid-aparcar:/home/labgrid-dev/labgrid-runner/
+scp labgrid-runner.service labgrid-aparcar:/tmp/
 ```
 
 2. **Install the adapter:**
@@ -36,32 +36,32 @@ scp labgrid-kci-adapter.service labgrid-aparcar:/tmp/
 ssh labgrid-aparcar
 
 # Install via pipx (as labgrid-dev user)
-pipx install git+https://github.com/aparcar/openwrt-tests.git#subdirectory=kernelci/labgrid-adapter
+pipx install git+https://github.com/aparcar/openwrt-tests.git#subdirectory=kernelci/labgrid-runner
 
 # Or install from local checkout
-cd ~/labgrid-kci-adapter
+cd ~/labgrid-runner
 pipx install .
 ```
 
 3. **Install systemd service:**
 
 ```bash
-sudo cp /tmp/labgrid-kci-adapter.service /etc/systemd/system/
+sudo cp /tmp/labgrid-runner.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable labgrid-kci-adapter
-sudo systemctl start labgrid-kci-adapter
+sudo systemctl enable labgrid-runner
+sudo systemctl start labgrid-runner
 ```
 
 4. **Verify:**
 
 ```bash
-sudo systemctl status labgrid-kci-adapter
-sudo journalctl -u labgrid-kci-adapter -f
+sudo systemctl status labgrid-runner
+sudo journalctl -u labgrid-runner -f
 ```
 
 ## Configuration
 
-Edit `/home/labgrid-dev/labgrid-kci-adapter/.env` to configure:
+Edit `/home/labgrid-dev/labgrid-runner/.env` to configure:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -91,15 +91,15 @@ labgrid-client -v places
 
 **Check logs:**
 ```bash
-sudo journalctl -u labgrid-kci-adapter -f --no-pager
+sudo journalctl -u labgrid-runner -f --no-pager
 ```
 
 **Test discovery manually:**
 ```bash
-cd ~/labgrid-kci-adapter
+cd ~/labgrid-runner
 ./venv/bin/python -c "
 import asyncio
-from labgrid_kci_adapter.labgrid_client import LabgridClient
+from labgrid_runner.labgrid_client import LabgridClient
 
 async def test():
     client = LabgridClient('localhost:20408')

@@ -9,12 +9,12 @@ The system is split into two components:
 
 | Component | Description | Reusable? |
 |-----------|-------------|-----------|
-| `labgrid-adapter/` | Generic adapter connecting labgrid to KernelCI | **Yes** - usable by any project |
-| `openwrt-pipeline/` | OpenWrt-specific firmware triggers and scheduling | No - OpenWrt specific |
+| `labgrid-runner/` | Generic runner connecting labgrid to KernelCI | **Yes** - usable by any project |
+| `openwrt-scheduler/` | OpenWrt-specific firmware discovery and scheduling | No - OpenWrt specific |
 
-The **labgrid-kci-adapter** is designed to be project-agnostic and can be used
+The **labgrid-runner** is designed to be project-agnostic and can be used
 by other projects that want to connect labgrid-managed devices to KernelCI.
-See `labgrid-adapter/README.md` for details.
+See `labgrid-runner/README.md` for details.
 
 ## Overview
 
@@ -118,14 +118,14 @@ Creates test job nodes for available firmware based on:
 
 Labs connect using the **pull-mode** architecture:
 
-1. Lab runs the `labgrid-adapter` service
+1. Lab runs the `labgrid-runner` service
 2. Adapter polls API for pending jobs (`kind=job`, `state=available`)
 3. Jobs are claimed by setting `state=running`
 4. Tests run via pytest with labgrid plugin
 5. Results submitted as test nodes under job
 6. Health checks run automatically every 24 hours
 
-See `labgrid-adapter/` for the lab-side component.
+See `labgrid-runner/` for the lab-side component.
 
 ### Test Execution
 
@@ -193,7 +193,7 @@ The adapter runs automatic health checks:
 
 Manual check:
 ```bash
-python -m labgrid_kci_adapter.health_check --all
+python -m labgrid_runner.health_check --all
 ```
 
 ## Configuration
@@ -374,7 +374,7 @@ Health checks run on the lab-side adapter, not centrally.
 Check the adapter logs on your lab server:
 
 ```bash
-docker logs labgrid-adapter
+docker logs labgrid-runner
 ```
 
 ### TLS certificate issues

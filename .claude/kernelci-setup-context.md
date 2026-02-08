@@ -1,4 +1,4 @@
-# KernelCI Labgrid Adapter Setup Context
+# KernelCI Labgrid Runner Setup Context
 
 ## Last Updated: 2026-02-04
 
@@ -8,12 +8,12 @@
 1. **openwrt-kci.aparcar.org** (KernelCI API server)
    - SSH: `ssh root@openwrt-kci.aparcar.org`
    - Runs Docker containers for KernelCI API, MongoDB, Redis, MinIO, etc.
-   - Main compose at `/opt/openwrt-pipeline/docker-compose.yml`
+   - Main compose at `/opt/openwrt-scheduler/docker-compose.yml`
 
 2. **labgrid-aparcar** (Labgrid coordinator + adapter)
    - SSH: `ssh labgrid-aparcar` (logs in as labgrid-dev user)
    - Runs labgrid-coordinator and labgrid-exporter as systemd services
-   - Adapter deployed at `~/labgrid-adapter`
+   - Runner deployed at `~/labgrid-runner`
 
 ### Running Services
 
@@ -32,17 +32,17 @@ openwrt-kci-bridge    - KCIDB bridge
 ```
 labgrid-coordinator.service - Labgrid coordinator (port 20408)
 labgrid-exporter.service    - Labgrid exporter
-labgrid-adapter             - KernelCI adapter (running as background process)
+labgrid-runner              - KernelCI runner (running as background process)
 ```
 
-## Labgrid Adapter Status
+## Labgrid Runner Status
 
 ### Current State: RUNNING
-- Process: `python -c 'from labgrid_kci_adapter.service import main; ...'`
-- Log file: `~/adapter.log`
-- Working directory: `~/labgrid-adapter`
+- Process: `python -c 'from labgrid_runner.service import main; ...'`
+- Log file: `~/runner.log`
+- Working directory: `~/labgrid-runner`
 
-### Configuration (`~/labgrid-adapter/.env`)
+### Configuration (`~/labgrid-runner/.env`)
 ```
 LAB_NAME=labgrid-aparcar
 KCI_API_URL=https://api.openwrt-kci.aparcar.org
@@ -53,9 +53,9 @@ MAX_CONCURRENT_JOBS=3
 HEALTH_CHECK_ENABLED=true
 HEALTH_CHECK_INTERVAL=86400
 SUPPORTED_TEST_TYPES=firmware
-TARGETS_DIR=/home/labgrid-dev/labgrid-adapter/targets
-TESTS_DIR=/home/labgrid-dev/labgrid-adapter/tests-openwrt
-FIRMWARE_CACHE=/home/labgrid-dev/labgrid-adapter/cache
+TARGETS_DIR=/home/labgrid-dev/labgrid-runner/targets
+TESTS_DIR=/home/labgrid-dev/labgrid-runner/tests-openwrt
+FIRMWARE_CACHE=/home/labgrid-dev/labgrid-runner/cache
 ```
 
 ### Discovered Devices (6 total)
@@ -74,8 +74,8 @@ FIRMWARE_CACHE=/home/labgrid-dev/labgrid-adapter/cache
 
 ### Fixed place name construction
 Files modified (need to be committed):
-- `kernelci/labgrid-adapter/labgrid_kci_adapter/health_check.py`
-- `kernelci/labgrid-adapter/labgrid_kci_adapter/service.py`
+- `kernelci/labgrid-runner/labgrid_runner/health_check.py`
+- `kernelci/labgrid-runner/labgrid_runner/service.py`
 
 Change: Removed redundant `labgrid-` prefix since LAB_NAME already includes it.
 ```python
@@ -100,22 +100,22 @@ Tests complete with exit code 3 (no tests collected). The test execution flow wo
 
 ## Useful Commands
 
-### Check adapter status
+### Check runner status
 ```bash
-ssh labgrid-aparcar "pgrep -fa labgrid_kci_adapter"
-ssh labgrid-aparcar "tail -50 ~/adapter.log"
+ssh labgrid-aparcar "pgrep -fa labgrid_runner"
+ssh labgrid-aparcar "tail -50 ~/runner.log"
 ```
 
-### Restart adapter
+### Restart runner
 ```bash
-ssh labgrid-aparcar "pkill -f labgrid_kci_adapter; cd ~/labgrid-adapter && source .venv/bin/activate && export \$(grep -v '^#' .env | xargs) && nohup python -c '
+ssh labgrid-aparcar "pkill -f labgrid_runner; cd ~/labgrid-runner && source .venv/bin/activate && export \$(grep -v '^#' .env | xargs) && nohup python -c '
 import asyncio
 import logging
 import sys
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-from labgrid_kci_adapter.service import main
+from labgrid_runner.service import main
 asyncio.run(main())
-' >> ~/adapter.log 2>&1 &"
+' >> ~/runner.log 2>&1 &"
 ```
 
 ### Check labgrid places
@@ -135,24 +135,24 @@ TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTgwYmQ4Mzg2MDcyNTY3OGE4
 curl -s -H "Authorization: Bearer $TOKEN" https://api.openwrt-kci.aparcar.org/latest/nodes?limit=5
 ```
 
-### Sync adapter code changes
+### Sync runner code changes
 ```bash
-rsync -av --exclude='.venv' --exclude='__pycache__' --exclude='.pytest_cache' --exclude='*.egg-info' kernelci/labgrid-adapter/ labgrid-aparcar:~/labgrid-adapter/
+rsync -av --exclude='.venv' --exclude='__pycache__' --exclude='.pytest_cache' --exclude='*.egg-info' kernelci/labgrid-runner/ labgrid-aparcar:~/labgrid-runner/
 ```
 
 ## API Configuration
 
 ### Secret Keys (IMPORTANT - they differ!)
-- **openwrt-pipeline/.env:** `KCI_SECRET_KEY=ae914b257bee501de4af4e6c7c8a76bd4a99c7d9ecf2aed0f43f3f8c4f37041d`
+- **openwrt-scheduler/.env:** `KCI_SECRET_KEY=ae914b257bee501de4af4e6c7c8a76bd4a99c7d9ecf2aed0f43f3f8c4f37041d`
 - **kernelci/.env:** `KCI_SECRET_KEY=59f2184b5a24d282856eb5accd15278f02f0fe2d11b66a98357d0177f83ba59e` (NOT USED)
-- The API container uses the openwrt-pipeline secret (compose runs from /opt/openwrt-pipeline)
+- The API container uses the openwrt-scheduler secret (compose runs from /opt/openwrt-scheduler)
 
 ### MongoDB
 - Connection: `mongodb://admin:openwrt-mongo-32a6c8216d106e2c@mongodb:27017`
 - Database: `openwrt_kernelci`
 
 ## Next Steps (TODO)
-1. Set up systemd service for adapter (needs sudo access on labgrid-aparcar)
+1. Set up systemd service for runner (needs sudo access on labgrid-aparcar)
 2. Debug admin user authentication issue
 3. Configure actual test execution (fix pytest exit code 3)
 4. Commit code changes to repository

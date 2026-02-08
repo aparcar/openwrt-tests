@@ -293,7 +293,7 @@ triggers:
 runtimes:
   labgrid:
     type: labgrid
-    adapter: labgrid-kci-adapter
+    adapter: labgrid-runner
     # Labs pull jobs, we don't push
 
 # Test plan definitions
@@ -1088,8 +1088,8 @@ services:
       KCI_API_TOKEN: ${KCI_API_TOKEN}
     volumes:
       - ./config/pipeline-openwrt.yaml:/home/kernelci/config/pipeline.yaml:ro
-      - ./openwrt-pipeline:/home/kernelci/openwrt-pipeline:ro
-    command: ["python", "-m", "openwrt_pipeline.firmware_trigger"]
+      - ./openwrt-scheduler:/home/kernelci/openwrt-scheduler:ro
+    command: ["python", "-m", "openwrt_scheduler.firmware_trigger"]
     networks:
       - kci-network
     restart: unless-stopped
@@ -1104,8 +1104,8 @@ services:
       KCI_API_TOKEN: ${KCI_API_TOKEN}
     volumes:
       - ./config/pipeline-openwrt.yaml:/home/kernelci/config/pipeline.yaml:ro
-      - ./openwrt-pipeline:/home/kernelci/openwrt-pipeline:ro
-    command: ["python", "-m", "openwrt_pipeline.test_scheduler"]
+      - ./openwrt-scheduler:/home/kernelci/openwrt-scheduler:ro
+    command: ["python", "-m", "openwrt_scheduler.test_scheduler"]
     networks:
       - kci-network
     restart: unless-stopped
@@ -1121,8 +1121,8 @@ services:
       HEALTH_CHECK_INTERVAL: 86400
     volumes:
       - ./config/pipeline-openwrt.yaml:/home/kernelci/config/pipeline.yaml:ro
-      - ./openwrt-pipeline:/home/kernelci/openwrt-pipeline:ro
-    command: ["python", "-m", "openwrt_pipeline.health_scheduler"]
+      - ./openwrt-scheduler:/home/kernelci/openwrt-scheduler:ro
+    command: ["python", "-m", "openwrt_scheduler.health_scheduler"]
     networks:
       - kci-network
     restart: unless-stopped
@@ -1226,15 +1226,15 @@ oldstable = "https://downloads.openwrt.org/releases/23.05.5/targets"
 ### Labgrid Adapter Deployment (Per Lab)
 
 ```yaml
-# labgrid-adapter/docker-compose.yml
+# labgrid-runner/docker-compose.yml
 version: '3.8'
 
 services:
-  labgrid-adapter:
+  labgrid-runner:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: labgrid-kci-adapter
+    container_name: labgrid-runner
     environment:
       # KernelCI API connection
       KCI_API_URL: ${KCI_API_URL}  # https://openwrt-kci.example.org/api
@@ -1263,7 +1263,7 @@ volumes:
 ```
 
 ```dockerfile
-# labgrid-adapter/Dockerfile
+# labgrid-runner/Dockerfile
 FROM python:3.13-slim
 
 WORKDIR /app
@@ -1282,12 +1282,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy adapter code
-COPY labgrid_kci_adapter/ ./labgrid_kci_adapter/
+COPY labgrid_runner/ ./labgrid_runner/
 COPY tests/ ./tests/
 COPY conftest.py .
 
 # Entry point
-CMD ["python", "-m", "labgrid_kci_adapter.service"]
+CMD ["python", "-m", "labgrid_runner.service"]
 ```
 
 ### Environment File
