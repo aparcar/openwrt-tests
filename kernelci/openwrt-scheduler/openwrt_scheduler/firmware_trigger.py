@@ -23,7 +23,7 @@ from .config import load_pipeline_config, settings
 from .firmware_sources import GitHubPRSource, OfficialReleaseSource
 from .firmware_sources.custom import init_uploader
 from .firmware_sources.custom import router as upload_router
-from .models import FirmwareCreate
+
 from .versions import get_active_branches
 
 # Configure logging
@@ -202,16 +202,24 @@ class FirmwareTriggerService:
 
         async for firmware in source.scan():
             try:
-                # Check if firmware already exists
-                exists = await self.api_client.firmware_exists(
-                    target=firmware.target,
-                    subtarget=firmware.subtarget,
-                    profile=firmware.profile,
-                    version=firmware.version,
-                    git_commit=firmware.git_commit_hash,
+                # Check if firmware already exists by querying for a
+                # kbuild node with the same name
+                node_name = (
+                    f"openwrt-{firmware.target}-{firmware.subtarget}-{firmware.profile}"
                 )
-
-                if exists:
+                existing = await self.api_client.query_nodes(
+                    kind="kbuild",
+                    name=node_name,
+                    limit=1,
+                )
+                # Match on git commit to detect new builds of same profile
+                if existing and any(
+                    n.get("data", {})
+                    .get("kernel_revision", {})
+                    .get("commit")
+                    == firmware.git_commit_hash
+                    for n in existing
+                ):
                     existing_count += 1
                     continue
 
@@ -224,34 +232,26 @@ class FirmwareTriggerService:
                     profile=firmware.profile,
                 )
 
-                firmware_create = FirmwareCreate(
-                    source=firmware.source,
+                artifacts = {}
+                if firmware.artifacts:
+                    if firmware.artifacts.sysupgrade:
+                        artifacts["sysupgrade"] = firmware.artifacts.sysupgrade
+                    if firmware.artifacts.factory:
+                        artifacts["factory"] = firmware.artifacts.factory
+                    if firmware.artifacts.initramfs:
+                        artifacts["initramfs"] = firmware.artifacts.initramfs
+
+                await self.api_client.create_firmware_node(
+                    name=node_name,
                     version=firmware.version,
                     target=firmware.target,
                     subtarget=firmware.subtarget,
                     profile=firmware.profile,
-                    artifacts=firmware.artifacts,
-                    git_commit_hash=firmware.git_commit_hash,
-                    git_branch=firmware.git_branch,
-                    source_url=firmware.source_url,
-                    source_ref=firmware.source_ref,
-                    description=firmware.description,
+                    source=firmware.source.value,
+                    artifacts=artifacts,
+                    git_commit=firmware.git_commit_hash,
                 )
-
-                created = await self.api_client.create_firmware(firmware_create)
                 new_count += 1
-
-                # Publish event for scheduler
-                await self.api_client.publish_event(
-                    event_type="firmware.new",
-                    data={
-                        "firmware_id": created.id,
-                        "source": firmware.source.value,
-                        "target": firmware.target,
-                        "subtarget": firmware.subtarget,
-                        "profile": firmware.profile,
-                    },
-                )
 
             except APIError as e:
                 if e.status_code == 409:  # Conflict - already exists
