@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # API Configuration
     kci_api_url: str = Field(
-        default="http://kernelci-api:8001",
+        default="http://kernelci-api:8000",
         description="KernelCI API URL",
     )
     kci_api_token: str = Field(

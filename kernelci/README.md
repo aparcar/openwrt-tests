@@ -1,412 +1,308 @@
-# OpenWrt KernelCI - Self-Hosted Testing Infrastructure
+# OpenWrt KernelCI
 
-This directory contains the Docker Compose stack for running a self-hosted
-KernelCI instance tailored for OpenWrt firmware testing.
-
-## Modular Architecture
-
-The system is split into two components:
-
-| Component | Description | Reusable? |
-|-----------|-------------|-----------|
-| `labgrid-runner/` | Generic runner connecting labgrid to KernelCI | **Yes** - usable by any project |
-| `openwrt-scheduler/` | OpenWrt-specific firmware discovery and scheduling | No - OpenWrt specific |
-
-The **labgrid-runner** is designed to be project-agnostic and can be used
-by other projects that want to connect labgrid-managed devices to KernelCI.
-See `labgrid-runner/README.md` for details.
-
-## Overview
-
-The stack provides:
-
-- **KernelCI API (Maestro)** - Job management and REST API
-- **Dashboard** - Web-based result visualization
-- **Pipeline Services** - Firmware triggers, scheduling, health checks
-- **Storage** - MinIO for artifacts, MongoDB for data, Redis for events
-- **Reverse Proxy** - Traefik with automatic TLS certificates
-
-## Quick Start
-
-### Prerequisites
-
-- Docker Engine 24.0+
-- Docker Compose v2.20+
-- A domain name pointing to your server (for TLS)
-- At least 4GB RAM, 20GB disk space
-
-### Installation
-
-1. **Clone and configure:**
-
-   ```bash
-   cd kernelci
-   cp .env.example .env
-   ```
-
-2. **Edit `.env` with your settings:**
-
-   ```bash
-   # Generate secure passwords
-   openssl rand -base64 32  # For MONGO_PASSWORD
-   openssl rand -base64 32  # For MINIO_SECRET_KEY
-   openssl rand -base64 48  # For KCI_SECRET_KEY
-   ```
-
-3. **Start the stack:**
-
-   ```bash
-   docker compose up -d
-   ```
-
-4. **Check logs:**
-
-   ```bash
-   docker compose logs -f
-   ```
-
-5. **Access the services:**
-
-   - Dashboard: `https://your-domain.org`
-   - API: `https://api.your-domain.org`
-   - Storage Console: `https://storage.your-domain.org`
-   - Traefik Dashboard: `http://your-server:8080`
+Self-hosted [KernelCI](https://kernelci.org/) instance for automated OpenWrt
+firmware testing on real hardware. Includes the full KernelCI dashboard for
+browsing test results.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Traefik (Reverse Proxy)                      │
-│                    :80 (redirect) → :443 (TLS)                       │
-└─────────────────────────────────────────────────────────────────────┘
-         │                    │                    │
-         ▼                    ▼                    ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│    Dashboard    │  │   KernelCI API  │  │   MinIO Console │
-│   (KernelCI)    │  │   (Maestro)     │  │   (S3 Storage)  │
-│    :3000        │  │   :8001         │  │   :9001         │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
-                              │
-         ┌────────────────────┼────────────────────┐
-         │                    │                    │
-         ▼                    ▼                    ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│    MongoDB      │  │     Redis       │  │     MinIO       │
-│    (Data)       │  │   (Pub/Sub)     │  │   (Artifacts)   │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
+  downloads.openwrt.org
+          │
+          ▼
+  ┌───────────────┐        ┌───────────────┐        ┌───────────────┐
+  │   Firmware     │───────▶│  KernelCI API │◀───────│  Labgrid      │
+  │   Trigger      │ create │  (Maestro)    │  poll  │  Runner       │
+  └───────────────┘ kbuild └───────┬───────┘        └───────┬───────┘
+                     nodes         │                        │
+                            ┌──────┴──────┐                 │
+                            ▼             ▼                 │
+                    ┌─────────────┐ ┌───────────┐          │
+                    │    Test     │ │   KCIDB   │          │
+                    │  Scheduler  │ │   Bridge  │          │
+                    └─────────────┘ └─────┬─────┘          │
+                     create job           │ submit          │
+                     nodes                ▼                 │
+                                  ┌───────────────┐        │
+                                  │  KCIDB REST   │        │
+                                  │  (Rust)       │        │
+                                  └───────┬───────┘        │
+                                          │ spool          │
+                                          ▼                │
+                                  ┌───────────────┐        │
+                                  │   Ingester    │        │
+                                  │  (Django)     │        │
+                                  └───────┬───────┘        │
+                                          │                │
+                                          ▼                │
+                                  ┌───────────────┐        │
+                                  │  PostgreSQL   │        │
+                                  │  (KCIDB)      │        │
+                                  └───────┬───────┘        │
+                                          │                │
+                                          ▼                │
+                                  ┌───────────────┐        │
+                                  │   Dashboard   │        │
+                                  │  (React+Django)│       │
+                                  └───────────────┘        │
+                                                    (in each lab)
 ```
 
-## Pipeline Services
+**Routing:**
+- `https://DOMAIN` — Dashboard (tree view, test results)
+- `https://api.DOMAIN` — Maestro API (Swagger UI at `/docs`)
+- `https://storage.DOMAIN` — MinIO console (log storage)
 
-### Firmware Trigger (`pipeline-trigger`)
+| Component | Description | Reusable? |
+|-----------|-------------|-----------|
+| `openwrt-scheduler/` | Firmware discovery + test scheduling + KCIDB bridge | OpenWrt-specific |
+| `labgrid-runner/` | Generic labgrid-to-KernelCI adapter | **Yes** — any project |
+| `kcidb-ng/` | KCIDB result storage (cloned at deploy time) | Upstream KernelCI |
+| `dashboard/` | KernelCI dashboard (cloned at deploy time) | Upstream KernelCI |
 
-Watches for new firmware from configured sources:
+## Prerequisites
 
-- **Official releases** - downloads.openwrt.org
-- **GitHub PRs** - Artifacts from PR CI runs
-- **Custom uploads** - Via API endpoint
+- Docker Engine 24+ with Compose v2
+- A domain name with DNS A records for `DOMAIN`, `api.DOMAIN`, `storage.DOMAIN`
+- Ports 80 and 443 open (for Let's Encrypt HTTP challenge + HTTPS)
+- 4 GB RAM, 20 GB disk
 
-### Test Scheduler (`pipeline-scheduler`)
+## Deployment
 
-Creates test job nodes for available firmware based on:
-
-- Device compatibility (target/subtarget/profile)
-- Device features (wifi, wan_port, etc.)
-- Test plan requirements
-
-## Lab Integration
-
-Labs connect using the **pull-mode** architecture:
-
-1. Lab runs the `labgrid-runner` service
-2. Adapter polls API for pending jobs (`kind=job`, `state=available`)
-3. Jobs are claimed by setting `state=running`
-4. Tests run via pytest with labgrid plugin
-5. Results submitted as test nodes under job
-6. Health checks run automatically every 24 hours
-
-See `labgrid-runner/` for the lab-side component.
-
-### Test Execution
-
-Tests are executed using pytest's programmatic API with the labgrid plugin.
-Following the [LAVA pattern](https://docs.lavasoftware.org/lava/writing-tests.html),
-tests are pulled from git before each job execution.
-
-**Configuration:**
+### 1. Clone repositories
 
 ```bash
-# Configure the tests repository (pulled before each job)
-TESTS_REPO_URL=https://github.com/openwrt/openwrt-tests.git
-TESTS_REPO_BRANCH=main
+git clone https://github.com/openwrt/openwrt.git
+cd openwrt/tests/kernelci
+
+# Clone upstream KernelCI components
+git clone https://github.com/kernelci/kcidb-ng
+git clone https://github.com/kernelci/dashboard
 ```
 
-**Per-job override:**
+### 2. Configure environment
 
-Jobs can specify a different tests repository:
+```bash
+cp .env.example .env
+```
+
+Generate secrets and paste into `.env`:
+
+```bash
+openssl rand -hex 16   # → MONGO_PASSWORD
+openssl rand -hex 32   # → KCI_SECRET_KEY
+openssl rand -hex 16   # → KCIDB_PG_PASSWORD
+openssl rand -hex 32   # → KCIDB_JWT_SECRET
+openssl rand -hex 16   # → MINIO_SECRET_KEY
+```
+
+Set `DOMAIN` and `ACME_EMAIL` to your values. Leave `KCI_API_TOKEN` empty
+for now.
+
+### 3. Create dashboard secrets
+
+The dashboard backend reads the PostgreSQL password from a file:
+
+```bash
+echo "YOUR_KCIDB_PG_PASSWORD" > config/dashboard-secrets/postgres_password_secret
+```
+
+Use the same value you set for `KCIDB_PG_PASSWORD` in `.env`.
+
+### 4. Build the KernelCI API image
+
+The upstream container image (`ghcr.io/kernelci/kernelci-api:latest`) may fail
+to pull. Build from source as a reliable fallback:
+
+```bash
+git clone https://github.com/kernelci/kernelci-api.git /tmp/kernelci-api
+docker build -t ghcr.io/kernelci/kernelci-api:latest /tmp/kernelci-api
+```
+
+### 5. Start core services
+
+Start the infrastructure first (without pipeline services):
+
+```bash
+docker compose up -d --build \
+  mongodb maestro-redis kernelci-api traefik \
+  kcidb-db kcidb-dbinit kcidb-rest kcidb-ingester \
+  minio minio-init \
+  dashboard-db dashboard-redis dashboard-backend dashboard dashboard-proxy
+```
+
+Wait for services to become healthy:
+
+```bash
+docker compose logs -f kernelci-api    # "Application startup complete"
+docker compose logs -f kcidb-dbinit    # "Database initialized."
+```
+
+Verify the dashboard loads:
+
+```bash
+curl -I https://YOUR_DOMAIN
+# Should return 200
+```
+
+### 6. Create an API user and token
+
+```bash
+# Create a user
+curl -X POST https://api.YOUR_DOMAIN/latest/user \
+  -H "Content-Type: application/json" \
+  -d '{"username": "pipeline", "password": "pipeline-secret", "is_superuser": true}'
+
+# Get a token
+curl -X POST https://api.YOUR_DOMAIN/latest/user/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=pipeline&password=pipeline-secret"
+```
+
+Copy the `access_token` from the response into `.env` as `KCI_API_TOKEN`.
+
+### 7. Start the pipeline
+
+```bash
+docker compose up -d --build
+```
+
+This starts the firmware trigger, test scheduler, and KCIDB bridge. Check logs:
+
+```bash
+docker compose logs -f pipeline-trigger   # Firmware scanning
+docker compose logs -f kcidb-bridge       # Result submission to dashboard
+```
+
+After a few minutes, firmware builds should appear on the dashboard at
+`https://YOUR_DOMAIN`.
+
+### 8. Connect a lab
+
+Labs run the `labgrid-runner` service, which polls the API for available jobs,
+runs tests via pytest + labgrid, and submits results back. See
+[labgrid-runner/README.md](labgrid-runner/README.md) for setup instructions.
+
+## Customizing for your project
+
+### Adding firmware targets
+
+Edit `config/pipeline.yaml` under `firmware_sources.official.targets`:
 
 ```yaml
-data:
-  tests_repo: "https://github.com/custom/tests.git"
-  tests_branch: "feature-branch"
-  tests: ["test_boot", "test_wifi"]
+firmware_sources:
+  official:
+    targets:
+      - x86/64
+      - ath79/generic
+      - ramips/mt7621
+      - mediatek/filogic
 ```
 
-The executor:
-1. Pulls tests from git (clones if not exists, updates if exists)
-2. Runs pytest with labgrid plugin
-3. Collects results via `ResultCollectorPlugin`
-4. Submits results as KernelCI test nodes
+### Adding device types
 
-Labgrid handles firmware flashing via its pytest fixtures.
+Edit `config/pipeline.yaml` under `device_types`:
 
-### Lab Configuration
-
-```bash
-# Required environment variables
-LAB_NAME=my-lab
-KCI_API_URL=https://api.kernelci.example.com
-KCI_API_TOKEN=<your-token>
-LG_COORDINATOR=labgrid-coordinator:20408
-
-# Optional - polling and concurrency
-POLL_INTERVAL=30
-MAX_CONCURRENT_JOBS=3
-
-# Optional - health checks
-HEALTH_CHECK_INTERVAL=86400  # 24 hours
-HEALTH_CHECK_ENABLED=true
-
-# Optional - tests repository (pulled before each job)
-TESTS_REPO_URL=https://github.com/openwrt/openwrt-tests.git
-TESTS_REPO_BRANCH=main
+```yaml
+device_types:
+  my-router:
+    target: ath79
+    subtarget: generic
+    profile: tplink_archer-c7-v2
+    features:
+      - wifi
+      - wan_port
+    capabilities:
+      - serial_console
 ```
 
-### Health Checks
+The scheduler matches kbuild nodes to device types by `target/subtarget/profile`
+and creates job nodes with test plans based on the device's features.
 
-The adapter runs automatic health checks:
+### Test plans
 
-- Every 24 hours (configurable via `HEALTH_CHECK_INTERVAL`)
-- Failing devices removed from job pool
-- Recovered devices automatically re-added
-- Results logged for lab maintainers
+Test plans in `config/pipeline.yaml` list the pytest functions to run and
+required device features:
 
-Manual check:
-```bash
-python -m labgrid_runner.health_check --all
+```yaml
+test_plans:
+  base:
+    tests: [test_shell, test_ssh, test_firmware_version, ...]
+    required_features: []
+  wifi:
+    tests: [test_wifi_scan, test_wifi_wpa2, test_wifi_wpa3]
+    required_features: [wifi]
 ```
 
-## Configuration
+## Configuration reference
 
-### `config/pipeline.yaml`
+| File | Purpose |
+|------|---------|
+| `.env` | Secrets and domain config (not committed) |
+| `config/api-config.toml` | KernelCI Maestro API settings (port, DB, JWT) |
+| `config/pipeline.yaml` | Firmware sources, targets, device types, test plans |
+| `config/dbinit.sh` | KCIDB PostgreSQL schema initialization |
+| `config/dashboard-secrets/` | Dashboard backend secrets (postgres password file) |
+| `docker-compose.yml` | All service definitions |
 
-Main pipeline configuration including:
+## API quick reference
 
-- Firmware sources
-- Test plans
-- Scheduler settings
-- Device type mappings
-- Health check settings
+The Maestro API uses a node-based data model at `https://api.YOUR_DOMAIN`.
 
-### `config/api-config.toml`
-
-KernelCI API configuration:
-
-- Server settings
-- Database connection
-- JWT authentication
-- OpenWrt-specific settings
-
-### `config/mongo-init.js`
-
-MongoDB initialization:
-
-- Creates collections
-- Sets up indexes
-- Optimizes queries
-
-## API Reference
-
-The KernelCI API uses a **Node-based data model** where all entities
-(firmware builds, jobs, tests) are nodes with different `kind` values.
-
-### Query Nodes
+| Kind | Description | Created by |
+|------|-------------|------------|
+| `kbuild` | Firmware build | Trigger |
+| `job` | Test job | Scheduler |
+| `test` | Test result | Lab runner |
 
 ```bash
-# Get all available jobs for a device type
-GET /latest/nodes?kind=job&state=available&data.device_type=ath79-tplink-archer-c7-v2
+# List firmware builds
+curl https://api.YOUR_DOMAIN/latest/nodes?kind=kbuild
 
-# Get firmware nodes
-GET /latest/nodes?kind=kbuild&data.target=ath79
+# List available jobs
+curl https://api.YOUR_DOMAIN/latest/nodes?kind=job&state=available
 
-# Get test results for a job
-GET /latest/nodes?kind=test&parent={job_id}
-```
-
-### Create Nodes
-
-```bash
-# Create firmware node
-POST /latest/nodes
-{
-  "kind": "kbuild",
-  "name": "openwrt-ath79-generic-tplink_archer-c7-v2",
-  "state": "available",
-  "data": {
-    "target": "ath79",
-    "subtarget": "generic",
-    "profile": "tplink_archer-c7-v2",
-    "version": "24.10.0"
-  }
-}
-
-# Create test result
-POST /latest/nodes
-{
-  "kind": "test",
-  "name": "test_firmware_version",
-  "parent": "{job_id}",
-  "state": "done",
-  "result": "pass"
-}
-```
-
-### Update Nodes
-
-```bash
-# Claim a job
-PUT /latest/nodes/{job_id}
-{
-  "state": "running",
-  "data": {
-    "lab_name": "my-lab",
-    "device_id": "device-01"
-  }
-}
-
-# Complete a job
-PUT /latest/nodes/{job_id}
-{
-  "state": "done",
-  "result": "pass"
-}
-```
-
-### Node States
-
-| State | Description |
-|-------|-------------|
-| `available` | Ready to be processed (job ready for lab) |
-| `running` | Currently being processed |
-| `done` | Processing complete |
-
-### Node Kinds
-
-| Kind | Description |
-|------|-------------|
-| `kbuild` | Firmware build (OpenWrt image) |
-| `job` | Test job container |
-| `test` | Individual test result |
-
-## Maintenance
-
-### Backup
-
-```bash
-# Backup MongoDB
-docker exec openwrt-kci-mongodb mongodump --out /backup
-docker cp openwrt-kci-mongodb:/backup ./backup-$(date +%Y%m%d)
-
-# Backup MinIO
-docker run --rm -v openwrt-kci-minio:/data -v $(pwd):/backup \
-    alpine tar czf /backup/minio-$(date +%Y%m%d).tar.gz /data
-```
-
-### Logs
-
-```bash
-# View all logs
-docker compose logs -f
-
-# View specific service
-docker compose logs -f pipeline-health
-
-# View last 100 lines
-docker compose logs --tail=100 kernelci-api
-```
-
-### Updates
-
-```bash
-# Pull latest images
-docker compose pull
-
-# Restart with new images
-docker compose up -d
-
-# Rebuild pipeline services
-docker compose build --no-cache
-docker compose up -d
+# Swagger UI
+open https://api.YOUR_DOMAIN/docs
 ```
 
 ## Troubleshooting
 
-### API not starting
+### API image fails to pull
 
-Check MongoDB connection:
+Build from source (see step 4 above).
 
+### No kbuild nodes created
+
+Check trigger logs: `docker compose logs pipeline-trigger`
+
+Common cause: x86/64 uses `combined`/`combined-efi` images, not `sysupgrade`.
+Make sure the firmware source code handles your target's image naming.
+
+### Dashboard shows no data
+
+Check the KCIDB bridge logs: `docker compose logs kcidb-bridge`
+
+The bridge polls Maestro for completed nodes and submits them to KCIDB. Data
+only appears on the dashboard after the ingester processes submissions from the
+spool directory.
+
+Check ingester: `docker compose logs kcidb-ingester`
+
+### HTTPS not working
+
+- Verify DNS A records for `DOMAIN`, `api.DOMAIN`, `storage.DOMAIN`
+- Check Traefik logs: `docker compose logs traefik`
+- After changing `DOMAIN` in `.env`, recreate containers:
+  ```bash
+  docker compose up -d --force-recreate
+  ```
+
+### Database initialization fails
+
+Check dbinit logs: `docker compose logs kcidb-dbinit`
+
+The dbinit container runs once and exits. If it fails, fix the issue and run:
 ```bash
-docker compose logs mongodb
-docker exec -it openwrt-kci-mongodb mongosh --eval "db.adminCommand('ping')"
+docker compose up kcidb-dbinit
 ```
-
-### Jobs not being scheduled
-
-Check scheduler logs:
-
-```bash
-docker compose logs -f pipeline-scheduler
-```
-
-### Device health checks failing
-
-Health checks run on the lab-side adapter, not centrally.
-Check the adapter logs on your lab server:
-
-```bash
-docker logs labgrid-runner
-```
-
-### TLS certificate issues
-
-Check Traefik logs:
-
-```bash
-docker compose logs -f traefik
-```
-
-Ensure your domain DNS is correctly configured.
-
-## Development
-
-### Local development without TLS
-
-Add to `.env`:
-
-```
-SKIP_TLS=true
-```
-
-Access via `http://localhost:3000` (dashboard) and `http://localhost:8001` (API).
-
-### Running tests
-
-```bash
-# Build and run tests
-docker compose -f docker-compose.yml -f docker-compose.test.yml up --build
-```
-
-## License
-
-This project is part of the OpenWrt testing infrastructure.
-See the main repository for license information.

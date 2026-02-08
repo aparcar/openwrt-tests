@@ -1,187 +1,26 @@
-# =============================================================================
-# KernelCI API Configuration for OpenWrt Testing
-# =============================================================================
+# KernelCI API (Maestro) Configuration
 #
-# This configuration file is mounted into the kernelci-api container.
-# Environment variables are used for secrets (defined in .env file).
-#
-# =============================================================================
+# Mounted into the kernelci-api container at /home/kernelci/config/kernelci.toml
+# Secrets are injected via environment variables (defined in .env file).
 
 [server]
 host = "0.0.0.0"
-port = 8001
+port = 8000
 
 [database]
-# MongoDB connection string (uses environment variable)
 service_env = "MONGO_SERVICE"
-name = "openwrt_kernelci"
+name = "kernelci"
 
 [redis]
 host_env = "REDIS_HOST"
 port = 6379
 
 [jwt]
-# JWT secret key for authentication (uses environment variable)
 secret_key_env = "SECRET_KEY"
 algorithm = "HS256"
 access_token_expire_minutes = 480
 
 [cors]
-# Allow cross-origin requests from dashboard
 allow_origins = ["*"]
 allow_methods = ["*"]
 allow_headers = ["*"]
-
-# =============================================================================
-# OpenWrt-Specific Configuration
-# =============================================================================
-
-[openwrt]
-# Project identification
-project_name = "OpenWrt"
-project_url = "https://openwrt.org"
-
-# Supported firmware sources
-firmware_sources = ["official", "pr", "custom", "buildbot"]
-
-# Default timeouts (seconds)
-default_test_timeout = 1800
-default_boot_timeout = 300
-health_check_timeout = 300
-
-# Health check configuration
-health_check_interval = 86400  # 24 hours
-health_check_failure_threshold = 5
-
-# =============================================================================
-# Official Firmware Sources
-# =============================================================================
-
-[openwrt.sources.snapshot]
-name = "Snapshot"
-description = "Latest development builds"
-url = "https://downloads.openwrt.org/snapshots/targets"
-check_interval = 3600  # 1 hour
-enabled = true
-
-[openwrt.sources.stable]
-name = "Stable (24.10)"
-description = "Current stable release"
-url = "https://downloads.openwrt.org/releases/24.10.0/targets"
-version = "24.10.0"
-check_interval = 86400  # 24 hours
-enabled = true
-
-[openwrt.sources.oldstable]
-name = "Old Stable (23.05)"
-description = "Previous stable release"
-url = "https://downloads.openwrt.org/releases/23.05.5/targets"
-version = "23.05.5"
-check_interval = 86400  # 24 hours
-enabled = true
-
-# =============================================================================
-# Test Plans
-# =============================================================================
-
-[openwrt.test_plans.base]
-name = "Base Tests"
-description = "Basic boot and connectivity tests"
-tests = [
-    "test_shell",
-    "test_ssh",
-    "test_firmware_version",
-    "test_ubus_system_board",
-    "test_free_memory",
-    "test_kernel_errors",
-]
-timeout = 600
-required_features = []
-priority = 5
-
-[openwrt.test_plans.system]
-name = "System Health"
-description = "System resource and health validation"
-tests = [
-    "test_memory_usage",
-    "test_filesystem_usage",
-    "test_system_uptime",
-    "test_process_count",
-    "test_entropy_available",
-]
-timeout = 300
-required_features = []
-priority = 4
-
-[openwrt.test_plans.network]
-name = "Network Tests"
-description = "Network functionality validation"
-tests = [
-    "test_lan_interface_address",
-    "test_wan_wait_for_network",
-    "test_https_download",
-]
-timeout = 600
-required_features = ["wan_port", "online"]
-priority = 3
-
-[openwrt.test_plans.wifi]
-name = "WiFi Tests"
-description = "Wireless functionality validation"
-tests = [
-    "test_wifi_scan",
-    "test_wifi_wpa2",
-    "test_wifi_wpa3",
-]
-timeout = 900
-required_features = ["wifi"]
-priority = 3
-
-[openwrt.test_plans.package]
-name = "Package Manager Tests"
-description = "Package installation and management"
-tests = [
-    "test_opkg_procd_installed",
-    "test_opkg_install_ucert",
-]
-timeout = 300
-required_features = ["opkg", "online"]
-priority = 2
-
-[openwrt.test_plans.health_check]
-name = "Health Check"
-description = "Quick device health verification"
-tests = [
-    "test_shell",
-    "test_ssh",
-]
-timeout = 300
-required_features = []
-priority = 10  # Highest priority
-skip_firmware_flash = true
-
-# =============================================================================
-# Scheduler Configuration
-# =============================================================================
-
-[scheduler]
-# Maximum concurrent jobs per lab
-max_concurrent_jobs = 5
-
-# Job priority weights
-[scheduler.priorities]
-pr_builds = 10      # Highest - developers waiting
-custom = 8          # Developer uploads
-health_check = 10   # Device health verification
-snapshot = 5        # Daily development testing
-stable = 3          # Release validation
-oldstable = 2       # Legacy support
-
-# Feature-based test assignment
-[scheduler.feature_mapping]
-# Devices with wifi feature get wifi tests
-wifi = ["wifi"]
-# Devices with wan_port and online get network tests
-network = ["wan_port", "online"]
-# Devices with opkg and online get package tests
-package = ["opkg", "online"]

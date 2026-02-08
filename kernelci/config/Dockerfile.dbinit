@@ -1,0 +1,14 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client git curl postgresql-server-dev-all build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir git+https://github.com/kernelci/kcidb.git
+
+COPY dbinit.sh /app/dbinit.sh
+RUN chmod +x /app/dbinit.sh
+
+ENTRYPOINT ["/app/dbinit.sh"]
