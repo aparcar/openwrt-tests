@@ -142,10 +142,10 @@ async def get_active_branches(
             # Sort by major.minor descending
             versioned.sort(key=lambda x: x[0], reverse=True)
 
-            # Find first version from a different series than stable
+            # Find first version from an older series than stable
             for mm, version in versioned:
-                if stable_mm and mm[0:2] != stable_mm[0:2]:
-                    # Different major.minor series = oldstable
+                if stable_mm and mm < stable_mm:
+                    # Older major.minor series = oldstable
                     branches.append(
                         BranchInfo(
                             name=version_to_branch(version),
