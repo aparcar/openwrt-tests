@@ -136,7 +136,7 @@ services:
     environment:
       KCI_API_URL: http://kernelci-api:8000
       KCI_API_TOKEN: ${KCI_API_TOKEN}
-      KCIDB_URL: http://kcidb-rest:8080
+      KCIDB_URL: http://kcidb-rest:80
       KCIDB_ORIGIN: ${KCIDB_ORIGIN:-openwrt}
       KCIDB_SECRET: ${KCIDB_JWT_SECRET:?KCIDB_JWT_SECRET is required}
       POLL_INTERVAL: "60"
@@ -256,6 +256,13 @@ services:
       DB_DEFAULT_PORT: "5432"
       AGGREGATION_ENABLED: "True"
       AGGREGATION_INTERVAL: "60"
+      DASH_DB_NAME: dashboard
+      DASH_DB_USER: admin
+      DASH_DB_PASSWORD: admin
+      DASH_DB_HOST: dashboard-db
+      DASH_DB_PORT: "5432"
+      USE_DASHBOARD_DB: "True"
+      REDIS_HOST: dashboard-redis
     volumes:
       - kcidb_spool:/app/spool
       - kcidb_state:/app/state
@@ -265,6 +272,8 @@ services:
         condition: service_healthy
       kcidb-dbinit:
         condition: service_completed_successfully
+      dashboard-db:
+        condition: service_healthy
     networks:
       - internal
     restart: unless-stopped
@@ -284,6 +293,11 @@ services:
       - dashboard_db_data:/var/lib/postgresql/data
     networks:
       - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d dashboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   dashboard-redis:
@@ -311,12 +325,13 @@ services:
       DJANGO_SECRET_KEY: ${KCI_SECRET_KEY}
       REDIS_HOST: dashboard-redis
       DEBUG: "False"
+      DEFAULT_ORIGIN: ${KCIDB_ORIGIN:-openwrt}
       DASH_DB_NAME: dashboard
       DASH_DB_USER: admin
       DASH_DB_PASSWORD: admin
       DASH_DB_HOST: dashboard-db
       DASH_DB_PORT: "5432"
-      USE_DASHBOARD_DB: "False"
+      USE_DASHBOARD_DB: "True"
     depends_on:
       - kcidb-db
       - dashboard-redis
