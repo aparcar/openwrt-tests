@@ -505,18 +505,30 @@ def _render_dashboard(
         f"<span class='tag'>{_h(t)}</span>" for t in enabled_types
     ) or "<em>none</em>"
 
+    # Build lookup: kbuild node id -> first artifact URL
+    build_lookup: dict[str, str] = {}
+    for b in builds:
+        bid = b.get("id") or str(b.get("_id", ""))
+        arts = b.get("data", {}).get("artifacts", {})
+        if arts:
+            build_lookup[bid] = next(iter(arts.values()))
+
     # --- Open Jobs table ---
     if open_jobs:
         open_rows = ""
         for job in open_jobs:
             d = job.get("data", {})
             kr = d.get("kernel_revision", {})
+            parent = job.get("parent", "")
+            fw_url = build_lookup.get(parent, "")
+            fw_display = fw_url.split("/")[-1] if fw_url else ""
+            fw_cell = f"<a href='{_h(fw_url)}'>{_h(fw_display)}</a>" if fw_url else ""
             open_rows += (
                 f"<tr>"
                 f"<td>{_h(d.get('device_type', ''))}</td>"
                 f"<td>{_h(kr.get('branch', ''))}</td>"
                 f"<td>{_h(d.get('test_type', ''))}</td>"
-                f"<td>{_h(d.get('firmware_url', '')[-60:] if d.get('firmware_url') else '')}</td>"
+                f"<td>{fw_cell}</td>"
                 f"<td>{_format_age(job.get('created', ''))}</td>"
                 f"</tr>"
             )
