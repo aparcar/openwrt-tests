@@ -188,7 +188,7 @@ class FirmwareTriggerService:
         async for firmware in source.scan():
             try:
                 # Check if firmware already exists by querying for a
-                # kbuild node with the same name
+                # kbuild node with the same name and commit
                 node_name = (
                     f"openwrt-{firmware.target}-{firmware.subtarget}-{firmware.profile}"
                 )
@@ -196,15 +196,11 @@ class FirmwareTriggerService:
                     kind="kbuild",
                     name=node_name,
                     limit=1,
+                    **{
+                        "data.kernel_revision.commit": firmware.git_commit_hash,
+                    },
                 )
-                # Match on git commit to detect new builds of same profile
-                if existing and any(
-                    n.get("data", {})
-                    .get("kernel_revision", {})
-                    .get("commit")
-                    == firmware.git_commit_hash
-                    for n in existing
-                ):
+                if existing:
                     existing_count += 1
                     continue
 
