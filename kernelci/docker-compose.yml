@@ -94,6 +94,13 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trigger.rule=Host(`${DOMAIN:-localhost}`) && PathPrefix(`/status`)"
+      - "traefik.http.routers.trigger.entrypoints=websecure"
+      - "traefik.http.routers.trigger.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.trigger.priority=200"
+      - "traefik.http.services.trigger.loadbalancer.server.port=8080"
     environment:
       KCI_API_URL: http://kernelci-api:8000
       KCI_API_TOKEN: ${KCI_API_TOKEN:?KCI_API_TOKEN is required}

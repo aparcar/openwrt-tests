@@ -14,12 +14,13 @@ This service runs continuously and:
 import asyncio
 import io
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 import structlog
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse, RedirectResponse
 from minio import Minio
 
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -278,6 +279,24 @@ class FirmwareTriggerService:
             mirrored[artifact_type] = mirrored_url or url
         return mirrored
 
+    async def get_open_jobs(self) -> list[dict]:
+        """Get jobs waiting for a lab to claim."""
+        return await self.api_client.query_nodes(
+            kind="job", state="available", limit=100,
+        )
+
+    async def get_running_jobs(self) -> list[dict]:
+        """Get jobs currently being executed."""
+        return await self.api_client.query_nodes(
+            kind="job", state="closing", limit=100,
+        )
+
+    async def get_recent_builds(self) -> list[dict]:
+        """Get current firmware builds."""
+        return await self.api_client.query_nodes(
+            kind="kbuild", state="available", limit=50,
+        )
+
     async def _scan_source(self, source) -> None:
         """Scan a source and create firmware entries."""
         logger.info(f"Scanning firmware source: {source.name}")
@@ -422,6 +441,386 @@ async def list_sources():
             }
             for s in _service.sources
         ]
+    }
+
+
+# =============================================================================
+# Status Dashboard
+# =============================================================================
+
+
+def _format_age(iso_timestamp: str) -> str:
+    """Convert ISO timestamp to human-readable age."""
+    try:
+        ts = iso_timestamp.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        delta = datetime.now(timezone.utc) - dt
+        seconds = int(delta.total_seconds())
+        if seconds < 0:
+            return "just now"
+        if seconds < 60:
+            return f"{seconds}s ago"
+        if seconds < 3600:
+            return f"{seconds // 60}m ago"
+        if seconds < 86400:
+            return f"{seconds // 3600}h {(seconds % 3600) // 60}m ago"
+        return f"{seconds // 86400}d ago"
+    except Exception:
+        return iso_timestamp or "unknown"
+
+
+def _h(text: str) -> str:
+    """Escape HTML."""
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+def _render_dashboard(
+    service: FirmwareTriggerService,
+    open_jobs: list[dict],
+    running_jobs: list[dict],
+    builds: list[dict],
+) -> str:
+    """Render the status dashboard as HTML."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    config = service.config
+
+    # --- Overview ---
+    sources_info = []
+    for s in service.sources:
+        sources_info.append(
+            f"<span class='tag'>{_h(s.name)}</span>"
+        )
+    sources_html = " ".join(sources_info) if sources_info else "<em>none</em>"
+
+    enabled_types = config.get("scheduler", {}).get("enabled_test_types", [])
+    types_html = " ".join(
+        f"<span class='tag'>{_h(t)}</span>" for t in enabled_types
+    ) or "<em>none</em>"
+
+    # --- Open Jobs table ---
+    if open_jobs:
+        open_rows = ""
+        for job in open_jobs:
+            d = job.get("data", {})
+            kr = d.get("kernel_revision", {})
+            open_rows += (
+                f"<tr>"
+                f"<td>{_h(d.get('device_type', ''))}</td>"
+                f"<td>{_h(kr.get('branch', ''))}</td>"
+                f"<td>{_h(d.get('test_type', ''))}</td>"
+                f"<td>{_h(d.get('firmware_url', '')[-60:] if d.get('firmware_url') else '')}</td>"
+                f"<td>{_format_age(job.get('created', ''))}</td>"
+                f"</tr>"
+            )
+        open_jobs_html = (
+            f"<table><thead><tr>"
+            f"<th>Device</th><th>Branch</th><th>Type</th>"
+            f"<th>Firmware</th><th>Waiting</th>"
+            f"</tr></thead><tbody>{open_rows}</tbody></table>"
+        )
+    else:
+        open_jobs_html = "<p class='empty'>No open jobs</p>"
+
+    # --- Running Jobs table ---
+    if running_jobs:
+        running_rows = ""
+        for job in running_jobs:
+            d = job.get("data", {})
+            kr = d.get("kernel_revision", {})
+            running_rows += (
+                f"<tr>"
+                f"<td>{_h(d.get('device_type', ''))}</td>"
+                f"<td>{_h(kr.get('branch', ''))}</td>"
+                f"<td>{_h(d.get('lab_name', ''))}</td>"
+                f"<td>{_format_age(d.get('started_at', job.get('updated', '')))}</td>"
+                f"</tr>"
+            )
+        running_jobs_html = (
+            f"<table><thead><tr>"
+            f"<th>Device</th><th>Branch</th><th>Lab</th><th>Started</th>"
+            f"</tr></thead><tbody>{running_rows}</tbody></table>"
+        )
+    else:
+        running_jobs_html = "<p class='empty'>No running jobs</p>"
+
+    # --- Builds table ---
+    if builds:
+        build_rows = ""
+        for b in builds:
+            d = b.get("data", {})
+            kr = d.get("kernel_revision", {})
+            arts = d.get("artifacts", {})
+            art_links = []
+            for atype, url in arts.items():
+                art_links.append(f"<a href='{_h(url)}'>{_h(atype)}</a>")
+            build_rows += (
+                f"<tr>"
+                f"<td>{_h(d.get('target', ''))}/{_h(d.get('subtarget', ''))}</td>"
+                f"<td>{_h(d.get('profile', ''))}</td>"
+                f"<td>{_h(d.get('openwrt_version', ''))}</td>"
+                f"<td>{_h(kr.get('branch', ''))}</td>"
+                f"<td><code>{_h(kr.get('commit', '')[:10])}</code></td>"
+                f"<td>{' '.join(art_links)}</td>"
+                f"</tr>"
+            )
+        builds_html = (
+            f"<table><thead><tr>"
+            f"<th>Target</th><th>Profile</th><th>Version</th>"
+            f"<th>Branch</th><th>Commit</th><th>Artifacts</th>"
+            f"</tr></thead><tbody>{build_rows}</tbody></table>"
+        )
+    else:
+        builds_html = "<p class='empty'>No builds</p>"
+
+    # --- Device Types table ---
+    device_types = config.get("device_types", {})
+    if device_types:
+        dev_rows = ""
+        for name, dc in device_types.items():
+            features = ", ".join(dc.get("features", []))
+            caps = ", ".join(dc.get("capabilities", []))
+            dev_rows += (
+                f"<tr>"
+                f"<td><strong>{_h(name)}</strong></td>"
+                f"<td>{_h(dc.get('target', ''))}/{_h(dc.get('subtarget', ''))}</td>"
+                f"<td>{_h(dc.get('profile', ''))}</td>"
+                f"<td>{_h(features)}</td>"
+                f"<td>{_h(caps)}</td>"
+                f"</tr>"
+            )
+        devices_html = (
+            f"<table><thead><tr>"
+            f"<th>Name</th><th>Target</th><th>Profile</th>"
+            f"<th>Features</th><th>Capabilities</th>"
+            f"</tr></thead><tbody>{dev_rows}</tbody></table>"
+        )
+    else:
+        devices_html = "<p class='empty'>No device types configured</p>"
+
+    # --- Test Plans table ---
+    test_plans = config.get("test_plans", {})
+    if test_plans:
+        plan_rows = ""
+        for name, pc in test_plans.items():
+            tests = ", ".join(pc.get("tests", []))
+            features = ", ".join(pc.get("required_features", []))
+            timeout = pc.get("timeout", "")
+            ttype = pc.get("test_type", "firmware")
+            plan_rows += (
+                f"<tr>"
+                f"<td><strong>{_h(name)}</strong></td>"
+                f"<td>{_h(pc.get('description', ''))}</td>"
+                f"<td><code>{_h(tests)}</code></td>"
+                f"<td>{_h(features) or '-'}</td>"
+                f"<td>{_h(ttype)}</td>"
+                f"<td>{timeout}s</td>"
+                f"</tr>"
+            )
+        plans_html = (
+            f"<table><thead><tr>"
+            f"<th>Plan</th><th>Description</th><th>Tests</th>"
+            f"<th>Required Features</th><th>Type</th><th>Timeout</th>"
+            f"</tr></thead><tbody>{plan_rows}</tbody></table>"
+        )
+    else:
+        plans_html = "<p class='empty'>No test plans configured</p>"
+
+    # --- Active Labs (inferred from running jobs) ---
+    labs: dict[str, list[str]] = {}
+    for job in running_jobs:
+        d = job.get("data", {})
+        lab = d.get("lab_name", "")
+        if lab:
+            labs.setdefault(lab, []).append(d.get("device_type", "unknown"))
+    if labs:
+        lab_rows = ""
+        for lab_name, devices in labs.items():
+            lab_rows += (
+                f"<tr>"
+                f"<td><strong>{_h(lab_name)}</strong></td>"
+                f"<td>{len(devices)}</td>"
+                f"<td>{_h(', '.join(sorted(set(devices))))}</td>"
+                f"</tr>"
+            )
+        labs_html = (
+            f"<table><thead><tr>"
+            f"<th>Lab</th><th>Running Jobs</th><th>Devices</th>"
+            f"</tr></thead><tbody>{lab_rows}</tbody></table>"
+        )
+    else:
+        labs_html = "<p class='empty'>No labs active (no running jobs)</p>"
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="30">
+<title>OpenWrt KernelCI Pipeline Status</title>
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+         background: #0d1117; color: #c9d1d9; padding: 1.5rem; line-height: 1.5; }}
+  h1 {{ color: #58a6ff; margin-bottom: 0.25rem; font-size: 1.4rem; }}
+  h2 {{ color: #8b949e; font-size: 1.1rem; margin: 1.5rem 0 0.5rem; padding-bottom: 0.3rem;
+        border-bottom: 1px solid #21262d; }}
+  .subtitle {{ color: #8b949e; font-size: 0.85rem; margin-bottom: 1rem; }}
+  .overview {{ display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 1rem 0; }}
+  .stat {{ background: #161b22; border: 1px solid #30363d; border-radius: 6px;
+           padding: 0.75rem 1rem; min-width: 120px; }}
+  .stat .label {{ color: #8b949e; font-size: 0.75rem; text-transform: uppercase; }}
+  .stat .value {{ font-size: 1.5rem; font-weight: bold; color: #58a6ff; }}
+  .stat .value.warn {{ color: #d29922; }}
+  .stat .value.ok {{ color: #3fb950; }}
+  .tag {{ background: #21262d; border: 1px solid #30363d; border-radius: 3px;
+          padding: 0.15rem 0.5rem; font-size: 0.8rem; display: inline-block; margin: 0.1rem; }}
+  table {{ width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.85rem; }}
+  th {{ background: #161b22; color: #8b949e; text-align: left; padding: 0.5rem 0.75rem;
+       font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }}
+  td {{ padding: 0.4rem 0.75rem; border-bottom: 1px solid #21262d; }}
+  tr:hover {{ background: #161b22; }}
+  a {{ color: #58a6ff; text-decoration: none; }}
+  a:hover {{ text-decoration: underline; }}
+  code {{ background: #161b22; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.8rem; }}
+  .empty {{ color: #484f58; font-style: italic; padding: 0.5rem 0; }}
+  .footer {{ margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #21262d;
+             color: #484f58; font-size: 0.75rem; }}
+</style>
+</head>
+<body>
+<h1>OpenWrt KernelCI Pipeline Status</h1>
+<div class="subtitle">Auto-refreshes every 30 seconds &middot; Generated {now}</div>
+
+<div class="overview">
+  <div class="stat">
+    <div class="label">Sources</div>
+    <div class="value">{len(service.sources)}</div>
+  </div>
+  <div class="stat">
+    <div class="label">Open Jobs</div>
+    <div class="value{' warn' if open_jobs else ' ok'}">{len(open_jobs)}</div>
+  </div>
+  <div class="stat">
+    <div class="label">Running</div>
+    <div class="value{' ok' if running_jobs else ''}">{len(running_jobs)}</div>
+  </div>
+  <div class="stat">
+    <div class="label">Builds</div>
+    <div class="value">{len(builds)}</div>
+  </div>
+</div>
+
+<div>
+  <strong>Sources:</strong> {sources_html}
+  &nbsp;&nbsp;
+  <strong>Test types:</strong> {types_html}
+</div>
+
+<h2>Open Jobs ({len(open_jobs)} waiting for labs)</h2>
+{open_jobs_html}
+
+<h2>Running Jobs ({len(running_jobs)} in progress)</h2>
+{running_jobs_html}
+
+<h2>Firmware Builds ({len(builds)})</h2>
+{builds_html}
+
+<h2>Device Types ({len(device_types)})</h2>
+{devices_html}
+
+<h2>Test Plans ({len(test_plans)})</h2>
+{plans_html}
+
+<h2>Active Labs</h2>
+{labs_html}
+
+<div class="footer">
+  OpenWrt KernelCI Pipeline &middot;
+  <a href="/health">Health</a> &middot;
+  <a href="/sources">Sources API</a> &middot;
+  <a href="/status/jobs">Jobs JSON</a> &middot;
+  <a href="/status/builds">Builds JSON</a> &middot;
+  <a href="/status/config">Config JSON</a> &middot;
+  <a href="/docs">API Docs</a>
+</div>
+</body>
+</html>"""
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    """Redirect to status dashboard."""
+    return RedirectResponse(url="/status")
+
+
+@app.get("/status", response_class=HTMLResponse)
+async def status_dashboard():
+    """Pipeline status dashboard."""
+    if not _service or not _service.api_client:
+        return HTMLResponse("<h1>Service not initialized</h1>", status_code=503)
+
+    try:
+        open_jobs, running_jobs, builds = await asyncio.gather(
+            _service.get_open_jobs(),
+            _service.get_running_jobs(),
+            _service.get_recent_builds(),
+        )
+    except Exception as e:
+        return HTMLResponse(
+            f"<h1>Error fetching data</h1><pre>{_h(str(e))}</pre>",
+            status_code=500,
+        )
+
+    return HTMLResponse(
+        content=_render_dashboard(_service, open_jobs, running_jobs, builds)
+    )
+
+
+@app.get("/status/jobs")
+async def status_jobs():
+    """Open and running jobs as JSON."""
+    if not _service or not _service.api_client:
+        return {"error": "not initialized"}
+    open_jobs, running_jobs = await asyncio.gather(
+        _service.get_open_jobs(),
+        _service.get_running_jobs(),
+    )
+    return {"open": open_jobs, "running": running_jobs}
+
+
+@app.get("/status/builds")
+async def status_builds():
+    """Recent firmware builds as JSON."""
+    if not _service or not _service.api_client:
+        return {"error": "not initialized"}
+    return {"builds": await _service.get_recent_builds()}
+
+
+@app.get("/status/config")
+async def status_config():
+    """Pipeline configuration as JSON."""
+    if not _service:
+        return {"error": "not initialized"}
+    config = _service.config
+    return {
+        "device_types": config.get("device_types", {}),
+        "test_plans": config.get("test_plans", {}),
+        "scheduler": config.get("scheduler", {}),
+        "firmware_sources": {
+            s.name: {
+                "enabled": s.is_enabled(),
+                "check_interval": s.get_check_interval(),
+            }
+            for s in _service.sources
+        },
     }
 
 
