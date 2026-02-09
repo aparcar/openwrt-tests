@@ -92,9 +92,16 @@ services:
     depends_on:
       kernelci-api:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       KCI_API_URL: http://kernelci-api:8000
       KCI_API_TOKEN: ${KCI_API_TOKEN:?KCI_API_TOKEN is required}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-openwrt}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_FIRMWARE_BUCKET: firmware
+      STORAGE_URL: https://storage.${DOMAIN:-localhost}
       PYTHONUNBUFFERED: "1"
     volumes:
       - ./config/pipeline.yaml:/app/config/pipeline.yaml:ro
@@ -188,6 +195,9 @@ services:
       mc alias set minio http://minio:9000 $${MINIO_ACCESS_KEY} $${MINIO_SECRET_KEY};
       mc mb --ignore-existing minio/test-logs;
       mc anonymous set download minio/test-logs;
+      mc mb --ignore-existing minio/firmware;
+      mc anonymous set download minio/firmware;
+      mc ilm rule add minio/firmware --expire-days 30 || true;
       echo 'MinIO buckets initialized';
       "
     networks:

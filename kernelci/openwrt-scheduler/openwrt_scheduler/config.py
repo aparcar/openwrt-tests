@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     minio_access_key: str = Field(default="")
     minio_secret_key: str = Field(default="")
     minio_secure: bool = Field(default=False)
+    minio_firmware_bucket: str = Field(default="firmware")
+    storage_url: str = Field(
+        default="",
+        description="Public URL for storage (e.g. https://storage.example.org)",
+    )
 
     # GitHub Configuration
     github_token: str | None = Field(default=None)

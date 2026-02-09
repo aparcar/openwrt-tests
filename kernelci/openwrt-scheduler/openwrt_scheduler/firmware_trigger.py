@@ -12,19 +12,22 @@ This service runs continuously and:
 """
 
 import asyncio
+import io
 import logging
 from datetime import datetime
 
+import httpx
 import structlog
 import uvicorn
 from fastapi import FastAPI
+from minio import Minio
 
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 
 from .api_client import APIError, KernelCIClient
 from .config import load_pipeline_config, settings
 from .firmware_sources.official import OfficialReleaseSource
-from .versions import get_active_branches
+from .versions import get_active_branches, version_to_branch
 
 # Configure logging
 structlog.configure(
@@ -57,6 +60,8 @@ class FirmwareTriggerService:
         self.config = load_pipeline_config()
         self.sources = []
         self.api_client: KernelCIClient | None = None
+        self._minio: Minio | None = None
+        self._http_client: httpx.AsyncClient | None = None
         self.running = False
         self._tasks: list[asyncio.Task] = []
 
@@ -67,6 +72,30 @@ class FirmwareTriggerService:
         # Initialize API client
         self.api_client = KernelCIClient()
         await self.api_client.connect()
+
+        # Initialize HTTP client for firmware downloads
+        self._http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(300.0),
+            follow_redirects=True,
+        )
+
+        # Initialize MinIO client for firmware storage
+        if settings.minio_endpoint and settings.minio_access_key:
+            self._minio = Minio(
+                settings.minio_endpoint,
+                access_key=settings.minio_access_key,
+                secret_key=settings.minio_secret_key,
+                secure=settings.minio_secure,
+            )
+            bucket = settings.minio_firmware_bucket
+            if not self._minio.bucket_exists(bucket):
+                self._minio.make_bucket(bucket)
+                logger.info(f"Created MinIO bucket: {bucket}")
+            logger.info("MinIO storage initialized for firmware mirroring")
+        else:
+            logger.warning(
+                "MinIO not configured — firmware URLs will point to upstream"
+            )
 
         # Initialize firmware sources
         sources_config = self.config.get("firmware_sources", {})
@@ -146,6 +175,10 @@ class FirmwareTriggerService:
         if self.api_client:
             await self.api_client.close()
 
+        # Close HTTP client
+        if self._http_client:
+            await self._http_client.aclose()
+
     async def run(self) -> None:
         """Main service loop."""
         self.running = True
@@ -177,6 +210,73 @@ class FirmwareTriggerService:
             interval = source.get_check_interval()
             logger.debug(f"Next scan for {source.name} in {interval} seconds")
             await asyncio.sleep(interval)
+
+    async def _mirror_to_storage(self, url: str, object_path: str) -> str | None:
+        """
+        Download firmware from upstream URL and upload to MinIO.
+
+        Returns the public URL of the mirrored file, or None if mirroring
+        is not configured or fails (caller should fall back to original URL).
+        """
+        if not self._minio or not self._http_client or not settings.storage_url:
+            return None
+
+        bucket = settings.minio_firmware_bucket
+        try:
+            # Check if already mirrored
+            try:
+                self._minio.stat_object(bucket, object_path)
+                public_url = f"{settings.storage_url}/{bucket}/{object_path}"
+                logger.debug("Firmware already mirrored", object_path=object_path)
+                return public_url
+            except Exception:
+                pass  # Not found, proceed with download
+
+            logger.info("Downloading firmware for mirroring", url=url)
+            response = await self._http_client.get(url)
+            response.raise_for_status()
+            data = response.content
+            content_type = response.headers.get(
+                "content-type", "application/octet-stream"
+            )
+
+            self._minio.put_object(
+                bucket_name=bucket,
+                object_name=object_path,
+                data=io.BytesIO(data),
+                length=len(data),
+                content_type=content_type,
+            )
+
+            public_url = f"{settings.storage_url}/{bucket}/{object_path}"
+            logger.info(
+                "Firmware mirrored to storage",
+                object_path=object_path,
+                size_mb=round(len(data) / 1024 / 1024, 1),
+            )
+            return public_url
+
+        except Exception as e:
+            logger.warning(f"Failed to mirror firmware: {e}", url=url)
+            return None
+
+    async def _mirror_artifacts(
+        self, artifacts: dict[str, str], branch: str, version: str,
+        target: str, subtarget: str,
+    ) -> dict[str, str]:
+        """
+        Mirror all artifact URLs to MinIO storage.
+
+        Returns a new artifacts dict with mirrored URLs (falls back to
+        original URLs if mirroring fails).
+        """
+        mirrored = {}
+        for artifact_type, url in artifacts.items():
+            filename = url.split("/")[-1]
+            object_path = f"{branch}/{version}/{target}/{subtarget}/{filename}"
+            mirrored_url = await self._mirror_to_storage(url, object_path)
+            mirrored[artifact_type] = mirrored_url or url
+        return mirrored
 
     async def _scan_source(self, source) -> None:
         """Scan a source and create firmware entries."""
@@ -223,6 +323,13 @@ class FirmwareTriggerService:
                         artifacts["initramfs"] = firmware.artifacts.initramfs
                     if firmware.artifacts.combined:
                         artifacts["combined"] = firmware.artifacts.combined
+
+                # Mirror firmware images to MinIO storage
+                branch = version_to_branch(firmware.version)
+                artifacts = await self._mirror_artifacts(
+                    artifacts, branch, firmware.version,
+                    firmware.target, firmware.subtarget,
+                )
 
                 await self.api_client.create_firmware_node(
                     name=node_name,
