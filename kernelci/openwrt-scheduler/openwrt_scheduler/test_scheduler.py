@@ -432,44 +432,6 @@ class TestScheduler:
 
         return compatible
 
-    def _get_test_plans_for_device(
-        self,
-        device_config: dict,
-        firmware_source: str,
-        scheduler_config: dict,
-    ) -> list[str]:
-        """
-        Determine which test plans to run for a device.
-
-        Based on:
-        - Default plans for the firmware source
-        - Additional plans based on device features
-        """
-        plans = []
-
-        # Default plans for firmware source
-        default_plans = scheduler_config.get("default_test_plans", {})
-        plans.extend(default_plans.get(firmware_source, ["base"]))
-
-        # Feature-based plans
-        feature_plans = scheduler_config.get("feature_test_plans", {})
-        device_features = device_config.get("features", [])
-
-        for feature in device_features:
-            if feature in feature_plans:
-                plans.extend(feature_plans[feature])
-
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_plans = []
-        for plan in plans:
-            if plan not in seen:
-                seen.add(plan)
-                unique_plans.append(plan)
-
-        return unique_plans
-
-
 # =============================================================================
 # Main Entry Point
 # =============================================================================

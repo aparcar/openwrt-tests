@@ -110,11 +110,6 @@ def _substitute_env_vars(obj: Any) -> Any:
     return obj
 
 
-def get_test_plan(config: dict, plan_name: str) -> dict | None:
-    """Get a test plan configuration by name."""
-    return config.get("test_plans", {}).get(plan_name)
-
-
 def get_device_type(config: dict, device_name: str) -> dict | None:
     """Get device type configuration by name."""
     return config.get("device_types", {}).get(device_name)

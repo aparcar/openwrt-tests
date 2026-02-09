@@ -94,237 +94,30 @@ firmware_sources:
     secret: ${BUILDBOT_WEBHOOK_SECRET}
 
 # =============================================================================
-# Test Plans
+# Test Types
 # =============================================================================
-
-test_plans:
-  base:
-    name: Base Tests
-    description: Basic boot and connectivity tests
-    tests:
-      - test_shell
-      - test_ssh
-      - test_firmware_version
-      - test_ubus_system_board
-      - test_free_memory
-      - test_kernel_errors
-    timeout: 600
-    required_features: []
-
-  system:
-    name: System Health
-    description: System resource validation
-    tests:
-      - test_memory_usage
-      - test_filesystem_usage
-      - test_system_uptime
-      - test_process_count
-      - test_entropy_available
-    timeout: 300
-    required_features: []
-
-  network:
-    name: Network Tests
-    description: Network functionality tests
-    tests:
-      - test_lan_interface_address
-      - test_wan_wait_for_network
-      - test_https_download
-    timeout: 600
-    required_features:
-      - wan_port
-      - online
-
-  wifi:
-    name: WiFi Tests
-    description: Wireless functionality tests
-    tests:
-      - test_wifi_scan
-      - test_wifi_wpa2
-      - test_wifi_wpa3
-    timeout: 900
-    required_features:
-      - wifi
-
-  wifi_hwsim:
-    name: WiFi HWSIM Tests
-    description: WiFi tests using mac80211_hwsim
-    tests:
-      - test_wifi_hwsim_sae_mixed
-    timeout: 600
-    required_features:
-      - hwsim
-
-  package_opkg:
-    name: OPKG Tests
-    description: OPKG package manager tests
-    tests:
-      - test_opkg_procd_installed
-      - test_opkg_install_ucert
-    timeout: 300
-    required_features:
-      - opkg
-      - online
-
-  package_apk:
-    name: APK Tests
-    description: APK package manager tests
-    tests:
-      - test_apk_procd_installed
-      - test_apk_add_ucert
-      - test_apk_audit
-    timeout: 300
-    required_features:
-      - apk
-      - online
-
-  health_check:
-    name: Health Check
-    description: Quick device health verification
-    tests:
-      - test_shell
-      - test_ssh
-    timeout: 300
-    required_features: []
-    skip_firmware_flash: true
-
-  # ==========================================================================
-  # Kernel Selftest Plans
-  # ==========================================================================
-  # These require custom images with kselftest packages installed
-  # Package names: kselftests-{subsystem}
-
-  # Networking
-  kselftest_net:
-    name: Kernel Network Tests
-    description: Linux kernel networking stack tests
-    tests:
-      - kselftest_net
+#
+# Currently implemented:
+#   - firmware: All tests from aparcar/openwrt-tests.git/tests/ run as a
+#     single pytest session. One job per device, adapter runs all tests.
+#
+# Not yet implemented:
+#   - kselftest: Linux kernel selftests (requires custom firmware images
+#     with kselftests-* packages installed)
+#
+test_types:
+  firmware:
+    name: Firmware Tests
+    description: OpenWrt firmware tests from openwrt-tests.git/tests/
+    repository: https://github.com/aparcar/openwrt-tests.git
     timeout: 1800
-    required_features: []
-    test_type: kselftest
 
-  # Timers and RTC
-  kselftest_timers:
-    name: Kernel Timer Tests
-    description: Linux kernel timer subsystem tests
-    tests:
-      - kselftest_timers
-    timeout: 600
-    required_features: []
-    test_type: kselftest
-
-  kselftest_rtc:
-    name: Kernel RTC Tests
-    description: Real-time clock tests
-    tests:
-      - kselftest_rtc
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  # Syscalls
-  kselftest_clone3:
-    name: Kernel clone3 Tests
-    description: clone3 syscall tests
-    tests:
-      - kselftest_clone3
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  kselftest_openat2:
-    name: Kernel openat2 Tests
-    description: openat2 syscall tests
-    tests:
-      - kselftest_openat2
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  kselftest_exec:
-    name: Kernel exec Tests
-    description: Program execution tests
-    tests:
-      - kselftest_exec
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  kselftest_mincore:
-    name: Kernel mincore Tests
-    description: mincore syscall tests
-    tests:
-      - kselftest_mincore
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  kselftest_splice:
-    name: Kernel splice Tests
-    description: splice syscall tests
-    tests:
-      - kselftest_splice
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  kselftest_sync:
-    name: Kernel sync Tests
-    description: sync_file_range tests
-    tests:
-      - kselftest_sync
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  # IPC
-  kselftest_futex:
-    name: Kernel futex Tests
-    description: Futex tests
-    tests:
-      - kselftest_futex
-    timeout: 600
-    required_features: []
-    test_type: kselftest
-
-  kselftest_mqueue:
-    name: Kernel mqueue Tests
-    description: POSIX message queue tests
-    tests:
-      - kselftest_mqueue
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  kselftest_sigaltstack:
-    name: Kernel sigaltstack Tests
-    description: Signal alternate stack tests
-    tests:
-      - kselftest_sigaltstack
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  # Process
-  kselftest_kcmp:
-    name: Kernel kcmp Tests
-    description: Process comparison tests
-    tests:
-      - kselftest_kcmp
-    timeout: 300
-    required_features: []
-    test_type: kselftest
-
-  # Size
-  kselftest_size:
-    name: Kernel Size Tests
-    description: Binary size test
-    tests:
-      - kselftest_size
-    timeout: 300
-    required_features: []
-    test_type: kselftest
+  kselftest:
+    name: Kernel Selftests
+    description: Linux kernel selftests (not yet implemented)
+    repository: https://github.com/aparcar/openwrt-tests.git
+    timeout: 1800
+    enabled: false
 
 # =============================================================================
 # Scheduler Configuration
@@ -355,36 +148,6 @@ scheduler:
     snapshot: 5
     stable: 3
     oldstable: 2
-
-  # Default test plans by firmware source
-  default_test_plans:
-    snapshot:
-      - base
-      - system
-    stable:
-      - base
-      - system
-      - network
-    oldstable:
-      - base
-    pr_builds:
-      - base
-      - system
-    custom:
-      - base
-
-  # Additional test plans based on device features
-  feature_test_plans:
-    wifi:
-      - wifi
-    hwsim:
-      - wifi_hwsim
-    opkg:
-      - package_opkg
-    apk:
-      - package_apk
-    wan_port:
-      - network
 
 # =============================================================================
 # Health Check Configuration

@@ -617,33 +617,30 @@ def _render_dashboard(
     else:
         devices_html = "<p class='empty'>No device types configured</p>"
 
-    # --- Test Plans table ---
-    test_plans = config.get("test_plans", {})
-    if test_plans:
-        plan_rows = ""
-        for name, pc in test_plans.items():
-            tests = ", ".join(pc.get("tests", []))
-            features = ", ".join(pc.get("required_features", []))
-            timeout = pc.get("timeout", "")
-            ttype = pc.get("test_type", "firmware")
-            plan_rows += (
+    # --- Test Types table ---
+    test_types = config.get("test_types", {})
+    if test_types:
+        type_rows = ""
+        for name, tc in test_types.items():
+            enabled = tc.get("enabled", True)
+            status = "enabled" if enabled else "disabled"
+            type_rows += (
                 f"<tr>"
                 f"<td><strong>{_h(name)}</strong></td>"
-                f"<td>{_h(pc.get('description', ''))}</td>"
-                f"<td><code>{_h(tests)}</code></td>"
-                f"<td>{_h(features) or '-'}</td>"
-                f"<td>{_h(ttype)}</td>"
-                f"<td>{timeout}s</td>"
+                f"<td>{_h(tc.get('description', ''))}</td>"
+                f"<td><a href='{_h(tc.get('repository', ''))}'>{_h(tc.get('repository', '').split('/')[-1])}</a></td>"
+                f"<td>{tc.get('timeout', '')}s</td>"
+                f"<td>{_h(status)}</td>"
                 f"</tr>"
             )
-        plans_html = (
+        types_table_html = (
             f"<table><thead><tr>"
-            f"<th>Plan</th><th>Description</th><th>Tests</th>"
-            f"<th>Required Features</th><th>Type</th><th>Timeout</th>"
-            f"</tr></thead><tbody>{plan_rows}</tbody></table>"
+            f"<th>Type</th><th>Description</th><th>Repository</th>"
+            f"<th>Timeout</th><th>Status</th>"
+            f"</tr></thead><tbody>{type_rows}</tbody></table>"
         )
     else:
-        plans_html = "<p class='empty'>No test plans configured</p>"
+        types_table_html = "<p class='empty'>No test types configured</p>"
 
     # --- Active Labs (inferred from running jobs) ---
     labs: dict[str, list[str]] = {}
@@ -748,8 +745,8 @@ def _render_dashboard(
 <h2>Device Types ({len(device_types)})</h2>
 {devices_html}
 
-<h2>Test Plans ({len(test_plans)})</h2>
-{plans_html}
+<h2>Test Types ({len(test_types)})</h2>
+{types_table_html}
 
 <h2>Active Labs</h2>
 {labs_html}
@@ -824,7 +821,7 @@ async def status_config():
     config = _service.config
     return {
         "device_types": config.get("device_types", {}),
-        "test_plans": config.get("test_plans", {}),
+        "test_types": config.get("test_types", {}),
         "scheduler": config.get("scheduler", {}),
         "firmware_sources": {
             s.name: {
