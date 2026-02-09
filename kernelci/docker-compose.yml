@@ -176,10 +176,16 @@ services:
       retries: 5
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.minio.rule=Host(`storage.${DOMAIN:-localhost}`)"
-      - "traefik.http.routers.minio.entrypoints=websecure"
-      - "traefik.http.routers.minio.tls.certresolver=letsencrypt"
-      - "traefik.http.services.minio.loadbalancer.server.port=9001"
+      - "traefik.http.routers.minio-api.rule=Host(`storage.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.minio-api.entrypoints=websecure"
+      - "traefik.http.routers.minio-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.minio-api.service=minio-api"
+      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
+      - "traefik.http.routers.minio-console.rule=Host(`console.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.minio-console.entrypoints=websecure"
+      - "traefik.http.routers.minio-console.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.minio-console.service=minio-console"
+      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
 
   minio-init:
     image: minio/mc:latest
@@ -197,7 +203,7 @@ services:
       mc anonymous set download minio/test-logs;
       mc mb --ignore-existing minio/firmware;
       mc anonymous set download minio/firmware;
-      mc ilm rule add minio/firmware --expire-days 30 || true;
+      mc ilm rule ls minio/firmware/ 2>/dev/null | grep -q Expiration || mc ilm rule add minio/firmware --expire-days 30;
       echo 'MinIO buckets initialized';
       "
     networks:
