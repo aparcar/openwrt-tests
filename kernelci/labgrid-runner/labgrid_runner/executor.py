@@ -628,6 +628,7 @@ class TestExecutor:
     ) -> str | None:
         """Upload a log file to storage."""
         if not self._minio:
+            logger.debug("MinIO not configured, skipping log upload")
             return None
 
         try:
@@ -641,7 +642,9 @@ class TestExecutor:
             )
             # Use https if minio_secure is enabled
             scheme = "https" if settings.minio_secure else "http"
-            return f"{scheme}://{settings.minio_endpoint}/{bucket}/{object_name}"
+            url = f"{scheme}://{settings.minio_endpoint}/{bucket}/{object_name}"
+            logger.info(f"Uploaded log to {url}")
+            return url
         except Exception as e:
             logger.warning(f"Failed to upload log {log_name}: {e}")
             return None
