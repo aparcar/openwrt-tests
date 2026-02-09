@@ -132,47 +132,19 @@ TEST_TYPE_CONFIGS: dict[TestType, TestTypeConfig] = {
         test_type=TestType.FIRMWARE,
         description="OpenWrt functionality tests",
         image_profile="standard",
-        test_plans=[
-            "boot",
-            "network",
-            "wifi",
-            "packages",
-            "system",
-        ],
-        # All labgrid devices have serial console, no need to require explicitly
+        test_plans=["firmware"],
         required_capabilities=[],
     ),
     TestType.KSELFTEST: TestTypeConfig(
         test_type=TestType.KSELFTEST,
         description="Linux kernel selftests",
         image_profile="kselftest",
-        test_plans=[
-            # Networking
-            "kselftest_net",
-            # Timers and RTC
-            "kselftest_timers",
-            "kselftest_rtc",
-            # Syscalls
-            "kselftest_clone3",
-            "kselftest_openat2",
-            "kselftest_exec",
-            "kselftest_mincore",
-            "kselftest_splice",
-            "kselftest_sync",
-            # IPC
-            "kselftest_futex",
-            "kselftest_mqueue",
-            "kselftest_sigaltstack",
-            # Process
-            "kselftest_kcmp",
-            # Size
-            "kselftest_size",
-        ],
+        test_plans=["kselftest"],
         required_capabilities=[
             "serial_console",
-            "isolated_network",  # Net tests need isolated network
+            "isolated_network",
         ],
-        tests_subdir="kselftest",  # Tests in kselftest/ subdirectory
+        tests_subdir="kselftest",
     ),
 }
 

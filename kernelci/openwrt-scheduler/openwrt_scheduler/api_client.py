@@ -295,11 +295,11 @@ class KernelCIClient:
             parent_path = [OPENWRT_TREE, branch]
 
         # Extend path with job-specific info
-        job_path = parent_path + [test_type, device_type, test_plan]
+        job_path = parent_path + [test_type, device_type]
 
         node = {
             "kind": "job",
-            "name": f"openwrt-{test_type}-{device_type}-{test_plan}",
+            "name": f"openwrt-{test_type}-{device_type}",
             "path": job_path,
             "parent": firmware_node_id,
             "group": OPENWRT_TREE,
