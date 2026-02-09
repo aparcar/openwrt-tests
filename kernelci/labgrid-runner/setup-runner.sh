@@ -154,21 +154,22 @@ done
 
 # --- Create QEMU place ---
 
-echo "Creating qemu_x86-64 place on coordinator..."
+echo "Creating QEMU places on coordinator..."
 
-# Create the place (ignore error if it already exists)
-docker compose exec -T adapter \
-    labgrid-client -x coordinator:20408 create qemu_x86-64 2>/dev/null || true
+# Place names follow the convention: {lab_name}-{device_type}
+# The adapter uses this to acquire/release places for test execution.
+QEMU_DEVICES="qemu_x86-64 qemu_armsr-armv8"
 
-# Set device_type tag so the adapter's discovery finds it
-docker compose exec -T adapter \
-    labgrid-client -x coordinator:20408 set-tags qemu_x86-64 device_type=qemu_x86-64
+for device in $QEMU_DEVICES; do
+    place="${LAB_NAME}-${device}"
+    echo "  Creating place: $place"
+    docker compose exec -T adapter \
+        labgrid-client -x coordinator:20408 -p "$place" create 2>/dev/null || true
+    docker compose exec -T adapter \
+        labgrid-client -x coordinator:20408 -p "$place" set-tags device_type="$device"
+done
 
-# Add a match so any resource can bind to this place
-docker compose exec -T adapter \
-    labgrid-client -x coordinator:20408 add-match qemu_x86-64 "*/*" 2>/dev/null || true
-
-echo "  Place created."
+echo "  Places created."
 
 # --- Verify ---
 

@@ -10,8 +10,10 @@ Main service that:
 """
 
 import asyncio
+import logging
 import os
 import signal
+import sys
 
 import httpx
 import structlog
@@ -23,7 +25,15 @@ from .labgrid_client import LabgridClient
 from .models import JobResult
 from .poller import JobPoller
 
-# Configure logging
+# Configure stdlib logging first (needed for all modules using logging.getLogger)
+logging.basicConfig(
+    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    stream=sys.stderr,
+    force=True,
+)
+
+# Configure structlog on top
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,

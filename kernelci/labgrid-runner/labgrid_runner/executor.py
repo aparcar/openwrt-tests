@@ -284,7 +284,7 @@ class TestExecutor:
             firmware_id=firmware_id,
             device_type=device_type,
             lab_name=self.lab_name,
-            status="pass" if (errors == 0 and failed == 0) else "fail",
+            status="pass" if (len(test_results) > 0 and errors == 0 and failed == 0) else "fail",
             total_tests=len(test_results),
             passed_tests=passed,
             failed_tests=failed,
@@ -298,22 +298,59 @@ class TestExecutor:
         )
 
     async def _download_firmware(self, url: str, dest_dir: Path) -> Path | None:
-        """Download firmware from URL to cache directory."""
+        """Download firmware from URL to cache directory.
+
+        Automatically decompresses .gz files since QEMU and labgrid
+        expect raw disk/kernel images.
+
+        Uses zlib instead of gzip.decompress() because OpenWrt firmware
+        .img.gz files have trailing data (e.g. "# fake certificate...")
+        appended after gzip compression. Python's gzip module tries to
+        parse trailing data as a second gzip member and fails, while
+        zlib.decompressobj only decompresses the first member.
+        """
+        import zlib
+
         filename = url.split("/")[-1]
-        cache_path = self.cache_dir / filename
+        # If compressed, the final cached file uses the decompressed name
+        decompressed_name = filename.removesuffix(".gz")
+        cache_path = self.cache_dir / decompressed_name
+
         if cache_path.exists():
             logger.info(f"Using cached firmware: {cache_path}")
             return cache_path
 
-        logger.info(f"Downloading firmware: {url}")
-        try:
-            response = await self.http_client.get(url)
-            response.raise_for_status()
-            cache_path.write_bytes(response.content)
-            return cache_path
-        except Exception as e:
-            logger.warning(f"Failed to download firmware: {e}")
-            return None
+        max_retries = 3
+        for attempt in range(1, max_retries + 1):
+            logger.info(f"Downloading firmware: {url} (attempt {attempt}/{max_retries})")
+            try:
+                response = await self.http_client.get(url)
+                response.raise_for_status()
+                data = response.content
+
+                if filename.endswith(".gz"):
+                    if len(data) < 2 or data[:2] != b'\x1f\x8b':
+                        raise ValueError(
+                            f"Expected gzip data but got {data[:20]!r}"
+                        )
+                    logger.info(f"Decompressing {filename} ({len(data)} bytes)")
+                    # wbits=31 tells zlib to auto-detect gzip format
+                    dec = zlib.decompressobj(wbits=31)
+                    data = dec.decompress(data)
+
+                cache_path.write_bytes(data)
+                logger.info(
+                    f"Firmware ready: {cache_path.name} "
+                    f"({len(data) / 1024 / 1024:.1f} MB)"
+                )
+                return cache_path
+            except Exception as e:
+                logger.warning(f"Download attempt {attempt} failed: {e}")
+                if attempt < max_retries:
+                    await asyncio.sleep(5 * attempt)
+
+        logger.error(f"Failed to download firmware after {max_retries} attempts: {url}")
+        return None
 
     async def _run_pytest(
         self,
@@ -361,6 +398,11 @@ class TestExecutor:
         # Add labgrid logging to capture serial console (boot log)
         if log_dir:
             args.append(f"--lg-log={log_dir}")
+
+        # Pass firmware path to pytest (used by conftest.py setup_env fixture
+        # to set labgrid images.firmware for QEMUDriver disk)
+        if firmware_path:
+            args.extend(["--firmware", str(firmware_path)])
 
         # Filter specific tests if provided
         if tests:

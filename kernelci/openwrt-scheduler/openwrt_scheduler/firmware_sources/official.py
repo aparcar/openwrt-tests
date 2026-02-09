@@ -185,10 +185,13 @@ class OfficialReleaseSource(FirmwareSource):
             elif "initramfs" in image_type or "kernel" in image_type:
                 artifacts.initramfs = url
                 artifacts.initramfs_sha256 = sha256
-            elif "combined" in image_type and artifacts.combined is None:
-                # x86 targets use combined images (prefer combined-efi)
-                artifacts.combined = url
-                artifacts.combined_sha256 = sha256
+            elif image_type == "combined":
+                # x86 targets use combined images (non-EFI, legacy BIOS boot)
+                # Skip combined-efi which requires OVMF firmware
+                # Prefer squashfs over ext4
+                if artifacts.combined is None or "squashfs" in filename:
+                    artifacts.combined = url
+                    artifacts.combined_sha256 = sha256
 
         # Need at least one usable image
         if not (

@@ -285,7 +285,12 @@ class KernelCIClient:
         # Use custom firmware URL or get from parent artifacts
         if not firmware_url:
             artifacts = parent_data.get("artifacts", {})
-            firmware_url = artifacts.get("sysupgrade") or artifacts.get("factory")
+            firmware_url = (
+                artifacts.get("sysupgrade")
+                or artifacts.get("factory")
+                or artifacts.get("combined")
+                or artifacts.get("initramfs")
+            )
 
         # Build path from parent path or construct from kernel_revision
         parent_path = parent.get("path", []) if parent else []

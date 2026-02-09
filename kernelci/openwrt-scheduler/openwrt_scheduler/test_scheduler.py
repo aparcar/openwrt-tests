@@ -281,8 +281,14 @@ class TestScheduler:
                 )
                 return
         else:
-            # Use standard firmware image
-            firmware_url = artifacts.get("sysupgrade") or artifacts.get("factory")
+            # Use standard firmware image (prefer sysupgrade, fall back through
+            # factory -> combined -> initramfs for QEMU/virtual targets)
+            firmware_url = (
+                artifacts.get("sysupgrade")
+                or artifacts.get("factory")
+                or artifacts.get("combined")
+                or artifacts.get("initramfs")
+            )
 
         # Create jobs for compatible devices that support this test type
         for device_name, device_config in compatible_devices.items():
