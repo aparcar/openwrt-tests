@@ -393,6 +393,8 @@ class TestExecutor:
             "--log-cli-level=CONSOLE",
             # Show labgrid step markers in output
             "--lg-colored-steps",
+            # Ignore kselftest directory — those are scheduled as separate jobs
+            f"--ignore={tests_dir / 'kselftest'}",
         ]
 
         # Add labgrid logging to capture serial console (boot log)
