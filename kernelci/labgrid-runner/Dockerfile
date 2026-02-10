@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     qemu-system-mips \
     picocom \
     iputils-ping \
+    nmap \
     netcat-openbsd \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
