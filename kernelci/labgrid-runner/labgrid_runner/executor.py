@@ -461,9 +461,11 @@ class TestExecutor:
         """
         Parse pytest verbose output to extract test results.
 
-        Looks for lines like:
-        tests/test_base.py::test_shell PASSED
-        tests/test_base.py::test_uname FAILED
+        pytest verbose output can split across lines:
+          tests/test_base.py::test_shell
+          PASSED                                                 [ 36%]
+        or be on a single line:
+          tests/test_apk.py::TestApk::test_apk SKIPPED (reason) [ 30%]
 
         Args:
             output: Raw pytest output
@@ -474,32 +476,70 @@ class TestExecutor:
         import re
         results = []
 
-        # Match pytest verbose output: nodeid STATUS [duration]
-        # Examples:
-        #   test_base.py::test_shell PASSED                      [ 50%]
-        #   test_base.py::test_uname FAILED                      [100%]
-        pattern = r'^([\w/\-_\.]+::\w+)\s+(PASSED|FAILED|SKIPPED|ERROR)'
+        outcome_map = {
+            'passed': 'passed',
+            'failed': 'failed',
+            'skipped': 'skipped',
+            'error': 'failed',
+        }
 
-        for line in output.split('\n'):
-            match = re.search(pattern, line)
-            if match:
-                nodeid = match.group(1)
-                status = match.group(2).lower()
-                # Map to pytest internal format
-                outcome_map = {
-                    'passed': 'passed',
-                    'failed': 'failed',
-                    'skipped': 'skipped',
-                    'error': 'failed',
-                }
+        # Pattern for nodeid (file::class::method or file::function)
+        nodeid_pattern = re.compile(
+            r'^([\w/\-_\.]+::[\w:]+)'
+        )
+        # Pattern for status at start of line (multiline case)
+        status_pattern = re.compile(
+            r'^(PASSED|FAILED|SKIPPED|ERROR)\b'
+        )
+        # Pattern for same-line: nodeid STATUS
+        sameline_pattern = re.compile(
+            r'^([\w/\-_\.]+::[\w:]+)\s+(PASSED|FAILED|SKIPPED|ERROR)\b'
+        )
+
+        lines = output.split('\n')
+        pending_nodeid = None
+
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            # Try same-line match first
+            m = sameline_pattern.search(stripped)
+            if m:
+                pending_nodeid = None
                 results.append({
-                    'nodeid': nodeid,
-                    'outcome': outcome_map.get(status, 'failed'),
-                    'duration': 0,  # Not available from verbose output
+                    'nodeid': m.group(1),
+                    'outcome': outcome_map.get(m.group(2).lower(), 'failed'),
+                    'duration': 0,
                     'error_message': None,
                     'stdout': None,
                     'stderr': None,
                 })
+                continue
+
+            # Check if this line is a status (for a pending nodeid or standalone)
+            sm = status_pattern.search(stripped)
+            if sm:
+                if pending_nodeid:
+                    results.append({
+                        'nodeid': pending_nodeid,
+                        'outcome': outcome_map.get(sm.group(1).lower(), 'failed'),
+                        'duration': 0,
+                        'error_message': None,
+                        'stdout': None,
+                        'stderr': None,
+                    })
+                    pending_nodeid = None
+                continue
+
+            # Check if this line is a nodeid — a new test starting
+            nm = nodeid_pattern.match(stripped)
+            if nm:
+                pending_nodeid = nm.group(1)
+            # Don't reset pending_nodeid for other lines (labgrid log
+            # output, live log markers, etc. appear between the nodeid
+            # line and the PASSED/FAILED line)
 
         logger.info(f"Parsed {len(results)} test results from output")
         return results
