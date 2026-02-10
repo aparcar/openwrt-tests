@@ -5,7 +5,9 @@ KCIDB Bridge Service - Resolves full commit hashes from GitHub
 import asyncio
 import logging
 import os
+import re
 from datetime import datetime, timezone
+
 import httpx
 import jwt
 
@@ -40,17 +42,17 @@ async def fetch_log_excerpt(log_url: str) -> str | None:
     """
     if not log_url:
         return None
-    
+
     if log_url in _log_cache:
         return _log_cache[log_url]
-    
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.get(log_url)
             if resp.status_code != 200:
                 logger.warning(f"Failed to fetch log: {resp.status_code}")
                 return None
-            
+
             content = resp.text
             excerpt = extract_log_excerpt(content)
             _log_cache[log_url] = excerpt
@@ -65,12 +67,16 @@ def extract_log_excerpt(content: str) -> str:
     Extract the most relevant portion of a log file.
     
     Prioritizes pytest test results and error messages.
+    Strips ANSI escape codes for clean dashboard display.
     """
     if not content:
         return ""
-    
+
+    # Strip ANSI/VT100 escape sequences
+    content = re.sub(r"\x1b(?:\[[0-9;?]*[a-zA-Z]|[a-zA-Z])", "", content)
+
     lines = content.split('\n')
-    
+
     # Look for pytest summary section (most relevant for test results)
     summary_start = -1
     for i, line in enumerate(lines):
@@ -81,7 +87,7 @@ def extract_log_excerpt(content: str) -> str:
         if line.startswith('FAILED ') or line.startswith('ERROR '):
             summary_start = max(0, i - 20)
             break
-    
+
     if summary_start >= 0:
         # Get from summary to end
         excerpt_lines = lines[summary_start:]
@@ -89,7 +95,7 @@ def extract_log_excerpt(content: str) -> str:
     else:
         # No summary found - take the last portion of the log
         excerpt = content
-    
+
     # Truncate to max size
     if len(excerpt) > MAX_LOG_EXCERPT_SIZE:
         excerpt = excerpt[-MAX_LOG_EXCERPT_SIZE:]
@@ -97,7 +103,7 @@ def extract_log_excerpt(content: str) -> str:
         first_newline = excerpt.find('\n')
         if first_newline > 0:
             excerpt = excerpt[first_newline + 1:]
-    
+
     return excerpt
 
 
@@ -402,10 +408,14 @@ class KCIDBBridge:
                         "environment": environment,
                     }
 
-                    if log_url:
-                        test_entry["log_url"] = log_url
-                    if log_excerpt:
-                        test_entry["log_excerpt"] = log_excerpt
+                    # Use per-test log URL if available, fall back to job-level
+                    test_log_url = test_result.get("log_url") or log_url
+                    if test_log_url:
+                        test_entry["log_url"] = test_log_url
+                        # Fetch per-test log excerpt
+                        test_log_excerpt = await fetch_log_excerpt(test_log_url)
+                        if test_log_excerpt:
+                            test_entry["log_excerpt"] = test_log_excerpt
 
                     if test_result.get("error_message"):
                         test_entry["comment"] = test_result["error_message"][:500]

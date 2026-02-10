@@ -12,6 +12,7 @@ to extract individual subtest results.
 import asyncio
 import logging
 import os
+import re
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -20,12 +21,15 @@ import httpx
 from minio import Minio
 
 from .config import settings
-from .ktap_parser import parse_ktap, ktap_results_to_dict
+from .ktap_parser import ktap_results_to_dict, parse_ktap
 from .labgrid_client import LabgridClient
 from .models import JobResult, TestResult, TestStatus
 from .test_sync import ensure_tests
 
 logger = logging.getLogger(__name__)
+
+# Pattern to match ANSI/VT100 escape sequences (colors, cursor, screen control)
+_ANSI_ESCAPE_RE = re.compile(r"\x1b(?:\[[0-9;?]*[a-zA-Z]|[a-zA-Z])")
 
 
 class ResultCollectorPlugin:
@@ -220,6 +224,9 @@ class TestExecutor:
                     log_dir=lg_log_dir,
                 )
 
+                # Strip ANSI escape codes from pytest output
+                output = _ANSI_ESCAPE_RE.sub("", output)
+
                 # Save console output
                 console_log_path.write_text(output)
 
@@ -231,8 +238,27 @@ class TestExecutor:
                     device_type=device_type,
                 )
 
+                # Split pytest output into per-test log sections and upload
+                per_test_logs = self._split_pytest_output(output)
+                for tr in test_results:
+                    test_log = per_test_logs.get(tr.test_name)
+                    if test_log:
+                        log_path = tmpdir_path / f"test-{tr.test_name}.log"
+                        log_path.write_text(test_log)
+                        tr.log_url = await self._upload_log(
+                            log_path=log_path,
+                            job_id=job_id,
+                            log_name=f"test-{tr.test_name}.log",
+                        )
+
                 # Find boot log (serial console output from labgrid)
                 boot_log_path = self._find_boot_log(lg_log_dir)
+
+                # Strip ANSI codes from boot log too
+                if boot_log_path and boot_log_path.exists():
+                    boot_content = boot_log_path.read_text(errors="replace")
+                    boot_content = _ANSI_ESCAPE_RE.sub("", boot_content)
+                    boot_log_path.write_text(boot_content)
 
                 # Upload boot log separately for dashboard boot section
                 boot_log_url = None
@@ -556,6 +582,82 @@ class TestExecutor:
 
         logger.info(f"Parsed {len(results)} test results from output")
         return results
+
+    def _split_pytest_output(self, output: str) -> dict[str, str]:
+        """
+        Split pytest output into per-test log sections.
+
+        Parses verbose pytest output to find where each test starts and ends,
+        extracting the log section for each test. Test sections include the
+        test name line, all labgrid/logging output during the test, and the
+        PASSED/FAILED/SKIPPED result line.
+
+        Args:
+            output: Full pytest output (ANSI codes already stripped)
+
+        Returns:
+            Dict mapping test_name to its log section
+        """
+        # Match lines that start a test: "tests/test_base.py::TestClass::test_name"
+        nodeid_re = re.compile(r"^([\w/\-_\.]+::([\w:]+))")
+        # Match status lines
+        status_re = re.compile(r"^(PASSED|FAILED|SKIPPED|ERROR)\b")
+        # Match same-line: "tests/test_foo.py::test_bar PASSED"
+        sameline_re = re.compile(
+            r"^([\w/\-_\.]+::([\w:]+))\s+(PASSED|FAILED|SKIPPED|ERROR)\b"
+        )
+
+        lines = output.split("\n")
+        sections: dict[str, list[str]] = {}
+        current_test = None
+        current_lines: list[str] = []
+
+        for line in lines:
+            stripped = line.strip()
+
+            # Same-line match: nodeid + status on one line
+            m = sameline_re.search(stripped)
+            if m:
+                if current_test:
+                    # Save previous test section
+                    sections[current_test] = current_lines
+                # This test is a single line
+                test_name = m.group(2).split("::")[-1]
+                sections[test_name] = [line]
+                current_test = None
+                current_lines = []
+                continue
+
+            # Check for status line (ends current test)
+            sm = status_re.search(stripped)
+            if sm and current_test:
+                current_lines.append(line)
+                sections[current_test] = current_lines
+                current_test = None
+                current_lines = []
+                continue
+
+            # Check for new test starting
+            nm = nodeid_re.match(stripped)
+            if nm:
+                if current_test:
+                    # Save previous test section (no status line found)
+                    sections[current_test] = current_lines
+                test_name = nm.group(2).split("::")[-1]
+                current_test = test_name
+                current_lines = [line]
+                continue
+
+            # Accumulate lines for current test
+            if current_test:
+                current_lines.append(line)
+
+        # Save last test if still pending
+        if current_test:
+            sections[current_test] = current_lines
+
+        # Join lines into strings
+        return {name: "\n".join(lines) for name, lines in sections.items()}
 
     def _convert_results(
         self,
