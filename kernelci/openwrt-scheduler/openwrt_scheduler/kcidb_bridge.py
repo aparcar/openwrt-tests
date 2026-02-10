@@ -155,12 +155,12 @@ def fix_timestamp(ts: str) -> str:
     return ts
 
 
-def node_to_kcidb_checkout(node: dict, full_commit: str) -> dict:
+def node_to_kcidb_checkout(node: dict, full_commit: str, checkout_id: str) -> dict:
     data = node.get("data", {})
     kernel_rev = data.get("kernel_revision", {})
 
     return {
-        "id": f"{KCIDB_ORIGIN}:{node['id']}",
+        "id": checkout_id,
         "origin": KCIDB_ORIGIN,
         "tree_name": kernel_rev.get("tree", "openwrt"),
         "git_repository_url": "https://github.com/openwrt/openwrt.git",
@@ -172,7 +172,7 @@ def node_to_kcidb_checkout(node: dict, full_commit: str) -> dict:
     }
 
 
-def node_to_kcidb_build(node: dict) -> dict:
+def node_to_kcidb_build(node: dict, checkout_id: str) -> dict:
     data = node.get("data", {})
     target = data.get("target", "")
     subtarget = data.get("subtarget", "")
@@ -191,7 +191,7 @@ def node_to_kcidb_build(node: dict) -> dict:
     return {
         "id": f"{KCIDB_ORIGIN}:{node['id']}",
         "origin": KCIDB_ORIGIN,
-        "checkout_id": f"{KCIDB_ORIGIN}:{node['id']}",
+        "checkout_id": checkout_id,
         "comment": f"OpenWrt {data.get('openwrt_version', '')} - {target}/{subtarget}/{profile}",
         "start_time": fix_timestamp(node.get("created", "")),
         "valid": is_valid,
@@ -267,22 +267,33 @@ class KCIDBBridge:
         checkouts = []
         builds = []
 
-        # Group by commit hash to minimize GitHub API calls
-        commit_map = {}
+        # Group by branch so all builds from the same branch share one checkout.
+        # Snapshots (main) may have different commits per architecture, but the
+        # dashboard groups by checkout — one checkout per branch keeps them together.
+        branch_map: dict[str, list[dict]] = {}
         for node in nodes:
             data = node.get("data", {})
             kernel_rev = data.get("kernel_revision", {})
-            short_commit = kernel_rev.get("commit", "")
-            if short_commit not in commit_map:
-                commit_map[short_commit] = []
-            commit_map[short_commit].append(node)
+            branch = kernel_rev.get("branch", "main")
+            branch_map.setdefault(branch, []).append(node)
 
-        # Resolve commits
-        for short_commit, commit_nodes in commit_map.items():
+        for branch, branch_nodes in branch_map.items():
+            # Use the first node's commit as the checkout commit
+            # (for releases all commits are the same; for snapshots pick one)
+            first_data = branch_nodes[0].get("data", {})
+            first_rev = first_data.get("kernel_revision", {})
+            short_commit = first_rev.get("commit", "")
             full_commit = await resolve_full_commit(short_commit)
-            for node in commit_nodes:
-                checkouts.append(node_to_kcidb_checkout(node, full_commit))
-                builds.append(node_to_kcidb_build(node))
+
+            # Stable checkout ID per branch so re-submissions update the same record
+            checkout_id = f"{KCIDB_ORIGIN}:checkout:{branch}"
+
+            # Create one checkout for this branch
+            checkouts.append(node_to_kcidb_checkout(branch_nodes[0], full_commit, checkout_id))
+
+            # All builds in this branch point to the shared checkout
+            for node in branch_nodes:
+                builds.append(node_to_kcidb_build(node, checkout_id))
 
         if checkouts:
             submission = {
