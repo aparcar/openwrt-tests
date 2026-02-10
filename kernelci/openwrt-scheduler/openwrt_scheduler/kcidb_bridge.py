@@ -338,73 +338,92 @@ class KCIDBBridge:
             # For jobs, use parent as build_id (firmware node)
             parent_id = node.get("parent", "")
 
-            # Build test path from job data (KCIDB uses dot-separated paths)
             device_type = data.get("device_type", "unknown")
             test_plan = data.get("test_plan", "unknown")
             lab_name = data.get("lab_name", "unknown")
             log_url = data.get("log_url")
+            boot_log_url = data.get("boot_log_url")
 
-            # Fetch log excerpt if log_url is available
+            # Fetch log excerpts
             log_excerpt = None
             if log_url:
                 log_excerpt = await fetch_log_excerpt(log_url)
+            boot_log_excerpt = None
+            if boot_log_url:
+                boot_log_excerpt = await fetch_log_excerpt(boot_log_url)
+
+            build_id = f"{KCIDB_ORIGIN}:{parent_id}" if parent_id else None
+            environment = {
+                "comment": f"Device: {device_type}, Lab: {lab_name}",
+                "misc": {"platform": device_type},
+            }
+            start_time = fix_timestamp(data.get("started_at") or node.get("created", ""))
 
             # Check if job has individual test results
             test_results = data.get("test_results", [])
+
+            # Synthetic boot entry — goes to the dashboard "Boot" section.
+            # Boot succeeded if we got test results; failed otherwise.
+            boot_status = "PASS" if test_results else status
+            boot_entry = {
+                "id": f"{KCIDB_ORIGIN}:{node['id']}:boot",
+                "origin": KCIDB_ORIGIN,
+                "build_id": build_id,
+                "path": "boot",
+                "start_time": start_time,
+                "status": boot_status,
+                "waived": False,
+                "environment": environment,
+            }
+            if boot_log_url:
+                boot_entry["log_url"] = boot_log_url
+            if boot_log_excerpt:
+                boot_entry["log_excerpt"] = boot_log_excerpt
+            elif log_excerpt:
+                boot_entry["log_excerpt"] = log_excerpt
+            tests.append(boot_entry)
 
             if test_results:
                 # Submit individual test results for detailed view
                 for test_result in test_results:
                     test_name = test_result.get("test_name", "unknown")
                     test_status = result_map.get(test_result.get("status", ""), "MISS")
-                    # Path format: device.plan.test_name (e.g., bananapi_bpi-r4.boot.test_shell)
-                    test_path = f"{device_type}.{test_plan}.{test_name}"
+                    # Path without device prefix — device is in environment.misc.platform
+                    test_path = f"{test_plan}.{test_name}"
 
                     test_entry = {
                         "id": f"{KCIDB_ORIGIN}:{node['id']}:{test_name}",
                         "origin": KCIDB_ORIGIN,
-                        "build_id": f"{KCIDB_ORIGIN}:{parent_id}" if parent_id else None,
+                        "build_id": build_id,
                         "path": test_path,
                         "start_time": fix_timestamp(test_result.get("start_time") or data.get("started_at") or node.get("created", "")),
                         "status": test_status,
                         "waived": False,
-                        "environment": {
-                            "comment": f"Device: {device_type}, Lab: {lab_name}",
-                            "misc": {
-                                "platform": device_type,
-                            },
-                        },
+                        "environment": environment,
                     }
 
-                    # Add log URL and excerpt if available
                     if log_url:
                         test_entry["log_url"] = log_url
                     if log_excerpt:
                         test_entry["log_excerpt"] = log_excerpt
 
-                    # Add error message if test failed
                     if test_result.get("error_message"):
                         test_entry["comment"] = test_result["error_message"][:500]
 
                     tests.append(test_entry)
-            else:
-                # No individual results - submit job-level test entry
-                test_path = f"{device_type}.{test_plan}"
+            elif status != "PASS":
+                # No individual results and job failed — submit job-level entry
+                test_path = test_plan
 
                 test_entry = {
                     "id": f"{KCIDB_ORIGIN}:{node['id']}",
                     "origin": KCIDB_ORIGIN,
-                    "build_id": f"{KCIDB_ORIGIN}:{parent_id}" if parent_id else None,
+                    "build_id": build_id,
                     "path": test_path,
-                    "start_time": fix_timestamp(data.get("started_at") or node.get("created", "")),
+                    "start_time": start_time,
                     "status": status,
                     "waived": False,
-                    "environment": {
-                        "comment": f"Device: {device_type}, Lab: {lab_name}",
-                        "misc": {
-                            "platform": device_type,
-                        },
-                    },
+                    "environment": environment,
                 }
 
                 if log_url:

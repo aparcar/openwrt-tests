@@ -176,6 +176,7 @@ class TestExecutor:
         start_time = datetime.utcnow()
         test_results: list[TestResult] = []
         console_log_url = None
+        boot_log_url = None
 
         # Construct place name
         place_name = f"{self.lab_name}-{device_type}"
@@ -232,6 +233,15 @@ class TestExecutor:
 
                 # Find boot log (serial console output from labgrid)
                 boot_log_path = self._find_boot_log(lg_log_dir)
+
+                # Upload boot log separately for dashboard boot section
+                boot_log_url = None
+                if boot_log_path and boot_log_path.exists():
+                    boot_log_url = await self._upload_log(
+                        log_path=boot_log_path,
+                        job_id=job_id,
+                        log_name="boot.log",
+                    )
 
                 # Combine boot log + pytest output into single log file
                 combined_log_path = tmpdir_path / "combined.log"
@@ -295,6 +305,7 @@ class TestExecutor:
             duration=duration,
             test_results=test_results,
             console_log_url=console_log_url,
+            boot_log_url=boot_log_url,
         )
 
     async def _download_firmware(self, url: str, dest_dir: Path) -> Path | None:
