@@ -280,15 +280,13 @@ class TestScheduler:
                     f"Failed to get custom image for {test_type}, skipping"
                 )
                 return
+            # Custom images use the same URL for all devices
+            default_firmware_url = firmware_url
         else:
-            # Use standard firmware image (prefer sysupgrade, fall back through
-            # factory -> combined -> initramfs for QEMU/virtual targets)
-            firmware_url = (
-                artifacts.get("sysupgrade")
-                or artifacts.get("factory")
-                or artifacts.get("combined")
-                or artifacts.get("initramfs")
-            )
+            default_firmware_url = None
+
+        # Default artifact preference order
+        default_preference = ["sysupgrade", "factory", "combined", "initramfs"]
 
         # Create jobs for compatible devices that support this test type
         for device_name, device_config in compatible_devices.items():
@@ -300,6 +298,27 @@ class TestScheduler:
                     f"Device {device_name} doesn't support {test_type.value}",
                     capabilities=device_capabilities,
                     required=test_type_config.required_capabilities,
+                )
+                continue
+
+            # Resolve firmware URL for this device
+            if default_firmware_url:
+                firmware_url = default_firmware_url
+            else:
+                # Use device-specific artifact preference if configured,
+                # otherwise fall back to default order
+                preference = device_config.get(
+                    "artifact_preference", default_preference
+                )
+                firmware_url = next(
+                    (artifacts[k] for k in preference if artifacts.get(k)),
+                    None,
+                )
+
+            if not firmware_url:
+                logger.warning(
+                    f"No compatible firmware artifact for {device_name}",
+                    available=list(artifacts.keys()),
                 )
                 continue
 
