@@ -111,6 +111,8 @@ Two subprojects in `kernelci/` connect this test framework to KernelCI:
 **labgrid-runner/** — Generic runner connecting any labgrid lab to KernelCI (separate Python package, Python 3.11+):
 - Polls KernelCI API for test jobs (pull-mode, no inbound connections needed)
 - Matches jobs against locally available labgrid devices, claims and executes them
+- Executes pytest with `--ignore=tests/kselftest` (kselftests are scheduled as separate jobs)
+- Uploads boot log separately (`boot.log`) alongside combined `console.log`
 - Parses KTAP output for kernel selftest subtest results
 - Submits results back to KernelCI
 - Key modules: `poller.py` (job polling), `executor.py` (test execution), `ktap_parser.py` (KTAP parsing)
@@ -118,6 +120,9 @@ Two subprojects in `kernelci/` connect this test framework to KernelCI:
 **openwrt-scheduler/** — OpenWrt-specific firmware discovery and test scheduling:
 - Checks OpenWrt firmware servers for latest builds and stores them in the database
 - Schedules test jobs with a specific repository containing the actual tests
+- KCIDB bridge groups builds by branch (not commit) so snapshot branches with per-arch commits share one checkout
+- Bridge creates synthetic boot entries (`path="boot"`) per job for the dashboard Boot section
+- Test paths use `{test_plan}.{test_name}` format (device info in `environment.misc.platform`)
 - Key modules: `firmware_trigger.py` (FastAPI service), `firmware_sources/` (source plugins), `test_scheduler.py`, `kcidb_bridge.py` (dashboard uploads)
 
 ### Device Control Flow
