@@ -65,12 +65,12 @@ class JobPoller:
 
     async def connect(self) -> None:
         """Create HTTP client."""
+        headers = {"Content-Type": "application/json"}
+        if self.api_token:
+            headers["Authorization"] = f"Bearer {self.api_token}"
         self._client = httpx.AsyncClient(
             base_url=self.api_url,
-            headers={
-                "Authorization": f"Bearer {self.api_token}",
-                "Content-Type": "application/json",
-            },
+            headers=headers,
             timeout=httpx.Timeout(30.0),
         )
         logger.info(f"Poller connected to {self.api_url}")

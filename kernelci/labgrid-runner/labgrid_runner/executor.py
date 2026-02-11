@@ -76,17 +76,14 @@ class ResultCollectorPlugin:
             elif hasattr(report.longrepr, "reprcrash"):
                 result["error_message"] = str(report.longrepr.reprcrash)
 
-        # Capture stdout/stderr for KTAP parsing
-        if hasattr(report, "capstdout") and report.capstdout:
-            result["stdout"] = report.capstdout
-        if hasattr(report, "capstderr") and report.capstderr:
-            result["stderr"] = report.capstderr
-
-        # Also check sections for captured output
+        # Capture stdout/stderr from report sections (for KTAP parsing)
         for section_name, content in report.sections:
-            if "stdout" in section_name.lower() and content:
+            if not content:
+                continue
+            lower = section_name.lower()
+            if "stdout" in lower:
                 result["stdout"] = content
-            elif "stderr" in section_name.lower() and content:
+            elif "stderr" in lower:
                 result["stderr"] = content
 
         self.results.append(result)
@@ -238,10 +235,11 @@ class TestExecutor:
                     device_type=device_type,
                 )
 
-                # Split pytest output into per-test log sections and upload
-                per_test_logs = self._split_pytest_output(output)
+                # Upload per-test logs from junitxml
+                junit_path = lg_log_dir / "junit.xml"
+                test_logs = self._parse_junit_logs(junit_path)
                 for tr in test_results:
-                    test_log = per_test_logs.get(tr.test_name)
+                    test_log = test_logs.get(tr.test_name)
                     if test_log:
                         log_path = tmpdir_path / f"test-{tr.test_name}.log"
                         log_path.write_text(test_log)
@@ -428,11 +426,21 @@ class TestExecutor:
             f"--lg-env={target_file}",
             # Stream all logging (including labgrid serial console) to output
             "--log-cli-level=CONSOLE",
+            # Capture log records for junitxml per-test logs
+            "--log-level=15",
             # Show labgrid step markers in output
             "--lg-colored-steps",
             # Ignore kselftest directory — those are scheduled as separate jobs
             f"--ignore={tests_dir / 'kselftest'}",
         ]
+
+        # Add junitxml for structured per-test log capture
+        if log_dir:
+            junit_path = Path(log_dir) / "junit.xml"
+            args.extend([
+                f"--junitxml={junit_path}",
+                "-o", "junit_logging=all",
+            ])
 
         # Add labgrid logging to capture serial console (boot log)
         if log_dir:
@@ -583,81 +591,38 @@ class TestExecutor:
         logger.info(f"Parsed {len(results)} test results from output")
         return results
 
-    def _split_pytest_output(self, output: str) -> dict[str, str]:
+    def _parse_junit_logs(self, junit_path: Path) -> dict[str, str]:
         """
-        Split pytest output into per-test log sections.
+        Parse junitxml to extract per-test log content.
 
-        Parses verbose pytest output to find where each test starts and ends,
-        extracting the log section for each test. Test sections include the
-        test name line, all labgrid/logging output during the test, and the
-        PASSED/FAILED/SKIPPED result line.
-
-        Args:
-            output: Full pytest output (ANSI codes already stripped)
-
-        Returns:
-            Dict mapping test_name to its log section
+        Returns dict mapping test_name to combined log output
+        (captured log + stdout + stderr from the XML).
         """
-        # Match lines that start a test: "tests/test_base.py::TestClass::test_name"
-        nodeid_re = re.compile(r"^([\w/\-_\.]+::([\w:]+))")
-        # Match status lines
-        status_re = re.compile(r"^(PASSED|FAILED|SKIPPED|ERROR)\b")
-        # Match same-line: "tests/test_foo.py::test_bar PASSED"
-        sameline_re = re.compile(
-            r"^([\w/\-_\.]+::([\w:]+))\s+(PASSED|FAILED|SKIPPED|ERROR)\b"
-        )
+        if not junit_path.exists():
+            logger.warning(f"junitxml not found: {junit_path}")
+            return {}
 
-        lines = output.split("\n")
-        sections: dict[str, list[str]] = {}
-        current_test = None
-        current_lines: list[str] = []
+        try:
+            import xml.etree.ElementTree as ET
 
-        for line in lines:
-            stripped = line.strip()
+            tree = ET.parse(junit_path)
+            logs: dict[str, str] = {}
 
-            # Same-line match: nodeid + status on one line
-            m = sameline_re.search(stripped)
-            if m:
-                if current_test:
-                    # Save previous test section
-                    sections[current_test] = current_lines
-                # This test is a single line
-                test_name = m.group(2).split("::")[-1]
-                sections[test_name] = [line]
-                current_test = None
-                current_lines = []
-                continue
+            for testcase in tree.iter("testcase"):
+                name = testcase.get("name", "")
+                parts = []
+                for tag in ("system-out", "system-err"):
+                    elem = testcase.find(tag)
+                    if elem is not None and elem.text:
+                        parts.append(elem.text)
+                if parts:
+                    logs[name] = "\n".join(parts)
 
-            # Check for status line (ends current test)
-            sm = status_re.search(stripped)
-            if sm and current_test:
-                current_lines.append(line)
-                sections[current_test] = current_lines
-                current_test = None
-                current_lines = []
-                continue
-
-            # Check for new test starting
-            nm = nodeid_re.match(stripped)
-            if nm:
-                if current_test:
-                    # Save previous test section (no status line found)
-                    sections[current_test] = current_lines
-                test_name = nm.group(2).split("::")[-1]
-                current_test = test_name
-                current_lines = [line]
-                continue
-
-            # Accumulate lines for current test
-            if current_test:
-                current_lines.append(line)
-
-        # Save last test if still pending
-        if current_test:
-            sections[current_test] = current_lines
-
-        # Join lines into strings
-        return {name: "\n".join(lines) for name, lines in sections.items()}
+            logger.info(f"Parsed per-test logs for {len(logs)} tests from junitxml")
+            return logs
+        except Exception as e:
+            logger.warning(f"Failed to parse junitxml: {e}")
+            return {}
 
     def _convert_results(
         self,
