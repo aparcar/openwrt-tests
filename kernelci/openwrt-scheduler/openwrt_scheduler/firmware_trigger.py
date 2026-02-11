@@ -117,6 +117,7 @@ class FirmwareTriggerService:
         """
         # Get targets to scan from config
         default_targets = config.get("targets", [])
+        snapshot_targets = config.get("snapshot_targets", [])
         check_interval = config.get("check_interval", 3600)
 
         # Fetch active branches dynamically
@@ -132,6 +133,12 @@ class FirmwareTriggerService:
 
         # Create a source for each branch
         for branch in branches:
+            # Snapshot branches get additional targets (e.g. malta/be)
+            if branch.is_snapshot:
+                targets = default_targets + snapshot_targets
+            else:
+                targets = default_targets
+
             source_config = {
                 "enabled": True,
                 "type": "openwrt_releases",
@@ -141,7 +148,7 @@ class FirmwareTriggerService:
                         "version": branch.version,
                         "branch": branch.name,
                         "check_interval": check_interval,
-                        "targets": default_targets,
+                        "targets": targets,
                     }
                 },
             }

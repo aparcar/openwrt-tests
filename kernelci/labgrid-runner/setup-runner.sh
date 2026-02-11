@@ -158,7 +158,7 @@ echo "Creating QEMU places on coordinator..."
 
 # Place names follow the convention: {lab_name}-{device_type}
 # The adapter uses this to acquire/release places for test execution.
-QEMU_DEVICES="qemu_x86-64 qemu_armsr-armv8"
+QEMU_DEVICES="qemu_x86-64 qemu_armsr-armv8 qemu_malta-be"
 
 for device in $QEMU_DEVICES; do
     place="${LAB_NAME}-${device}"

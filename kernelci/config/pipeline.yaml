@@ -58,6 +58,10 @@ firmware_sources:
       - x86/64
       - armsr/armv8
 
+    # Targets only available in snapshot builds (no official releases)
+    snapshot_targets:
+      - malta/be
+
   # GitHub Pull Request builds
   github_pr:
     enabled: true
@@ -227,6 +231,18 @@ device_types:
       - isolated_network
       - high_memory
     # armsr QEMU uses kernel mode (not disk), so it needs initramfs
+    artifact_preference:
+      - initramfs
+
+  qemu_malta-be:
+    target: malta
+    subtarget: be
+    profile: generic
+    features:
+      - wan_port
+    capabilities:
+      - serial_console
+      - isolated_network
     artifact_preference:
       - initramfs
 
