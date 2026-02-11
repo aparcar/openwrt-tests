@@ -114,26 +114,59 @@ class TestScheduler:
 
     async def _event_listener(self) -> None:
         """
-        Listen for firmware events and create jobs.
+        Safety-net listener for kbuild nodes without jobs.
 
-        Uses the Node-based API to query for firmware (kbuild nodes)
-        that don't yet have test jobs scheduled.
+        The firmware trigger now creates jobs immediately when it finds
+        new firmware. This listener catches any stragglers — kbuilds that
+        somehow ended up without jobs (manual creation, recovery, etc.).
+
+        Groups kbuilds by (branch, target, subtarget) and only schedules
+        jobs for the latest per group, marking older ones as done/skip.
         """
-        logger.info("Starting event listener")
+        logger.info("Starting event listener (safety net)")
 
         while self._running:
             try:
-                # Get recent firmware nodes (kind=kbuild, state=available)
                 firmware_nodes = await self.api_client.query_nodes(
                     kind="kbuild",
                     state="available",
                     limit=50,
                 )
 
-                for firmware_node in firmware_nodes:
-                    firmware_id = firmware_node.get("id") or firmware_node.get("_id")
+                # Group by (branch, target, subtarget)
+                grouped = self._group_kbuilds_by_target(firmware_nodes)
 
-                    # Check if jobs already exist for this firmware
+                for (branch, target, subtarget), nodes in grouped.items():
+                    # Sort by creation time, newest first
+                    sorted_nodes = sorted(
+                        nodes,
+                        key=lambda n: n.get("created", ""),
+                        reverse=True,
+                    )
+
+                    latest_node = sorted_nodes[0]
+                    older_nodes = sorted_nodes[1:]
+
+                    # Mark older kbuilds as skipped
+                    for old_node in older_nodes:
+                        old_id = old_node.get("id") or old_node.get("_id")
+                        try:
+                            await self.api_client.update_node(
+                                old_id, {"state": "done", "result": "skip"}
+                            )
+                            logger.info(
+                                "Skipped older firmware",
+                                node_id=old_id,
+                                target=f"{target}/{subtarget}",
+                                branch=branch,
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to skip {old_id}: {e}")
+
+                    # Process latest node if it has no jobs yet
+                    firmware_id = (
+                        latest_node.get("id") or latest_node.get("_id")
+                    )
                     existing_jobs = await self.api_client.query_nodes(
                         kind="job",
                         parent=firmware_id,
@@ -141,13 +174,29 @@ class TestScheduler:
                     )
 
                     if not existing_jobs:
-                        # Create jobs for this firmware
-                        await self._create_jobs_for_firmware(firmware_node)
+                        await self._create_jobs_for_firmware(latest_node)
 
             except Exception as e:
                 logger.exception(f"Error in event listener: {e}")
 
             await asyncio.sleep(30)
+
+    def _group_kbuilds_by_target(
+        self, firmware_nodes: list[dict]
+    ) -> dict[tuple[str, str, str], list[dict]]:
+        """Group kbuild nodes by (branch, target, subtarget)."""
+        grouped: dict[tuple[str, str, str], list[dict]] = {}
+        for node in firmware_nodes:
+            data = node.get("data", {})
+            kernel_rev = data.get("kernel_revision", {})
+            branch = kernel_rev.get("branch", "main")
+            target = data.get("target", "")
+            subtarget = data.get("subtarget", "")
+            if not target or not subtarget:
+                continue
+            key = (branch, target, subtarget)
+            grouped.setdefault(key, []).append(node)
+        return grouped
 
     async def _job_monitor(self) -> None:
         """

@@ -111,6 +111,7 @@ class Firmware(BaseModel):
     git_repository_url: str = Field(default="https://github.com/openwrt/openwrt")
     git_commit_hash: str | None = None
     git_branch: str | None = None
+    version_code: str | None = None  # e.g. "r33027-708dcca80a" from profiles.json
 
     # Artifacts
     artifacts: FirmwareArtifacts = Field(default_factory=FirmwareArtifacts)

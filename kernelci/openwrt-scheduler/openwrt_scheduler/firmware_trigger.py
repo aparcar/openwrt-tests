@@ -28,6 +28,12 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 from .api_client import APIError, KernelCIClient
 from .config import load_pipeline_config, settings
 from .firmware_sources.official import OfficialReleaseSource
+from .test_types import (
+    TestType,
+    device_supports_test_type,
+    get_test_type_config,
+    needs_custom_image,
+)
 from .versions import get_active_branches, version_to_branch
 
 # Configure logging
@@ -305,38 +311,73 @@ class FirmwareTriggerService:
         )
 
     async def _scan_source(self, source) -> None:
-        """Scan a source and create firmware entries."""
+        """Scan a source for new firmware, deduplicating by version_code per target.
+
+        For each target/subtarget, the version_code from profiles.json uniquely
+        identifies the build. We only create kbuild nodes and schedule jobs when
+        the version_code changes — this avoids duplicate test runs when the same
+        target is rebuilt with a new commit.
+        """
         logger.info(f"Scanning firmware source: {source.name}")
         scan_start = datetime.utcnow()
         new_count = 0
-        existing_count = 0
+        skipped_count = 0
+
+        # Track which (target, subtarget, version_code) we've already processed
+        # in this scan to avoid creating duplicate kbuilds for different profiles
+        # of the same target.
+        seen_targets: set[tuple[str, str, str]] = set()
+
+        device_types = self.config.get("device_types", {})
 
         async for firmware in source.scan():
+            target_key = (firmware.target, firmware.subtarget, firmware.version_code)
+
+            # Only process each target's version_code once per scan
+            if target_key in seen_targets:
+                continue
+            seen_targets.add(target_key)
+
+            # Check if this target already has a kbuild with the same version_code.
+            # We query by target+subtarget+commit rather than profile, so one
+            # kbuild per target build (not per profile).
+            node_name = (
+                f"openwrt-{firmware.target}-{firmware.subtarget}-{firmware.profile}"
+            )
+
             try:
-                # Check if firmware already exists by querying for a
-                # kbuild node with the same name and commit
-                node_name = (
-                    f"openwrt-{firmware.target}-{firmware.subtarget}-{firmware.profile}"
-                )
                 existing = await self.api_client.query_nodes(
                     kind="kbuild",
-                    name=node_name,
                     limit=1,
                     **{
-                        "data.kernel_revision.commit": firmware.git_commit_hash,
+                        "data.target": firmware.target,
+                        "data.subtarget": firmware.subtarget,
+                        "data.version_code": firmware.version_code,
                     },
                 )
                 if existing:
-                    existing_count += 1
+                    skipped_count += 1
                     continue
 
-                # Create firmware entry
+                # Check if any compatible devices exist for this target
+                compatible = self._find_compatible_devices(
+                    firmware.target, firmware.subtarget, firmware.profile,
+                    device_types,
+                )
+                if not compatible:
+                    logger.debug(
+                        "No compatible devices, skipping",
+                        target=firmware.target,
+                        subtarget=firmware.subtarget,
+                    )
+                    continue
+
                 logger.info(
                     "New firmware found",
-                    firmware_id=firmware.id,
-                    version=firmware.version,
                     target=firmware.target,
-                    profile=firmware.profile,
+                    subtarget=firmware.subtarget,
+                    version_code=firmware.version_code,
+                    version=firmware.version,
                 )
 
                 artifacts = {}
@@ -357,7 +398,8 @@ class FirmwareTriggerService:
                     firmware.target, firmware.subtarget,
                 )
 
-                await self.api_client.create_firmware_node(
+                # Create kbuild node
+                kbuild = await self.api_client.create_firmware_node(
                     name=node_name,
                     version=firmware.version,
                     target=firmware.target,
@@ -366,22 +408,29 @@ class FirmwareTriggerService:
                     source=firmware.source.value,
                     artifacts=artifacts,
                     git_commit=firmware.git_commit_hash,
+                    version_code=firmware.version_code,
                 )
                 new_count += 1
 
+                # Immediately schedule test jobs for compatible devices
+                kbuild_id = kbuild.get("id") or kbuild.get("_id")
+                await self._schedule_jobs_for_firmware(
+                    kbuild_id, firmware, artifacts, compatible,
+                )
+
             except APIError as e:
-                if e.status_code == 409:  # Conflict - already exists
-                    existing_count += 1
+                if e.status_code == 409:
+                    skipped_count += 1
                 else:
                     logger.error(
                         "API error creating firmware",
-                        firmware_id=firmware.id,
+                        target=firmware.target,
                         error=str(e),
                     )
             except Exception as e:
                 logger.exception(
                     "Error processing firmware",
-                    firmware_id=firmware.id,
+                    target=firmware.target,
                     error=str(e),
                 )
 
@@ -390,9 +439,101 @@ class FirmwareTriggerService:
             "Scan complete",
             source=source.name,
             new_firmware=new_count,
-            existing_firmware=existing_count,
+            skipped_firmware=skipped_count,
             duration_seconds=scan_duration,
         )
+
+    def _find_compatible_devices(
+        self,
+        target: str,
+        subtarget: str,
+        profile: str,
+        device_types: dict,
+    ) -> dict[str, dict]:
+        """Find devices compatible with a firmware target."""
+        compatible = {}
+        for device_name, device_config in device_types.items():
+            if device_config.get("target") != target:
+                continue
+            if device_config.get("subtarget") != subtarget:
+                continue
+            device_profile = device_config.get("profile")
+            if profile != "*" and device_profile and device_profile != profile:
+                continue
+            compatible[device_name] = device_config
+        return compatible
+
+    async def _schedule_jobs_for_firmware(
+        self,
+        kbuild_id: str,
+        firmware,
+        artifacts: dict[str, str],
+        compatible_devices: dict[str, dict],
+    ) -> None:
+        """Schedule test jobs for all compatible devices immediately."""
+        scheduler_config = self.config.get("scheduler", {})
+        enabled_test_types = scheduler_config.get("enabled_test_types", ["firmware"])
+
+        default_preference = ["sysupgrade", "factory", "combined", "initramfs"]
+
+        for test_type_str in enabled_test_types:
+            try:
+                test_type = TestType(test_type_str)
+            except ValueError:
+                logger.warning(f"Unknown test type: {test_type_str}")
+                continue
+
+            test_type_config = get_test_type_config(test_type)
+            if not test_type_config:
+                continue
+
+            # Skip custom image test types for now (kselftest)
+            if needs_custom_image(test_type):
+                continue
+
+            for device_name, device_config in compatible_devices.items():
+                device_capabilities = device_config.get("capabilities", [])
+                if not device_supports_test_type(device_capabilities, test_type):
+                    continue
+
+                # Resolve firmware URL for this device
+                preference = device_config.get(
+                    "artifact_preference", default_preference
+                )
+                firmware_url = next(
+                    (artifacts[k] for k in preference if artifacts.get(k)),
+                    None,
+                )
+                if not firmware_url:
+                    logger.warning(
+                        f"No firmware artifact for {device_name}",
+                        available=list(artifacts.keys()),
+                    )
+                    continue
+
+                for plan_name in test_type_config.test_plans:
+                    try:
+                        created = await self.api_client.create_test_job(
+                            firmware_node_id=kbuild_id,
+                            device_type=device_name,
+                            test_plan=plan_name,
+                            test_type=test_type.value,
+                            firmware_url=firmware_url,
+                            tests_subdir=test_type_config.tests_subdir,
+                            timeout=1800,
+                        )
+                        job_id = created.get("id") or created.get("_id")
+                        logger.info(
+                            "Scheduled job",
+                            job_id=job_id,
+                            device=device_name,
+                            test_type=test_type.value,
+                        )
+                    except APIError as e:
+                        if e.status_code != 409:
+                            logger.error(f"Failed to create job: {e}")
+                    except Exception as e:
+                        logger.exception(f"Error creating job: {e}")
 
 
 # =============================================================================

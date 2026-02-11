@@ -109,12 +109,15 @@ class OfficialReleaseSource(FirmwareSource):
             logger.error(f"Error parsing profiles from {profiles_url}: {e}")
             return
 
-        # Extract git commit from version_code if available
+        # Extract version_code and git commit
         version_code = profiles_data.get("version_code", "")
         git_commit = version_code.split("-")[-1] if "-" in version_code else None
 
         profiles = profiles_data.get("profiles", {})
-        logger.info(f"Found {len(profiles)} profiles for {target}/{subtarget}")
+        logger.info(
+            f"Found {len(profiles)} profiles for {target}/{subtarget} "
+            f"(version_code={version_code})"
+        )
 
         for profile_name, profile_data in profiles.items():
             firmware = self._create_firmware(
@@ -126,6 +129,7 @@ class OfficialReleaseSource(FirmwareSource):
                 profile_data=profile_data,
                 source_name=source_name,
                 git_commit=git_commit,
+                version_code=version_code,
             )
             if firmware:
                 yield firmware
@@ -157,6 +161,7 @@ class OfficialReleaseSource(FirmwareSource):
         profile_data: dict,
         source_name: str,
         git_commit: str | None = None,
+        version_code: str | None = None,
     ) -> Firmware | None:
         """Create a Firmware object from profile data."""
         images = profile_data.get("images", [])
@@ -220,6 +225,7 @@ class OfficialReleaseSource(FirmwareSource):
             subtarget=subtarget,
             profile=profile_name,
             git_commit_hash=git_commit,
+            version_code=version_code,
             artifacts=artifacts,
             features=features,
             packages=profile_data.get("device_packages", []),

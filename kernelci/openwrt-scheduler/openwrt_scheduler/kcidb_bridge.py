@@ -284,18 +284,23 @@ class KCIDBBridge:
             branch_map.setdefault(branch, []).append(node)
 
         for branch, branch_nodes in branch_map.items():
-            # Use the first node's commit as the checkout commit
-            # (for releases all commits are the same; for snapshots pick one)
-            first_data = branch_nodes[0].get("data", {})
-            first_rev = first_data.get("kernel_revision", {})
-            short_commit = first_rev.get("commit", "")
+            # Use the latest node's commit as the checkout commit.
+            # For releases all commits are the same; for snapshots each
+            # target may have a different commit — use the most recent.
+            latest_node = max(branch_nodes, key=lambda n: n.get("created", ""))
+            latest_data = latest_node.get("data", {})
+            latest_rev = latest_data.get("kernel_revision", {})
+            short_commit = latest_rev.get("commit", "")
             full_commit = await resolve_full_commit(short_commit)
 
             # Stable checkout ID per branch so re-submissions update the same record
             checkout_id = f"{KCIDB_ORIGIN}:checkout:{branch}"
 
-            # Create one checkout for this branch
-            checkouts.append(node_to_kcidb_checkout(branch_nodes[0], full_commit, checkout_id))
+            # Create one checkout for this branch using the latest commit
+            checkout = node_to_kcidb_checkout(
+                latest_node, full_commit, checkout_id
+            )
+            checkouts.append(checkout)
 
             # All builds in this branch point to the shared checkout
             for node in branch_nodes:

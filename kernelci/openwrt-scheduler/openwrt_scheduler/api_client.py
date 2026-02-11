@@ -214,6 +214,7 @@ class KernelCIClient:
         artifacts: dict[str, str],
         git_commit: str | None = None,
         pr_number: int | None = None,
+        version_code: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a firmware node (kind=kbuild for OpenWrt).
@@ -247,6 +248,8 @@ class KernelCIClient:
         }
         if pr_number:
             node["data"]["pr_number"] = pr_number
+        if version_code:
+            node["data"]["version_code"] = version_code
 
         return await self.create_node(node)
 
