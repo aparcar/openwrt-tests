@@ -121,9 +121,17 @@ class FirmwareTriggerService:
         Fetches active branches from .versions.json and creates
         a source for each (main/SNAPSHOT, stable, oldstable).
         """
-        # Get targets to scan from config
-        default_targets = config.get("targets", [])
-        snapshot_targets = config.get("snapshot_targets", [])
+        # Derive targets to scan from device_types config
+        device_types = self.config.get("device_types", {})
+        targets_set: set[str] = set()
+        for dt_config in device_types.values():
+            target = dt_config.get("target")
+            subtarget = dt_config.get("subtarget")
+            if target and subtarget:
+                targets_set.add(f"{target}/{subtarget}")
+        targets = sorted(targets_set)
+        logger.info(f"Derived {len(targets)} targets from device_types: {targets}")
+
         check_interval = config.get("check_interval", 3600)
 
         # Fetch active branches dynamically
@@ -139,11 +147,6 @@ class FirmwareTriggerService:
 
         # Create a source for each branch
         for branch in branches:
-            # Snapshot branches get additional targets (e.g. malta/be)
-            if branch.is_snapshot:
-                targets = default_targets + snapshot_targets
-            else:
-                targets = default_targets
 
             source_config = {
                 "enabled": True,
@@ -311,41 +314,43 @@ class FirmwareTriggerService:
         )
 
     async def _scan_source(self, source) -> None:
-        """Scan a source for new firmware, deduplicating by version_code per target.
+        """Scan a source for new firmware, creating kbuilds per profile.
 
-        For each target/subtarget, the version_code from profiles.json uniquely
-        identifies the build. We only create kbuild nodes and schedule jobs when
-        the version_code changes — this avoids duplicate test runs when the same
-        target is rebuilt with a new commit.
+        For each target/subtarget, the version_code from profiles.json
+        uniquely identifies the build. We check version_code once per
+        target (cached) and skip the entire target if already tested.
+        Within a new target, each profile that matches a device_type
+        gets its own kbuild + jobs.
         """
         logger.info(f"Scanning firmware source: {source.name}")
         scan_start = datetime.utcnow()
         new_count = 0
         skipped_count = 0
 
-        # Track which (target, subtarget, version_code) we've already processed
-        # in this scan to avoid creating duplicate kbuilds for different profiles
-        # of the same target.
-        seen_targets: set[tuple[str, str, str]] = set()
-
         device_types = self.config.get("device_types", {})
 
+        # Cache version_code checks per (target, subtarget, version_code).
+        # Populated once from MongoDB, then reused for all profiles in
+        # the same target so creating kbuilds for one profile doesn't
+        # cause subsequent profiles to think "already tested".
+        version_check_cache: dict[tuple[str, str, str], bool] = {}
+
         async for firmware in source.scan():
-            target_key = (firmware.target, firmware.subtarget, firmware.version_code)
-
-            # Only process each target's version_code once per scan
-            if target_key in seen_targets:
-                continue
-            seen_targets.add(target_key)
-
-            # Check if this target already has a kbuild with the same version_code.
-            # We query by target+subtarget+commit rather than profile, so one
-            # kbuild per target build (not per profile).
-            node_name = (
-                f"openwrt-{firmware.target}-{firmware.subtarget}-{firmware.profile}"
+            # Check if any device_type wants this specific profile
+            compatible = self._find_compatible_devices(
+                firmware.target, firmware.subtarget, firmware.profile,
+                device_types,
             )
+            if not compatible:
+                continue
 
-            try:
+            # Check version_code once per target (cached across profiles)
+            vc_key = (
+                firmware.target,
+                firmware.subtarget,
+                firmware.version_code or "",
+            )
+            if vc_key not in version_check_cache:
                 existing = await self.api_client.query_nodes(
                     kind="kbuild",
                     limit=1,
@@ -355,27 +360,23 @@ class FirmwareTriggerService:
                         "data.version_code": firmware.version_code,
                     },
                 )
-                if existing:
-                    skipped_count += 1
-                    continue
+                version_check_cache[vc_key] = len(existing) == 0
 
-                # Check if any compatible devices exist for this target
-                compatible = self._find_compatible_devices(
-                    firmware.target, firmware.subtarget, firmware.profile,
-                    device_types,
-                )
-                if not compatible:
-                    logger.debug(
-                        "No compatible devices, skipping",
-                        target=firmware.target,
-                        subtarget=firmware.subtarget,
-                    )
-                    continue
+            if not version_check_cache[vc_key]:
+                skipped_count += 1
+                continue
 
+            node_name = (
+                f"openwrt-{firmware.target}-{firmware.subtarget}"
+                f"-{firmware.profile}"
+            )
+
+            try:
                 logger.info(
                     "New firmware found",
                     target=firmware.target,
                     subtarget=firmware.subtarget,
+                    profile=firmware.profile,
                     version_code=firmware.version_code,
                     version=firmware.version,
                 )

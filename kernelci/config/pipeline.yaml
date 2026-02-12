@@ -52,15 +52,7 @@ firmware_sources:
     # Check interval in seconds
     check_interval: 3600  # 1 hour for snapshots, 24h for releases
 
-    # Targets to scan for firmware
-    # These are checked for all active branches
-    targets:
-      - x86/64
-      - armsr/armv8
-
-    # Targets only available in snapshot builds (no official releases)
-    snapshot_targets:
-      - malta/be
+    # Targets to scan are derived automatically from device_types config
 
   # GitHub Pull Request builds
   github_pr:
@@ -245,6 +237,75 @@ device_types:
       - isolated_network
     artifact_preference:
       - initramfs
+
+  # ---- Physical devices (aparcar lab) ----
+
+  openwrt_one:
+    target: mediatek
+    subtarget: filogic
+    profile: openwrt_one
+    features:
+      - wan_port
+      - wifi
+    capabilities:
+      - serial_console
+    artifact_preference:
+      - initramfs
+
+  bananapi_bpi-r4:
+    target: mediatek
+    subtarget: filogic
+    profile: bananapi_bpi-r4
+    features:
+      - wan_port
+    capabilities:
+      - serial_console
+    artifact_preference:
+      - initramfs
+
+  bananapi_bpi-r4-lite:
+    target: mediatek
+    subtarget: filogic
+    profile: bananapi_bpi-r4-lite
+    capabilities:
+      - serial_console
+    artifact_preference:
+      - initramfs
+
+  tplink_tl-wdr3600-v1:
+    target: ath79
+    subtarget: generic
+    profile: tplink_tl-wdr3600-v1
+    features:
+      - wan_port
+      - wifi
+    capabilities:
+      - serial_console
+    artifact_preference:
+      - initramfs
+
+  genexis_pulse-ex400:
+    target: ramips
+    subtarget: mt7621
+    profile: genexis_pulse-ex400
+    features:
+      - wan_port
+      - wifi
+    capabilities:
+      - serial_console
+    artifact_preference:
+      - initramfs
+
+  rpi-4:
+    target: bcm27xx
+    subtarget: bcm2711
+    profile: rpi-4
+    features:
+      - wifi
+    capabilities:
+      - serial_console
+    artifact_preference:
+      - factory
 
 # =============================================================================
 # Results Collection
