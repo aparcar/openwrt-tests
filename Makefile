@@ -48,6 +48,24 @@ $(curdir)/x86-64:
 		--lg-env $(TESTSDIR)/targets/qemu_x86-64.yaml \
 		--firmware $(FIRMWARE:.gz=)
 
+# LibreMesh x86-64 target with vwifi support for mesh simulation
+$(curdir)/x86-64-libremesh: QEMU_BIN ?= qemu-system-x86_64
+$(curdir)/x86-64-libremesh: FIRMWARE ?= $(TOPDIR)/bin/targets/x86/64/libremesh-x86-64-generic-squashfs-combined.img.gz
+$(curdir)/x86-64-libremesh:
+
+	[ -f $(FIRMWARE) ]
+
+	gzip \
+		--force \
+		--keep \
+		--decompress \
+		$(FIRMWARE) || true
+
+	LG_QEMU_BIN=$(QEMU_BIN) \
+		$(pytest) \
+		--lg-env $(TESTSDIR)/targets/qemu_libremesh-x86-64.yaml \
+		--firmware $(FIRMWARE:.gz=)
+
 $(curdir)/armsr-armv8: QEMU_BIN ?= qemu_system-aarch64
 $(curdir)/armsr-armv8: FIRMWARE ?= $(TOPDIR)/bin/targets/armsr/armv8/openwrt-armsr-armv8-generic-initramfs-kernel.bin
 $(curdir)/armsr-armv8:
