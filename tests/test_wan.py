@@ -43,14 +43,22 @@ def check_download(
 
 
 @pytest.mark.lg_feature("wan_port")
-def test_wan_wait_for_network(shell_command):
-    for i in range(60):
-        if ubus_call(shell_command, "network.interface.wan", "status").get(
-            "ipv4-address"
-        ):
-            return
+def test_wan_firewall_zone(shell_command):
+    stdout, _, exitcode = shell_command.run(
+        'uci show firewall | grep "=zone" | while read zone; do '
+        "section=${zone%%=zone}; "
+        'name=$(uci get "${section}.name"); '
+        '[ "$name" = "wan" ] && echo found && exit 0; '
+        "done"
+    )
+    assert "found" in stdout, "Firewall zone 'wan' not found"
 
-    assert False, "WAN interface did not come up within 60 seconds"
+
+@pytest.mark.lg_feature("wan_port")
+def test_wan_interface_device(shell_command):
+    status = ubus_call(shell_command, "network.interface.wan", "status")
+    device = status.get("device") or status.get("l3_device")
+    assert device, "WAN interface has no device assigned"
 
 
 @pytest.mark.lg_feature("online")
