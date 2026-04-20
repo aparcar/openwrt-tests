@@ -136,7 +136,7 @@ jobs:
   test-real:
     name: ${{ matrix.name }} (${{ matrix.version_name }})
     needs: generate-matrix
-    runs-on: global-coordinator
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -148,6 +148,31 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
+
+      - name: Setup SSH connection to coordinator
+        env:
+          LABGRID_SSH_KEY: ${{ secrets.LABGRID_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$LABGRID_SSH_KEY" > ~/.ssh/labgrid
+          chmod 600 ~/.ssh/labgrid
+
+          cat > ~/.ssh/config << 'SSHEOF'
+          Host coordinator
+            HostName ${{ secrets.COORDINATOR_HOST }}
+            Port ${{ secrets.COORDINATOR_PORT }}
+            User labgrid-dev
+            IdentityFile ~/.ssh/labgrid
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+
+          Host labgrid-*
+            User labgrid-dev
+            IdentityFile ~/.ssh/labgrid
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            ProxyJump coordinator
+          SSHEOF
 
       - name: Set environment
         env:
