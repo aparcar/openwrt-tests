@@ -89,20 +89,33 @@ jobs:
             ) | flatten
           ')
 
-          # Combine devices with versions to create full matrix
+          # Combine devices with versions; skip snapshots_only devices for non-snapshot versions
           matrix=$(echo "$device_matrix" | jq --argjson versions "$versions" '
-            [.[] as $device | $versions[] as $version | $device + {"version_url": $version.version_url, "version_name": $version.name}]
+            [ .[] as $device | $versions[] as $version |
+              select($version.name == "snapshot" or $device.snapshots_only != true) |
+              $device + {"version_url": $version.version_url, "version_name": $version.name} ]
           ')
           echo "matrix=$(echo "$matrix" | jq -c '.')" >> $GITHUB_ENV
 
-          # Create QEMU matrix
-          qemu_base='[
-            {"target": "malta-be", "dependency": "qemu-system-mips"},
-            {"target": "x86-64", "dependency": "qemu-system-x86"},
-            {"target": "armsr-armv8", "dependency": "qemu-system-aarch64"}
-          ]'
+          # Build QEMU matrix from targets/qemu_*.yaml (dependency is per-target apt package)
+          qemu_base=$(
+            for f in targets/qemu_*.yaml; do
+              target=${f##*/qemu_}; target=${target%.yaml}
+              so=$(yq -r '.openwrt.snapshots_only // false' "$f")
+              case "$target" in
+                malta-be) dep=qemu-system-mips ;;
+                x86-64) dep=qemu-system-x86 ;;
+                armsr-armv8) dep=qemu-system-aarch64 ;;
+                *) continue ;;
+              esac
+              jq -n --arg t "$target" --arg d "$dep" --argjson so "$so" \
+                '{target: $t, dependency: $d, snapshots_only: $so}'
+            done | jq -s '.'
+          )
           qemu_matrix=$(echo "$qemu_base" | jq --argjson versions "$versions" '
-            [.[] as $qemu | $versions[] as $version | $qemu + {"version_url": $version.version_url, "version_name": $version.name}]
+            [ .[] as $qemu | $versions[] as $version |
+              select($version.name == "snapshot" or $qemu.snapshots_only != true) |
+              ($qemu + {"version_url": $version.version_url, "version_name": $version.name} | del(.snapshots_only)) ]
           ')
           echo "qemu_matrix=$(echo "$qemu_matrix" | jq -c '.')" >> $GITHUB_ENV
 

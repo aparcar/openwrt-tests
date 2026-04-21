@@ -7,7 +7,6 @@ env:
   PYTHONUNBUFFERED: "1"
   PYTEST_ADDOPTS: "--color=yes"
   LG_CONSOLE: "internal"
-  RELEASE: "24.10.2"
 
 concurrency:
   group: pr-${{ github.workflow }}-${{ github.ref }}
@@ -37,11 +36,8 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install nmap ${{ matrix.dependency }}
 
-          # workaround until ARMSR is fixed
-          if [ "${{ matrix.target }}" = "armsr-armv8" ]; then
-            echo "RELEASE=23.05.5" >> $GITHUB_ENV
-          fi
-
+          RELEASE=$(curl -s https://downloads.openwrt.org/.versions.json | jq -r '.stable_version')
+          echo "RELEASE=$RELEASE" >> $GITHUB_ENV
           echo "LG_ENV=targets/qemu_${{ matrix.target }}.yaml" >> $GITHUB_ENV
 
       - name: Install uv
