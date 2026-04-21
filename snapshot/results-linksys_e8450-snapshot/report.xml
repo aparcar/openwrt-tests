@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="8" tests="35" time="120.011" timestamp="2026-04-21T07:00:22.725807+00:00" hostname="runnervmeorf1"><properties><property name="ENV_CONFIG" value="targets/linksys_e8450.yaml" /><property name="TARGETS" value="['main']" /><property name="TARGET_MAIN_REMOTE" value="+" /><property name="IMAGE_ROOT" value="/home/runner/work/openwrt-tests/openwrt-tests/tftp/linksys_e8450/openwrt-mediatek-mt7622-linksys_e8450-initramfs-kernel.bin" /><property name="IMAGE_ROOT_GIT_COMMIT" value="cdcccc9c1e5ba817939da1134832fe278c4f1796" /></properties><testcase classname="tests.test_apk.TestApk" name="test_apk_procd_installed" time="63.066" /><testcase classname="tests.test_apk.TestApk" name="test_apk_add_ucert" time="0.000"><skipped type="pytest.skip" message="LG_FEATURE_ONLINE not defined">/home/runner/work/openwrt-tests/openwrt-tests/tests/test_apk.py:13: LG_FEATURE_ONLINE not defined</skipped></testcase><testcase classname="tests.test_apk.TestApk" name="test_apk_audit" time="0.542" /><testcase classname="tests.test_base" name="test_shell" time="1.115" /><testcase classname="tests.test_base" name="test_firmware_version" time="1.461"><properties><property name="firmware_version" value="r34061-39f528e440" /><property name="expected_firmware_version" value="r34061-39f528e440" /></properties></testcase><testcase classname="tests.test_base" name="test_dropbear_startup" time="2.907" /><testcase classname="tests.test_base" name="test_ssh" time="0.541" /><testcase classname="tests.test_base" name="test_echo" time="0.541" /><testcase classname="tests.test_base" name="test_uname" time="0.541" /><testcase classname="tests.test_base" name="test_ubus_system_board" time="0.542" /><testcase classname="tests.test_base" name="test_free_memory" time="0.542" /><testcase classname="tests.test_base" name="test_sysupgrade_backup" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'rootfs'}&quot; is not supported">/home/runner/work/openwrt-tests/openwrt-tests/tests/test_base.py:69: Skipping because feature "{'rootfs'}" is not supported</skipped></testcase><testcase classname="tests.test_base" name="test_sysupgrade_backup_u" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'rootfs'}&quot; is not supported">/home/runner/work/openwrt-tests/openwrt-tests/tests/test_base.py:81: Skipping because feature "{'rootfs'}" is not supported</skipped></testcase><testcase classname="tests.test_base" name="test_kernel_errors" time="0.550" /><testcase classname="tests.test_lan" name="test_lan_wait_for_link_ready" time="1.470" /><testcase classname="tests.test_lan" name="test_lan_wait_for_network" time="1.808" /><testcase classname="tests.test_lan" name="test_lan_interface_address" time="1.469" /><testcase classname="tests.test_lan" name="test_lan_interface_has_neighbor" time="3.475" /><testcase classname="tests.test_network_security" name="test_ssh_supported_algorithms" time="0.009"><failure message="subprocess.CalledProcessError: Command 'nmap --script ssh2-enum-algos -sV -p 60191 127.0.0.1' returned non-zero exit status 127.">ssh_command = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/linksys_e8450.yaml')), name=None, state=&lt;Bin...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+results_bag = ResultsBag:
+{}
+
+    def test_ssh_supported_algorithms(ssh_command, results_bag):
+        with ssh_command.forward_local_port(22) as localport:
+&gt;           output = subprocess.check_output(
+                f"nmap --script ssh2-enum-algos -sV -p {localport} 127.0.0.1",
+                text=True,
+                shell=True,
+            )
+
+tests/test_network_security.py:8: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../_temp/uv-python-dir/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/subprocess.py:473: in check_output
+    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = False, timeout = None, check = True
+popenargs = ('nmap --script ssh2-enum-algos -sV -p 60191 127.0.0.1',)
+kwargs = {'shell': True, 'stdout': -1, 'text': True}
+process = &lt;Popen: returncode: 127 args: 'nmap --script ssh2-enum-algos -sV -p 60191 12...&gt;
+stdout = '', stderr = None, retcode = 127
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output &amp; stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+&gt;               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command 'nmap --script ssh2-enum-algos -sV -p 60191 127.0.0.1' returned non-zero exit status 127.
+
+../../_temp/uv-python-dir/cpython-3.14.4-linux-x86_64-gnu/lib/python3.14/subprocess.py:578: CalledProcessError</failure></testcase><testcase classname="tests.test_opkg" name="test_opkg_procd_installed" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'opkg'}&quot; is not supported">/home/runner/work/openwrt-tests/openwrt-tests/tests/test_opkg.py:4: Skipping because feature "{'opkg'}" is not supported</skipped></testcase><testcase classname="tests.test_opkg" name="test_opkg_install_ucert" time="0.000"><skipped type="pytest.skip" message="Skipping because features &quot;{'opkg', 'online'}&quot; are not supported">/home/runner/work/openwrt-tests/openwrt-tests/tests/test_opkg.py:9: Skipping because features "{'opkg', 'online'}" are not supported</skipped></testcase><testcase classname="tests.test_system_health.TestSystemHealth" name="test_memory_usage" time="0.542" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_filesystem_usage" time="3.243" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_system_uptime" time="0.542" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_temperature_sensors" time="1.083" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_process_count" time="0.542" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_entropy_available" time="0.542" /><testcase classname="tests.test_system_health.TestSystemHealth" name="test_open_file_descriptors" time="0.541" /><testcase classname="tests.test_wan" name="test_wan_firewall_zone" time="2.839" /><testcase classname="tests.test_wan" name="test_wan_interface_device" time="1.804" /><testcase classname="tests.test_wan" name="test_https_download" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'online'}&quot; is not supported">/home/runner/work/openwrt-tests/openwrt-tests/tests/test_wan.py:64: Skipping because feature "{'online'}" is not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_wpa3" time="13.429"><failure message="AssertionError: assert 'Mode: Master' in ''">ssh_command = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/linksys_e8450.yaml')), name=None, state=&lt;Bin...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    @pytest.mark.lg_feature("wifi")
+    def test_wifi_wpa3(ssh_command):
+        """
+        Test enabling a wifi network with WPA3 encryption.
+    
+        This test configures a wifi network with WPA3 encryption and password 'openwrt4all'.
+        """
+        ssh_command.run("uci delete wireless.radio0.disabled")
+        ssh_command.run("uci set wireless.default_radio0.encryption=sae")
+        ssh_command.run("uci set wireless.default_radio0.key=openwrt4all")
+    
+        ssh_command.run("uci commit")
+    
+        restart_wifi_and_wait(ssh_command)
+    
+        iwinfo_output = "\n".join(ssh_command.run("iwinfo")[0])
+    
+&gt;       assert "Mode: Master" in iwinfo_output
+E       AssertionError: assert 'Mode: Master' in ''
+
+tests/test_wifi.py:45: AssertionError</failure></testcase><testcase classname="tests.test_wifi" name="test_wifi_wpa2" time="13.306"><failure message="AssertionError: assert 'Mode: Master' in ''">ssh_command = SSHDriver(target=Target(name='main', env=Environment(config_file='targets/linksys_e8450.yaml')), name=None, state=&lt;Bin...derr_merge=False, connection_timeout=120.0, explicit_sftp_mode=False, explicit_scp_mode=True, username='', password='')
+
+    @pytest.mark.lg_feature("wifi")
+    def test_wifi_wpa2(ssh_command):
+        """
+        Test enabling a wifi network with WPA2 encryption.
+    
+        This test configures a wifi network with WPA2 encryption and password 'openwrt4all'.
+        """
+        ssh_command.run("uci delete wireless.radio0.disabled")
+        ssh_command.run("uci set wireless.default_radio0.encryption=psk2")
+        ssh_command.run("uci set wireless.default_radio0.key=openwrt4all")
+    
+        ssh_command.run("uci commit")
+    
+        restart_wifi_and_wait(ssh_command)
+    
+        iwinfo_output = "\n".join(ssh_command.run("iwinfo")[0])
+    
+&gt;       assert "Mode: Master" in iwinfo_output
+E       AssertionError: assert 'Mode: Master' in ''
+
+tests/test_wifi.py:69: AssertionError</failure></testcase><testcase classname="tests.test_wifi" name="test_wifi_scan" time="0.000"><skipped type="pytest.skip" message="Skipping because feature &quot;{'wifi-neighbors'}&quot; is not supported">/home/runner/work/openwrt-tests/openwrt-tests/tests/test_wifi.py:76: Skipping because feature "{'wifi-neighbors'}" is not supported</skipped></testcase><testcase classname="tests.test_wifi" name="test_wifi_hwsim_sae_mixed" time="0.885"><skipped type="pytest.skip" message="Skipping because feature &quot;{'hwsim'}&quot; is not supported">/home/runner/work/openwrt-tests/openwrt-tests/tests/test_wifi.py:97: Skipping because feature "{'hwsim'}" is not supported</skipped></testcase></testsuite></testsuites>
