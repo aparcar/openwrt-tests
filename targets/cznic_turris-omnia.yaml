@@ -1,3 +1,7 @@
+openwrt:
+  name: CZ.NIC Turris Omnia
+  target: mvebu-cortexa9
+  profile: cznic_turris-omnia
 targets:
   main:
     features:
@@ -23,16 +27,14 @@ targets:
           - setenv kernel_addr_r 0x2000000
           - setenv bootargs earlyprintk console=ttyS0,115200
         boot_command: >
-          dhcp $kernel_addr_r $bootfile;
-          bootm $kernel_addr_r
+          dhcp $kernel_addr_r $bootfile; bootm $kernel_addr_r
+
       TFTPProviderDriver: {}
       UBootTFTPStrategy: {}
       SSHDriver:
         connection_timeout: 120.0
         explicit_scp_mode: True
-
 images:
   root: !template $LG_IMAGE
-
 imports:
   - ../strategies/tftpstrategy.py

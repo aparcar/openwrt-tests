@@ -22,15 +22,10 @@ jobs:
       matrix:
         include:
           - target: malta-be
-            firmware: openwrt-${RELEASE}-malta-be-vmlinux-initramfs.elf
             dependency: qemu-system-mips
-
           - target: x86-64
-            firmware: openwrt-${RELEASE}-x86-64-generic-squashfs-combined.img.gz
             dependency: qemu-system-x86
-
           - target: armsr-armv8
-            firmware: openwrt-${RELEASE}-armsr-armv8-generic-initramfs-kernel.bin
             dependency: qemu-system-aarch64
 
     steps:
@@ -40,41 +35,51 @@ jobs:
       - name: Setup environment
         run: |
           sudo apt-get update
-          sudo apt-get -y install \
-            nmap \
-            ${{ matrix.dependency }}
+          sudo apt-get -y install nmap ${{ matrix.dependency }}
 
           # workaround until ARMSR is fixed
           if [ "${{ matrix.target }}" = "armsr-armv8" ]; then
-            export RELEASE=23.05.5
-            echo "RELEASE=${RELEASE}" >> $GITHUB_ENV
+            echo "RELEASE=23.05.5" >> $GITHUB_ENV
           fi
 
           echo "LG_ENV=targets/qemu_${{ matrix.target }}.yaml" >> $GITHUB_ENV
-          echo "UPSTREAM_URL=https://mirror-03.infra.openwrt.org/releases/${RELEASE}/targets" >> $GITHUB_ENV
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
 
       - name: Download test firmware
-        env:
-          target: ${{ matrix.target }}
         run: |
-          wget $UPSTREAM_URL/${target/-/\/}/${{ matrix.firmware }} \
-            --output-document ${{ matrix.firmware }}
-          FIRMWARE_VERSION=$(curl $UPSTREAM_URL/${target/-/\/}/version.buildinfo)
+          target=$(yq -r '.openwrt.target' targets/qemu_${{ matrix.target }}.yaml)
+          profile=$(yq -r '.openwrt.profile' targets/qemu_${{ matrix.target }}.yaml)
+          image_type=$(yq -r '.openwrt.image.type // "kernel"' targets/qemu_${{ matrix.target }}.yaml)
+          image_fs=$(yq -r '.openwrt.image.filesystem // ""' targets/qemu_${{ matrix.target }}.yaml)
+
+          upstream_url="https://mirror-03.infra.openwrt.org/releases/${RELEASE}/targets"
+          profiles_json=$(curl -sf "$upstream_url/${target/-/\/}/profiles.json")
+
+          if [ -n "$image_fs" ]; then
+            firmware_name=$(echo "$profiles_json" | jq -r --arg p "$profile" --arg t "$image_type" --arg fs "$image_fs" \
+              '.profiles[$p].images[]? | select(.type == $t and .filesystem == $fs) | .name' | head -n1)
+          else
+            firmware_name=$(echo "$profiles_json" | jq -r --arg p "$profile" --arg t "$image_type" \
+              '.profiles[$p].images[]? | select(.type == $t) | .name' | head -n1)
+          fi
+
+          wget -q "$upstream_url/${target/-/\/}/$firmware_name" --output-document "$firmware_name"
+          FIRMWARE_VERSION=$(echo "$profiles_json" | jq -r '.version_code')
           echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
+          echo "FIRMWARE_FILE=$firmware_name" >> $GITHUB_ENV
 
       - name: Run test
         run: |
-          gunzip ${{ matrix.firmware }} || true
-          firmware=${{ matrix.firmware }}
+          gunzip $FIRMWARE_FILE || true
+          firmware=${FIRMWARE_FILE/.gz/}
 
           uv run pytest tests/ \
             --lg-log \
             --lg-colored-steps \
             --log-cli-level=CONSOLE \
-            --firmware $GITHUB_WORKSPACE/${firmware/.gz/}
+            --firmware $GITHUB_WORKSPACE/$firmware
 
       - name: Upload console logs
         uses: actions/upload-artifact@v7

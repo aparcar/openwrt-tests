@@ -30,28 +30,29 @@ jobs:
 
           # Use pipe because of this bug
           # https://github.com/mikefarah/yq/issues/2454
-          matrix=$(yq -o=json labnet.yaml | jq '
-            . as $root |
-            $root.labs as $labs |
-            $root.devices as $devices |
-            $labs
-            | to_entries
-            | map(
-                .key as $lab |
-                .value.devices
-                | map(
-                    select($devices[.] != null and $devices[.].snapshots_only != true) |
-                    {
-                      "device": .,
-                      "proxy": $labs[$lab].proxy,
-                      "target": $devices[.].target,
-                      "firmware": $devices[.].firmware,
-                      "maintainers": $labs[$lab].maintainers,
-                      "snapshots_only": ($devices[.].snapshots_only // false)
-                    }
-                  )
+          devices_meta=$(
+            for f in targets/*.yaml; do
+              head -1 "$f" | grep -q '^openwrt:' || continue
+              device=$(basename "$f" .yaml)
+              so=$(yq -r '.openwrt.snapshots_only // false' "$f")
+              jq -n --arg d "$device" --argjson so "$so" '{($d): {snapshots_only: $so}}'
+            done | jq -s 'add'
+          )
+
+          matrix=$(yq -o=json labnet.yaml | jq --argjson devices "$devices_meta" '
+            .labs as $labs |
+            ($labs | to_entries) | map(
+              .key as $lab |
+              $labs[$lab].devices | map(
+                select($devices[.] != null and $devices[.].snapshots_only != true) |
+                {
+                  "device": .,
+                  "proxy": $labs[$lab].proxy,
+                  "maintainers": $labs[$lab].maintainers,
+                  "snapshots_only": $devices[.].snapshots_only
+                }
               )
-            | flatten
+            ) | flatten
           ')
           echo "matrix=$(echo "$matrix" | jq -c '.')" >> $GITHUB_OUTPUT
 
@@ -99,26 +100,38 @@ jobs:
 
       - name: Set environment
         env:
-          target: ${{ matrix.target }}
+          DEVICE: ${{ matrix.device }}
         run: |
           # workaround until 24.10.x is fixed on tplink_tl-wr1043nd-v3
-          if [ "${{ matrix.device }}" = "tplink_tl-wr1043nd-v3" ]; then
+          if [ "$DEVICE" = "tplink_tl-wr1043nd-v3" ]; then
             export RELEASE=23.05.5
             echo "RELEASE=${RELEASE}" >> $GITHUB_ENV
           fi
 
-          export firmware=openwrt-${RELEASE}-${{ matrix.target }}-${{ matrix.device }}-${{ matrix.firmware }}
-          export upstream_url="https://mirror-03.infra.openwrt.org/releases/${RELEASE}/targets"
+          target=$(yq -r '.openwrt.target' targets/$DEVICE.yaml)
+          profile=$(yq -r '.openwrt.profile' targets/$DEVICE.yaml)
+          image_type=$(yq -r '.openwrt.image.type // "kernel"' targets/$DEVICE.yaml)
+          image_fs=$(yq -r '.openwrt.image.filesystem // ""' targets/$DEVICE.yaml)
 
-          mkdir -p $GITHUB_WORKSPACE/tftp/${{ matrix.device }}
-          wget $upstream_url/${target/-/\/}/$firmware \
-            --output-document $GITHUB_WORKSPACE/tftp/${{ matrix.device }}/$firmware
-            (cd $GITHUB_WORKSPACE/tftp/ && gzip -d ${{ matrix.device }}/$firmware) || true
+          upstream_url="https://mirror-03.infra.openwrt.org/releases/${RELEASE}/targets"
+          profiles_json=$(curl -sf "$upstream_url/${target/-/\/}/profiles.json")
 
-          FIRMWARE_VERSION=$(curl $upstream_url/${target/-/\/}/version.buildinfo)
+          if [ -n "$image_fs" ]; then
+            firmware_name=$(echo "$profiles_json" | jq -r --arg p "$profile" --arg t "$image_type" --arg fs "$image_fs" \
+              '.profiles[$p].images[]? | select(.type == $t and .filesystem == $fs) | .name' | head -n1)
+          else
+            firmware_name=$(echo "$profiles_json" | jq -r --arg p "$profile" --arg t "$image_type" \
+              '.profiles[$p].images[]? | select(.type == $t) | .name' | head -n1)
+          fi
+
+          mkdir -p $GITHUB_WORKSPACE/tftp/$DEVICE
+          wget -q "$upstream_url/${target/-/\/}/$firmware_name" \
+            --output-document "$GITHUB_WORKSPACE/tftp/$DEVICE/$firmware_name"
+          (cd $GITHUB_WORKSPACE/tftp/ && gzip -df $DEVICE/$firmware_name) || true
+
+          FIRMWARE_VERSION=$(echo "$profiles_json" | jq -r '.version_code')
           echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
-
-          echo "LG_IMAGE=$GITHUB_WORKSPACE/tftp/${{ matrix.device }}/${firmware/.gz/}" >> $GITHUB_ENV
+          echo "LG_IMAGE=$GITHUB_WORKSPACE/tftp/$DEVICE/${firmware_name/.gz/}" >> $GITHUB_ENV
           echo "LG_PROXY=${{ matrix.proxy }}" >> $GITHUB_ENV
 
       - name: Install dependencies

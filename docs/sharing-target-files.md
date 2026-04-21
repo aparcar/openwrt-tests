@@ -5,12 +5,6 @@ When a lab has multiple physical devices of the same model (e.g., three Belkin R
 If this is your situation, you can use the `device_instances` field in `labnet.yaml` to define multiple physical instances sharing a single target file:
 
 ```yaml
-devices:
-  linksys_e8450:
-    name: Linksys E8450 / Belkin RT3200
-    target: mediatek-mt7622
-    firmware: initramfs-kernel.bin
-
 labs:
   labgrid-example:
     proxy: labgrid-example
@@ -24,6 +18,16 @@ labs:
         - router_1
         - router_2
         - router_3
+```
+
+Device metadata (name, OpenWrt target, profile, image selection) lives in the labgrid target file (`targets/linksys_e8450.yaml`):
+
+```yaml
+openwrt:
+  name: Linksys E8450 / Belkin RT3200
+  target: mediatek-mt7622
+  profile: linksys_e8450
+  # image.type defaults to "kernel"; override only for factory / combined images
 ```
 
 This will create three different labgrid places from the same configuration file.
