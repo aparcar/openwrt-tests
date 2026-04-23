@@ -265,13 +265,16 @@ jobs:
 
       - name: Run test
         if: env.SKIP_TEST != 'true'
+        shell: bash
         run: |
+          set -o pipefail
           mkdir -p ${{ matrix.device }}-${{ matrix.version_name }}/
           uv run pytest tests/ -v \
             --lg-log ${{ matrix.device }}-${{ matrix.version_name }}/ \
             --junitxml=${{ matrix.device }}-${{ matrix.version_name }}/report.xml \
             --lg-colored-steps \
-            --log-cli-level=CONSOLE
+            --log-cli-level=CONSOLE \
+            2>&1 | tee ${{ matrix.device }}-${{ matrix.version_name }}/pytest.log
 
       - name: Poweroff and unlock device
         if: always() && env.SKIP_TEST != 'true'
@@ -291,13 +294,14 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_EC2_METADATA_DISABLED: "true"
+          AWS_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
           AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: "true"
           AWS_REQUEST_CHECKSUM_CALCULATION: when_required
           AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
         run: |
-          aws s3 sync \
-            --endpoint-url "${{ secrets.R2_ENDPOINT_URL }}" \
+          aws configure set default.s3.payload_signing_enabled true
+          aws s3 cp --recursive \
             "${{ matrix.device }}-${{ matrix.version_name }}/" \
             "s3://${{ secrets.R2_BUCKET }}/${{ matrix.version_name }}/$FIRMWARE_VERSION/${{ matrix.device }}/"
 
@@ -381,7 +385,9 @@ jobs:
 
       - name: Run test
         if: env.SKIP_TEST != 'true'
+        shell: bash
         run: |
+          set -o pipefail
           gunzip $FIRMWARE_FILE || true
           firmware_file=${FIRMWARE_FILE/.gz/}
 
@@ -392,7 +398,8 @@ jobs:
             --junitxml=${{ matrix.target }}-${{ matrix.version_name }}/report.xml \
             --lg-colored-steps \
             --log-cli-level=CONSOLE \
-            --firmware $GITHUB_WORKSPACE/$firmware_file
+            --firmware $GITHUB_WORKSPACE/$firmware_file \
+            2>&1 | tee ${{ matrix.target }}-${{ matrix.version_name }}/pytest.log
 
       - name: Upload results
         uses: actions/upload-artifact@v7
@@ -406,13 +413,14 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_EC2_METADATA_DISABLED: "true"
+          AWS_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
           AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: "true"
           AWS_REQUEST_CHECKSUM_CALCULATION: when_required
           AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
         run: |
-          aws s3 sync \
-            --endpoint-url "${{ secrets.R2_ENDPOINT_URL }}" \
+          aws configure set default.s3.payload_signing_enabled true
+          aws s3 cp --recursive \
             "${{ matrix.target }}-${{ matrix.version_name }}/" \
             "s3://${{ secrets.R2_BUCKET }}/${{ matrix.version_name }}/$FIRMWARE_VERSION/qemu_${{ matrix.target }}/"
 
