@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pytest
 
+pytest_plugins = ["conftest_vlan"]
+
 logger = logging.getLogger(__name__)
 
 
