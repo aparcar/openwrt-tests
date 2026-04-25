@@ -178,6 +178,7 @@ jobs:
             const issueTitle = "Healthcheck ${{ matrix.proxy }}/${{ matrix.device }}";
             const runUrl = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}";
             const isSuccess = "${{ job.status }}" === "success";
+            const maintainers = ${{ toJSON(matrix.maintainers) }}.map(m => '@' + m).join(', ');
 
             const failureBody = `
               ### ❌ Healthcheck Failed
@@ -186,7 +187,7 @@ jobs:
 
               - **Proxy**: \`${{ matrix.proxy }}\`
               - **Device**: \`${{ matrix.device }}\`
-              - **Maintainers**: ${{ join(matrix.maintainers, ', ') }}
+              - **Maintainers**: ${maintainers}
 
               has **failed**. Please review the logs and investigate the issue.
 

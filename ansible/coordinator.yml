@@ -1,18 +1,20 @@
 - hosts: coordinator
   become: true
+  vars:
+    labnet: "{{ lookup('file', '../labnet.yaml') | from_yaml }}"
   tasks:
     - name: Create a user account called labgrid-dev
       user:
         name: labgrid-dev
         state: present
 
-    - name: Add SSH keys to labgrid-dev based on labnet.yaml
+    - name: Add SSH keys to labgrid-dev from GitHub
       authorized_key:
         user: labgrid-dev
         state: present
-        key: "{{ item.value.sshkey }}"
-        comment: "{{ item.key }}"
-      loop: "{{ hostvars[inventory_hostname]['developers'] | dict2items | default([]) }}"
+        key: "{{ lookup('url', 'https://github.com/' + item + '.keys', split_lines=false) }}"
+        comment: "{{ item }}"
+      loop: "{{ ((labnet.labs.values() | map(attribute='maintainers') | flatten | list) + (labnet.labs.values() | map(attribute='access') | flatten | list)) | unique | list }}"
 
     - name: Add public SSH key of CI runner
       authorized_key:

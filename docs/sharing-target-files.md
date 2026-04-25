@@ -10,7 +10,9 @@ labs:
     proxy: labgrid-example
     hostkey: ssh-ed25519 AAAA...
     maintainers:
-      - "@maintainer"
+      - maintainer
+    access:
+      - maintainer
     devices:
       - linksys_e8450
     device_instances:
