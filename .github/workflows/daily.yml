@@ -104,7 +104,10 @@ jobs:
               so=$(yq -r '.openwrt.snapshots_only // false' "$f")
               case "$target" in
                 malta-be) dep=qemu-system-mips ;;
+                malta-le) dep=qemu-system-mips ;;
                 x86-64) dep=qemu-system-x86 ;;
+                x86-generic) dep=qemu-system-x86 ;;
+                armsr-armv7) dep=qemu-system-arm ;;
                 armsr-armv8) dep=qemu-system-aarch64 ;;
                 *) continue ;;
               esac

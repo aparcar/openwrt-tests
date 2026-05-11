@@ -16,14 +16,23 @@ jobs:
   test-qemu:
     name: QEMU ${{ matrix.target }}
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.snapshots_only || false }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: malta-be
             dependency: qemu-system-mips
+            snapshots_only: true
+          - target: malta-le
+            dependency: qemu-system-mips
+            snapshots_only: true
           - target: x86-64
             dependency: qemu-system-x86
+          - target: x86-generic
+            dependency: qemu-system-x86
+          - target: armsr-armv7
+            dependency: qemu-system-arm
           - target: armsr-armv8
             dependency: qemu-system-aarch64
 
