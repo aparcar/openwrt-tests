@@ -4,6 +4,21 @@ on:
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
+    inputs:
+      lab:
+        description: "Lab (proxy) to test — empty for all"
+        required: false
+        type: string
+      device:
+        description: "Device to test — empty for all"
+        required: false
+        type: string
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
 
 env:
   PYTHONUNBUFFERED: "1"
@@ -16,18 +31,91 @@ jobs:
   generate-matrix:
     name: Generate labnet.yaml matrix
     runs-on: ubuntu-latest
+    # Only react to /healthcheck comments on actual issues (not PRs).
+    if: >
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.pull_request == null &&
+       startsWith(github.event.comment.body, '/healthcheck'))
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      authorized: ${{ steps.authz.outputs.authorized }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v6
 
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Resolve filter & authorize commenter
+        id: authz
+        env:
+          EVENT: ${{ github.event_name }}
+          DISPATCH_LAB: ${{ inputs.lab }}
+          DISPATCH_DEVICE: ${{ inputs.device }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          COMMENTER: ${{ github.event.comment.user.login }}
+        run: |
+          lab=""
+          device=""
+          authorized=true
+          reason=""
+
+          case "$EVENT" in
+            workflow_dispatch)
+              lab="$DISPATCH_LAB"
+              device="$DISPATCH_DEVICE"
+              ;;
+            issue_comment)
+              # Issue title format: "Healthcheck <proxy>/<device>"
+              if [[ "$ISSUE_TITLE" =~ ^Healthcheck\ ([^/]+)/(.+)$ ]]; then
+                lab="${BASH_REMATCH[1]}"
+                device="${BASH_REMATCH[2]}"
+              else
+                authorized=false
+                reason="issue title does not match 'Healthcheck <proxy>/<device>'"
+              fi
+              # Authorize: commenter must be listed in labs[<lab>].maintainers or .access
+              if [ "$authorized" = "true" ]; then
+                allowed=$(LAB="$lab" yq -r '(.labs[strenv(LAB)].maintainers // []) + (.labs[strenv(LAB)].access // []) | .[]' labnet.yaml | tr '[:upper:]' '[:lower:]')
+                commenter_lc=$(echo "$COMMENTER" | tr '[:upper:]' '[:lower:]')
+                if ! echo "$allowed" | grep -qxF -- "$commenter_lc"; then
+                  authorized=false
+                  reason="@$COMMENTER is neither maintainer nor access of $lab"
+                fi
+              fi
+              ;;
+          esac
+
+          echo "lab=$lab" >> $GITHUB_OUTPUT
+          echo "device=$device" >> $GITHUB_OUTPUT
+          echo "authorized=$authorized" >> $GITHUB_OUTPUT
+          echo "reason=$reason" >> $GITHUB_OUTPUT
+          if [ "$authorized" != "true" ]; then
+            echo "::warning::not authorized: $reason"
+          fi
+
+      - name: React to comment
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const authorized = '${{ steps.authz.outputs.authorized }}' === 'true';
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: authorized ? 'rocket' : '-1',
+            });
+
       - name: Generate matrix
         id: set-matrix
+        if: steps.authz.outputs.authorized == 'true'
+        env:
+          FILTER_LAB: ${{ steps.authz.outputs.lab }}
+          FILTER_DEVICE: ${{ steps.authz.outputs.device }}
         run: |
-          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\
-              sudo chmod +x /usr/local/bin/yq
-
           # Use pipe because of this bug
           # https://github.com/mikefarah/yq/issues/2454
           devices_meta=$(
@@ -39,7 +127,10 @@ jobs:
             done | jq -s 'add'
           )
 
-          matrix=$(yq -o=json labnet.yaml | jq --argjson devices "$devices_meta" '
+          matrix=$(yq -o=json labnet.yaml | jq \
+            --argjson devices "$devices_meta" \
+            --arg filter_lab "$FILTER_LAB" \
+            --arg filter_device "$FILTER_DEVICE" '
             .labs as $labs |
             ($labs | to_entries) | map(
               .key as $lab |
@@ -52,13 +143,22 @@ jobs:
                   "snapshots_only": $devices[.].snapshots_only
                 }
               )
-            ) | flatten
+            )
+            | flatten
+            | map(select(
+                ($filter_lab == "" or .proxy == $filter_lab) and
+                ($filter_device == "" or .device == $filter_device)
+              ))
           ')
           echo "matrix=$(echo "$matrix" | jq -c '.')" >> $GITHUB_OUTPUT
 
   test-real:
     name: ${{ matrix.device }} (${{ matrix.proxy }})
     needs: generate-matrix
+    if: >
+      needs.generate-matrix.outputs.authorized == 'true' &&
+      needs.generate-matrix.outputs.matrix != '[]' &&
+      needs.generate-matrix.outputs.matrix != ''
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -179,6 +279,8 @@ jobs:
             const runUrl = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}";
             const isSuccess = "${{ job.status }}" === "success";
             const maintainers = ${{ toJSON(matrix.maintainers) }}.map(m => '@' + m).join(', ');
+            const triggeringIssue = context.eventName === 'issue_comment'
+              ? context.payload.issue.number : null;
 
             const failureBody = `
               ### ❌ Healthcheck Failed
@@ -238,4 +340,14 @@ jobs:
                 });
                 console.log("Created new issue due to test failure.");
               }
+            }
+
+            // If triggered from a /healthcheck comment, post the result there too.
+            if (triggeringIssue) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: triggeringIssue,
+                body: `Healthcheck for \`${{ matrix.proxy }}/${{ matrix.device }}\` ${isSuccess ? '✅ passed' : '❌ failed'} — [run log](${runUrl}).`,
+              });
             }
