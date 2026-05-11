@@ -41,12 +41,18 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup environment
+        env:
+          SNAPSHOTS_ONLY: ${{ matrix.snapshots_only || false }}
         run: |
           sudo apt-get update
           sudo apt-get -y install nmap ${{ matrix.dependency }}
 
-          RELEASE=$(curl -s https://downloads.openwrt.org/.versions.json | jq -r '.stable_version')
-          echo "RELEASE=$RELEASE" >> $GITHUB_ENV
+          if [ "$SNAPSHOTS_ONLY" = "true" ]; then
+            echo "UPSTREAM_URL=https://mirror-03.infra.openwrt.org/snapshots/targets" >> $GITHUB_ENV
+          else
+            RELEASE=$(curl -s https://downloads.openwrt.org/.versions.json | jq -r '.stable_version')
+            echo "UPSTREAM_URL=https://mirror-03.infra.openwrt.org/releases/${RELEASE}/targets" >> $GITHUB_ENV
+          fi
           echo "LG_ENV=targets/qemu_${{ matrix.target }}.yaml" >> $GITHUB_ENV
 
       - name: Install uv
@@ -59,8 +65,7 @@ jobs:
           image_type=$(yq -r '.openwrt.image.type // "kernel"' targets/qemu_${{ matrix.target }}.yaml)
           image_fs=$(yq -r '.openwrt.image.filesystem // ""' targets/qemu_${{ matrix.target }}.yaml)
 
-          upstream_url="https://mirror-03.infra.openwrt.org/releases/${RELEASE}/targets"
-          profiles_json=$(curl -sf "$upstream_url/${target/-/\/}/profiles.json")
+          profiles_json=$(curl -sf "$UPSTREAM_URL/${target/-/\/}/profiles.json")
 
           if [ -n "$image_fs" ]; then
             firmware_name=$(echo "$profiles_json" | jq -r --arg p "$profile" --arg t "$image_type" --arg fs "$image_fs" \
@@ -70,7 +75,7 @@ jobs:
               '.profiles[$p].images[]? | select(.type == $t) | .name' | head -n1)
           fi
 
-          wget -q "$upstream_url/${target/-/\/}/$firmware_name" --output-document "$firmware_name"
+          wget -q "$UPSTREAM_URL/${target/-/\/}/$firmware_name" --output-document "$firmware_name"
           FIRMWARE_VERSION=$(echo "$profiles_json" | jq -r '.version_code')
           echo "FIRMWARE_VERSION=$FIRMWARE_VERSION" >> $GITHUB_ENV
           echo "FIRMWARE_FILE=$firmware_name" >> $GITHUB_ENV
