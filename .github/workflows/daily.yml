@@ -312,6 +312,12 @@ jobs:
     name: QEMU ${{ matrix.target }} (${{ matrix.version_name }})
     needs: generate-matrix
     runs-on: ubuntu-latest
+    # Debian trixie ships QEMU 10.0.8 which includes the gt64120 endianness
+    # fix needed for malta-be. ubuntu-24.04 still has QEMU 8.2.
+    container: debian:trixie-slim
+    defaults:
+      run:
+        shell: bash
     env:
       LG_FEATURE_ONLINE: "true"
     strategy:
@@ -320,16 +326,21 @@ jobs:
         include: ${{ fromJson(needs.generate-matrix.outputs.qemu-matrix) }}
 
     steps:
+      - name: Install container tools
+        run: |
+          apt-get update
+          apt-get -y install --no-install-recommends \
+            ca-certificates curl wget jq git gzip xz-utils \
+            openssh-client ipxe-qemu seabios awscli \
+            nmap ${{ matrix.dependency }}
+          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x /usr/local/bin/yq
+
       - name: Check out repository code
         uses: actions/checkout@v6
 
       - name: Setup environment
         run: |
-          sudo apt-get update
-          sudo apt-get -y install \
-            nmap \
-            ${{ matrix.dependency }}
-
           echo "LG_ENV=targets/qemu_${{ matrix.target }}.yaml" >> $GITHUB_ENV
           echo "VERSION_NAME=${{ matrix.version_name }}" >> $GITHUB_ENV
 

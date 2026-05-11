@@ -16,7 +16,13 @@ jobs:
   test-qemu:
     name: QEMU ${{ matrix.target }}
     runs-on: ubuntu-latest
+    # Debian trixie ships QEMU 10.0.8 which includes the gt64120 endianness
+    # fix needed for malta-be. ubuntu-24.04 still has QEMU 8.2.
+    container: debian:trixie-slim
     continue-on-error: ${{ matrix.snapshots_only || false }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -37,6 +43,16 @@ jobs:
             dependency: qemu-system-aarch64
 
     steps:
+      - name: Install container tools
+        run: |
+          apt-get update
+          apt-get -y install --no-install-recommends \
+            ca-certificates curl wget jq git gzip xz-utils \
+            openssh-client ipxe-qemu seabios \
+            nmap ${{ matrix.dependency }}
+          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x /usr/local/bin/yq
+
       - name: Check out repository code
         uses: actions/checkout@v6
 
@@ -44,9 +60,6 @@ jobs:
         env:
           SNAPSHOTS_ONLY: ${{ matrix.snapshots_only || false }}
         run: |
-          sudo apt-get update
-          sudo apt-get -y install nmap ${{ matrix.dependency }}
-
           if [ "$SNAPSHOTS_ONLY" = "true" ]; then
             echo "UPSTREAM_URL=https://mirror-03.infra.openwrt.org/snapshots/targets" >> $GITHUB_ENV
           else
