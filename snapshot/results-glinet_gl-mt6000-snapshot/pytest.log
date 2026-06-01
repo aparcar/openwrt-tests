@@ -1,0 +1,53 @@
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.14.5, pytest-9.0.3, pluggy-1.6.0 -- /home/runner/work/openwrt-tests/openwrt-tests/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/runner/work/openwrt-tests/openwrt-tests
+configfile: pyproject.toml
+plugins: harvest-1.10.5, labgrid-25.1.dev275, check-2.8.0
+[1mcollecting ... [0mcollected 35 items
+
+tests/test_apk.py::TestApk::test_apk_procd_installed 
+[1m-------------------------------- live log setup --------------------------------[0m
+[32mINFO   [0m SSHConnection(h: Created new SSH connection to labgrid-bryan
+[32mINFO   [0m      StepLogger:  → PDUDaemonDriver.off() 
+[32mINFO   [0m      StepLogger:  ← PDUDaemonDriver.off() [0.355s]
+[31m[1mERROR  [0m        conftest:  Failed to transition to state shell
+Traceback (most recent call last):
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/driver/serialdriver.py", line 103, in open
+    self.serial.open()
+    ~~~~~~~~~~~~~~~~^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/serial/rfc2217.py", line 491, in open
+    self._reconfigure_port()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/serial/rfc2217.py", line 534, in _reconfigure_port
+    raise SerialException("Remote does not accept parameter change (RFC2217): {!r}".format(items))
+serial.serialutil.SerialException: Remote does not accept parameter change (RFC2217): dict_values([baudrate:REQUESTED, datasize:REQUESTED, parity:REQUESTED, stopsize:REQUESTED])
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/runner/work/openwrt-tests/openwrt-tests/tests/conftest.py", line 111, in shell_command
+    strategy.transition("shell")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/targets/../strategies/tftpstrategy.py", line 75, in transition
+    self.transition(Status.uboot)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/targets/../strategies/tftpstrategy.py", line 51, in transition
+    self.target.activate(self.console)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/target.py", line 472, in activate
+    client.on_activate()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/driver/serialdriver.py", line 52, in on_activate
+    self.open()
+    ~~~~~~~~~^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/driver/serialdriver.py", line 105, in open
+    raise serial.SerialException(
+        f"Could not open serial port {self.serial.port}: {str(e)}") from e
+serial.serialutil.SerialException: Could not open serial port rfc2217://localhost:42991?ign_set_control&timeout=3.0: Remote does not accept parameter change (RFC2217): dict_values([baudrate:REQUESTED, datasize:REQUESTED, parity:REQUESTED, stopsize:REQUESTED])
+[1m---------------------------- live log sessionfinish ----------------------------[0m
+[32mINFO   [0m SSHConnection(h:  Closing SSH connection to labgrid-bryan
+
+
+[33m============================= [33m[1m3 warnings[0m[33m in 10.28s[0m[33m =============================[0m
+!!!!!!!!!! _pytest.outcomes.Exit: Failed to transition to state shell !!!!!!!!!!
