@@ -1,0 +1,1035 @@
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0 -- /home/runner/work/openwrt-tests/openwrt-tests/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/runner/work/openwrt-tests/openwrt-tests
+configfile: pyproject.toml
+plugins: check-2.8.0, labgrid-25.1.dev275, harvest-1.10.5
+[1mcollecting ... [0mcollected 35 items
+
+tests/test_apk.py::TestApk::test_apk_procd_installed 
+[1m-------------------------------- live log setup --------------------------------[0m
+[32mINFO   [0m SSHConnection(h: Created new SSH connection to labgrid-hsn
+[32mINFO   [0m      StepLogger:  → PDUDaemonDriver.off() 
+[32mINFO   [0m      StepLogger:  ← PDUDaemonDriver.off() [0.300s]
+[32mINFO   [0m      StepLogger:  → TFTPProviderDriver.stage(filename='/home/runner/work/openwrt-tests/openwrt-tests/tftp/bananapi_bpi-r64/openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb') 
+[32mINFO   [0m ManagedFile(loc:   Synchronizing /home/runner/work/openwrt-tests/openwrt-tests/tftp/bananapi_bpi-r64/openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb to labgrid-hsn
+[32mINFO   [0m      StepLogger:   → ProcessWrapper.check_output(command=['rsync', '--compress', '--sparse', '--copy-links', '--verbose', '--progress', '--times', '-e', 'ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-nwufsre1/control-labgrid-hsn', '/home/runner/work/openwrt-tests/openwrt-tests/tftp/bananapi_bpi-r64/openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb', 'labgrid-hsn:/var/cache/labgrid/labgrid-dev/5829c4d11420c6965db309eacfdaec3ea40d4413ae0806a16e020daac7a88db5/openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb']) 
+[32mINFO   [0m         Process:    [2713] command: rsync --compress --sparse --copy-links --verbose --progress --times -e ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-nwufsre1/control-labgrid-hsn /home/runner/work/openwrt-tests/openwrt-tests/tftp/bananapi_bpi-r64/openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb labgrid-hsn:/var/cache/labgrid/labgrid-dev/5829c4d11420c6965db309eacfdaec3ea40d4413ae0806a16e020daac7a88db5/openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb
+[32mINFO   [0m         Process:    [2713] openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb
+[32mINFO   [0m         Process:    [2713]          32,768   0%    0.00kB/s    0:00:00  
+[32mINFO   [0m         Process:    [2713]       3,014,656  30%    2.83MB/s    0:00:02  
+[32mINFO   [0m         Process:    [2713]       9,830,400 100%    5.10MB/s    0:00:01 (xfr#1, to-chk=0/1)
+[32mINFO   [0m         Process:    [2713] sent 9,804,851 bytes  received 35 bytes  2,801,396.00 bytes/sec
+[32mINFO   [0m         Process:    [2713] total size is 9,830,400  speedup is 1.00
+[32mINFO   [0m      StepLogger:   ← ProcessWrapper.check_output() result=b'openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb\n\n         32,768   0%    0.00kB/… [3.348s]
+[32mINFO   [0m ManagedFile(loc:   Linking
+[32mINFO   [0m      StepLogger:  ← TFTPProviderDriver.stage() result=bananapi_bpi-r64//openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb [5.041s]
+[32mINFO   [0m      StepLogger:  → PDUDaemonDriver.cycle() 
+[32mINFO   [0m      StepLogger:  ← PDUDaemonDriver.cycle() [5.319s]
+[32mINFO   [0m      StepLogger:  → UBootDriver._await_prompt() 
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['MT7622>', 'stop autoboot', 'enter Password:', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␤␍F0: 102B 0000␤␍F5: 480A 0031␤␍F5: 480A 0031␤␍F3: 0000 0000␤␍V0␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(3, b'\n\rF0: 102B 0000\n\rF5: 480A 0031\n\rF5: 480A 0031\n\rF3: 0000 0000\n\rV0', <class 'pexpect.e… [2.001s]
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['MT7622>', 'stop autoboot', 'enter Password:', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < : 0000 0000 [0001]␤␍00: 0000 0000␤␍BP: 0400 0041 [0000]␤␍G0: 1190 0000␤␍T0: 0000 02E5 [000F]␤␍Jump to BL␤␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍NOTICE:  BL2: v2.10.0	(release):OpenWrt v2024.01.17~bacca82a-3 (mt7622-emmc-2ddr)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < NOTICE:  BL2: Built : 09:43:16, Nov 26 2024␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < NOTICE:  WDT: Cold boot␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < NOTICE:  CPU: MT7622␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < NOTICE:  WDT: disabled␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < NOTICE:  BL2: Booting BL31␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < NOTICE:  BL31: v2.10.0	(release):OpenWrt v2024.01.17~bacca82a-3 (mt7622-emmc-2ddr)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < NOTICE:  BL31: Built : 09:43:16, Nov 26 2024␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < U-Boot 2024.10-OpenWrt-r28199-1bdb6d8404 (Nov 26 2024 - 09:43:16 +0000)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < CPU:   MediaTek MT7622␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Model: mt7622-bpi-r64␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < DRAM:  1 GiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Core:  67 devices, 25 uclasses, devicetree: separate␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MMC:   mmc@11230000: 0, mmc@11240000: 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Loading Environment from MMC... Reading from MMC(0)... OK␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < In:    serial@11002000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Out:   serial@11002000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Err:   serial@11002000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < reset button found␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Loading Environment from MMC... Reading from MMC(0)... OK␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Net:   eth0: ethernet@1b100000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <       ( ( ( OpenWrt ) ) )  [eMMC]       U-Boot 2024.10-OpenWrt-r28199-1bdb6d8404 (Nov 26 2024 - 09:43:16 +0000)Press UP/DOWN to move, ENTER to select, ESC to quit1. Run default boot command.2. Boot system via TFTP.3. Boot production system from eMMC.4. Boot recovery system from eMMC.5. Load production system via TFTP then write to eMMC.6. Load recovery system via TFTP then write to eMMC.7. Load BL31+U-Boot FIP via TFTP then write to eMMC.8. Load BL2 preloader via TFTP then write to eMMC.9. Reboot.a. Reset all settings to factory defaults.0. ExitHit any key to stop autoboot: 3 ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(1, b'\n\rF0: 102B 0000\n\rF5: 480A 0031\n\rF5: 480A 0031\n\rF3: 0000 0000\n\rV0: 0000 0000 [0001]\n… [1.856s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > \x0␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['MT7622>', 'stop autoboot', 'enter Password:', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <       ( ( ( OpenWrt ) ) )  [eMMC]       U-Boot 2024.10-OpenWrt-r28199-1bdb6d8404 (Nov 26 2024 - 09:43:16 +0000)Press UP/DOWN to move, ENTER to select, ESC to quit1. Run default boot command.2. Boot system via TFTP.3. Boot production system from eMMC.4. Boot recovery system from eMMC.5. Load production system via TFTP then write to eMMC.6. Load recovery system via TFTP then write to eMMC.7. Load BL31+U-Boot FIP via TFTP then write to eMMC.8. Load BL2 preloader via TFTP then write to eMMC.9. Reboot.a. Reset all settings to factory defaults.0. ExitMT7622> ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b': 3 \x1b[16;1H\x1b[2K\x1b[1;1H\x1b[2K\x1b[2;3H      \x1b[0;34m( ( ( \x1b[1;39mOpenWrt\x1b[0;34… [0.305s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'TXFP''HFMGPV'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='TXFPHFMGPV') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'TXFP''HFMGPV'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < TXFPHFMGPV␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MT7622> ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b" echo 'TXFP''HFMGPV'\r\n", <re.Match object; span=(22, 32), match=b'TXFPHFMGPV'>, b'TXFPHFMGPV… [0.266s]
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='MT7622>') 
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b'\r\n', <re.Match object; span=(2, 9), match=b'MT7622>'>, b'MT7622>') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'YGLG''KXLVFX'; setenv bootfile bananapi_bpi-r64//openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb; echo "$?"; echo 'YGLG''KXLVFX';␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='MT7622>') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'YGLG''KXLVFX'; setenv bootfile bananapi_bpi-r64//openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb; echo "$?"; echo 'YGLG''KXLVFX';␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < YGLGKXLVFX␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < YGLGKXLVFX␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MT7622> ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b' echo \'YGLG\'\'KXLVFX\'; setenv bootfile bananapi_bpi-r64//openwrt-mediatek-mt7622-bananapi_b… [0.215s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'OEWQ''NFMAFP'; dhcp; echo "$?"; echo 'OEWQ''NFMAFP';␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='MT7622>') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'OEWQ''NFMAFP'; dhcp; echo "$?"; echo 'OEWQ''NFMAFP';␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < OEWQNFMAFP␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < BOOTP broadcast 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < BOOTP broadcast 2␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < BOOTP broadcast 3␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < BOOTP broadcast 4␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < DHCP client bound to address 192.168.102.124 (3025 ms)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Using ethernet@1b100000 device␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < TFTP from server 192.168.102.1; our IP address is 192.168.102.124␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Filename 'bananapi_bpi-r64//openwrt-mediatek-mt7622-bananapi_bpi-r64-initramfs-recovery.itb'.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Load address: 0x48000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Loading: *␈#################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 #################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 #################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 #################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 #################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 #################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 #################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 #################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 #################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 #################################################################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 ####################␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	 5.8 MiB/s␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < done␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Bytes transferred = 9830400 (960000 hex)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < OEWQNFMAFP␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MT7622> ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b' echo \'OEWQ\'\'NFMAFP\'; dhcp; echo "$?"; echo \'OEWQ\'\'NFMAFP\';\r\nOEWQNFMAFP\r\nBOOTP bro… [4.837s]
+[32mINFO   [0m      StepLogger:  ← UBootDriver._await_prompt() [11.850s]
+[32mINFO   [0m      StepLogger:  → UBootDriver.boot(name='') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > bootm $loadaddr#$bootconf␤␍␤
+[32mINFO   [0m      StepLogger:  ← UBootDriver.boot() [0.263s]
+[32mINFO   [0m      StepLogger:  → UBootDriver.await_boot() 
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='Linux version \\d') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < bootm $loadaddr#$bootconf␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ## Loading kernel from FIT Image at 48000000 ...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Using 'config-1' configuration␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Trying 'kernel-1' kernel subimage␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Description:  ARM64 OpenWrt Linux-6.18.37␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Type:         Kernel Image␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Compression:  lzma compressed␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Data Start:   0x480000e8␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Data Size:    4813755 Bytes = 4.6 MiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Architecture: AArch64␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      OS:           Linux␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Load Address: 0x44000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Entry Point:  0x44000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash algo:    crc32␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash value:   8361097a␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash algo:    sha1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash value:   f12d09ca0e71214ba84a4ce01e02f95f3e4bb6ac␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Verifying Hash Integrity ... crc32+ sha1+ OK␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ## Loading ramdisk from FIT Image at 48000000 ...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Using 'config-1' configuration␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Trying 'initrd-1' ramdisk subimage␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Description:  ARM64 OpenWrt bananapi_bpi-r64 initrd␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Type:         RAMDisk Image␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Compression:  uncompressed␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Data Start:   0x484975e0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Data Size:    4973348 Bytes = 4.7 MiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Architecture: AArch64␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      OS:           Linux␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Load Address: unavailable␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Entry Point:  unavailable␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash algo:    crc32␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash value:   94ff5898␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash algo:    sha1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash value:   e55d5780ef2717af06b4c467ce1e7df2ccd6f1b0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Verifying Hash Integrity ... crc32+ sha1+ OK␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ## Loading fdt from FIT Image at 48000000 ...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Using 'config-1' configuration␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Trying 'fdt-1' fdt subimage␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Description:  ARM64 OpenWrt bananapi_bpi-r64 device tree blob␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Type:         Flat Device Tree␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Compression:  uncompressed␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Data Start:   0x48955a10␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Data Size:    38844 Bytes = 37.9 KiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Architecture: AArch64␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Load Address: 0x43f00000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash algo:    crc32␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash value:   9999be5b␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash algo:    sha1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash value:   6745dec1b0f0ebccdd587a78bd7674141703fe9a␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Verifying Hash Integrity ... crc32+ sha1+ OK␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Loading fdt from 0x48955a10 to 0x43f00000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ## Loading fdt from FIT Image at 48000000 ...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Using 'mt7622-bananapi-bpi-r64-pcie1' configuration␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Trying 'fdt-mt7622-bananapi-bpi-r64-pcie1' fdt subimage␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Description:  ARM64 OpenWrt bananapi_bpi-r64 device tree overlay mt7622-bananapi-bpi-r64-pcie1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Type:         Flat Device Tree␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Compression:  uncompressed␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Data Start:   0x4895f328␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Data Size:    283 Bytes = 283 Bytes␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Architecture: AArch64␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash algo:    crc32␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash value:   c301d7bf␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash algo:    sha1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <      Hash value:   4570450170275628bd33eab2b11283bdd8326c57␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Verifying Hash Integrity ... crc32+ sha1+ OK␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Booting using the fdt blob at 0x43f00000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Working FDT set to 43f00000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Uncompressing Kernel Image to 44000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Loading Ramdisk to 7e32a000, end 7e7e8324 ... OK␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    Loading Device Tree to 000000007e31e000, end 000000007e3297bb ... OK␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Working FDT set to 7e31e000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Add 'ramoops@42ff0000' node failed: FDT_ERR_EXISTS␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < set /chosen/rootdisk to bootrom media: rootdisk-emmc (phandle 0x00000040)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Starting kernel ...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd034]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Linux version 6.18.37 (builder@buildhost)␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b" bootm $loadaddr#$bootconf\r\n## Loading kernel from FIT Image at 48000000 ...\r\n   Using 'co… [1.713s]
+[32mINFO   [0m      StepLogger:  ← UBootDriver.await_boot() [1.713s]
+[32mINFO   [0m      StepLogger:  → ShellDriver._await_login() 
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['root@[\\w()]+:[^ ]+ ', 'Please press Enter to activate this console.', 'Password: ', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  (aarch64-openwrt-linux-musl-gcc (OpenWrt GCC 14.4.0 r35205-97d6719ca7) 14.4.0, GNU ld (GNU Binutils) 2.46.1) #0 SMP Fri Jul  3 20:14:17 2026␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] KASLR disabled due to lack of seed␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Machine model: Bananapi BPI-R64␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] OF: reserved mem: 0x0000000042ff0000..0x0000000042ffffff (64 KiB) map non-reusable ramoops@42ff0000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] OF: reserved mem: 0x0000000043000000..0x000000004302ffff (192 KiB) nomap non-reusable secmon@43000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Zone ranges:␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000]   DMA      [mem 0x0000000040000000-0x000000007fffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000]   DMA32    empty␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000]   Normal   empty␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Movable zone start for each node␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Early memory node ranges␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000]   node   0: [mem 0x0000000040000000-0x0000000042ffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000]   node   0: [mem 0x0000000043000000-0x000000004302ffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000]   node   0: [mem 0x0000000043030000-0x000000007fffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Initmem setup node 0 [mem 0x0000000040000000-0x000000007fffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] psci: probing for conduit method from DT.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] psci: PSCIv1.1 detected in firmware.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] psci: Using standard PSCI v0.2 function IDs␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] psci: MIGRATE_INFO_TYPE not supported.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] psci: SMC Calling Convention v1.4␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] percpu: Embedded 20 pages/cpu s43544 r8192 d30184 u81920␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] pcpu-alloc: s43544 r8192 d30184 u81920 alloc=20*4096␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] pcpu-alloc: [0] 0 [0] 1 ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Detected VIPT I-cache on CPU0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] CPU features: kernel page table isolation disabled by kernel configuration␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] CPU features: detected: ARM erratum 843419␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] alternatives: applying boot alternatives␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Kernel command line: root=/dev/fit0 rootwait␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] printk: log buffer data + meta data: 131072 + 458752 = 589824 bytes␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Dentry cache hash table entries: 131072 (order: 8, 1048576 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Inode-cache hash table entries: 65536 (order: 7, 524288 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] software IO TLB: SWIOTLB bounce buffer size adjusted to 1MB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] software IO TLB: area num 2.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] software IO TLB: mapped [mem 0x000000007eb00000-0x000000007ec00000] (1MB)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 262144␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] mem auto-init: stack:off, heap alloc:off, heap free:off␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=2, Nodes=1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] rcu: Hierarchical RCU implementation.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] 	Tracing variant of Tasks RCU enabled.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] rcu: RCU calculated value of scheduler-enlistment delay is 10 jiffies.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] RCU Tasks Trace: Setting shift to 1 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=2.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] Root IRQ handler: gic_handle_irq␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] GIC: Using split EOI/Deactivate mode␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] arch_timer: cp15 timer running at 12.50MHz (phys).␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x2e2049cda, max_idle_ns: 440795202628 ns␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000000] sched_clock: 56 bits at 13MHz, resolution 80ns, wraps every 4398046511080ns␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000254] Calibrating delay loop (skipped), value calculated using timer frequency.. 25.00 BogoMIPS (lpj=125000)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.000263] pid_max: default: 32768 minimum: 301␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.002678] Mount-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.002690] Mountpoint-cache hash table entries: 2048 (order: 2, 16384 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.008720] rcu: Hierarchical SRCU implementation.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.008729] rcu: 	Max phase no-delay instances is 1000.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.008919] Timer migration: 1 hierarchy levels; 8 children per group; 1 crossnode level␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009160] smp: Bringing up secondary CPUs ...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009575] Detected VIPT I-cache on CPU1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009583] CPU features: SANITY CHECK: Unexpected variation in SYS_CNTFRQ_EL0. Boot CPU: 0x00000000bebc20, CPU1: 0x00000000000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009609] CPU features: Unsupported CPU feature variation detected.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009693] CPU1: Booted secondary processor 0x0000000001 [0x410fd034]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009782] smp: Brought up 1 node, 2 CPUs␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009788] SMP: Total of 2 processors activated.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009790] CPU: All CPU(s) started at EL2␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009794] CPU features: detected: 32-bit EL0 Support␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009797] CPU features: detected: CRC32 instructions␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009825] alternatives: applying system-wide alternatives␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.009965] CPU features: emulated: Privileged Access Never (PAN) using TTBR0_EL1 switching␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.010144] Memory: 1003104K/1048576K available (10112K kernel code, 940K rwdata, 2936K rodata, 960K init, 315K bss, 42056K reserved, 0K cma-reserved)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.015036] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.015068] posixtimers hash table entries: 1024 (order: 2, 16384 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.015105] futex hash table entries: 512 (32768 bytes on 1 NUMA nodes, total 32 KiB, linear).␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.015150] 28896 pages in range for non-PLT usage␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.015153] 520416 pages in range for PLT usage␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.016749] pinctrl core: initialized pinctrl subsystem␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.019252] NET: Registered PF_NETLINK/PF_ROUTE protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.019647] DMA: preallocated 128 KiB GFP_KERNEL pool for atomic allocations␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.019677] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.019699] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.020297] thermal_sys: Registered thermal governor 'fair_share'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.020302] thermal_sys: Registered thermal governor 'bang_bang'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.020306] thermal_sys: Registered thermal governor 'step_wise'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.020309] thermal_sys: Registered thermal governor 'user_space'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.020402] ASID allocator initialised with 65536 entries␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.021160] pstore: Using crash dump compression: deflate␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.021166] pstore: Registered ramoops as persistent store backend␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.021169] ramoops: using 0x10000@0x42ff0000, ecc: 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.031249] /pcie@1a143000: Fixed dependency cycle(s) with /pcie@1a143000/interrupt-controller␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.031544] /pcie@1a145000: Fixed dependency cycle(s) with /pcie@1a145000/interrupt-controller␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.046569] SCSI subsystem initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.046763] libata version 3.00 loaded.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.048401] clocksource: Switched to clocksource arch_sys_counter␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.050997] NET: Registered PF_INET protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.051159] IP idents hash table entries: 16384 (order: 5, 131072 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.052958] tcp_listen_portaddr_hash hash table entries: 512 (order: 1, 8192 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.052980] Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.052995] TCP established hash table entries: 8192 (order: 4, 65536 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.053047] TCP bind hash table entries: 8192 (order: 6, 262144 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.053261] TCP: Hash tables configured (established 8192 bind 8192)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.053557] MPTCP token hash table entries: 1024 (order: 3, 24576 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.053766] UDP hash table entries: 512 (order: 3, 32768 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.053804] UDP-Lite hash table entries: 512 (order: 3, 32768 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.054066] NET: Registered PF_UNIX/PF_LOCAL protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.054095] PCI: CLS 0 bytes, default 64␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.054283] Unpacking initramfs...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.060800] workingset: timestamp_bits=46 max_order=18 bucket_order=0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.066099] squashfs: version 4.0 (2009/01/31) Phillip Lougher␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.066111] jffs2: version 2.2 (NAND) (SUMMARY) (LZMA) (RTIME) (CMODE_PRIORITY) (c) 2001-2006 Red Hat, Inc.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.069720] cryptd: max_cpu_qlen set to 1000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.119281] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 250)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.128162] mt-pmic-pwrap 10001000.pwrap: unexpected interrupt int=0x1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.142343] Serial: 8250/16550 driver, 16 ports, IRQ sharing enabled␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.148481] printk: legacy console [ttyS0] disabled␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.169015] 11002000.serial: ttyS0 at MMIO 0x11002000 (irq = 118, base_baud = 1562500) is a ST16650V2␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.169074] printk: legacy console [ttyS0] enabled␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.899175] mtk_rng 1020f000.rng: registered RNG driver␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.905118] random: crng init done␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.914037] loop: module loaded␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.918301] mtk-ecc 1100e000.ecc: probed␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.925818] spi-nand spi1.0: Winbond SPI NAND was found.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.931225] spi-nand spi1.0: 128 MiB, block size: 128 KiB, page size: 2048, OOB size: 64␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    0.939482] mtk-snand 1100d000.spi: ECC strength: 4 bits per 512 bytes␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.344219] Freeing initrd memory: 4856K␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.355461] 2 fixed-partitions partitions found on MTD device spi1.0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.362133] Creating 2 MTD partitions on "spi1.0":␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.366933] 0x000000000000-0x000000080000 : "bl2"␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.372622] 0x000000080000-0x000008000000 : "ubi"␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.511809] ubi0: default fastmap pool size: 50␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.516354] ubi0: default fastmap WL pool size: 25␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.521154] ubi0: attaching mtd1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.839193] ubi0: scanning is finished␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.847555] ubi0: attached mtd1 (name "ubi", size 127 MiB)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.853080] ubi0: PEB size: 131072 bytes (128 KiB), LEB size: 126976 bytes␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.859953] ubi0: min./max. I/O unit sizes: 2048/2048, sub-page size 2048␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.866733] ubi0: VID header offset: 2048 (aligned 2048), data offset: 4096␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.873694] ubi0: good PEBs: 1020, bad PEBs: 0, corrupted PEBs: 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.879786] ubi0: user volume: 6, internal volumes: 1, max. volumes count: 128␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.887000] ubi0: max/mean erase counter: 2/1, WL threshold: 4096, image sequence number: 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.895351] ubi0: available PEBs: 0, total reserved PEBs: 1020, PEBs reserved for bad PEB handling: 20␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.904663] ubi0: background thread "ubi_bgt0d" started, PID 293␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.911331] block ubiblock0_4: created from ubi0:4(fit)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    1.922362] mtk_soc_eth 1b100000.ethernet: legacy DT: missing interrupt-names.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.049833] mtk_soc_eth 1b100000.ethernet: generated random MAC address 20:08:02:00:00:00␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.061162] mtk_soc_eth 1b100000.ethernet eth0: mediatek frame engine at 0xffffffc0814e0000, irq 124␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.071227] mtk_soc_eth 1b100000.ethernet eth1: mediatek frame engine at 0xffffffc0814e0000, irq 124␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.081232] i2c_dev: i2c /dev entries driver␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.089248] mtk-wdt 10212000.watchdog: Watchdog enabled (timeout=31 sec, nowayout=0)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.099658] NET: Registered PF_INET6 protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.100444] mtk-msdc 11240000.mmc: Got CD GPIO␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.110266] Segment Routing with IPv6␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.113963] In-situ OAM (IOAM) with IPv6␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.117952] NET: Registered PF_PACKET protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.123120] bridge: filtering via arp/ip/ip6tables is no longer available by default. Update your scripts to load br_netfilter if you need this.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.132719] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=52 arg=00000C00; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.145967] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=52 arg=80000C08; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.148548] 8021q: 802.1Q VLAN Support v1.8␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.164263] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=8 arg=000001AA; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.174328] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=5 arg=00000000; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.184066] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=5 arg=00000000; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.187257] mtk-pcie 1a143000.pcie: host bridge /pcie@1a143000 ranges:␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.193701] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=5 arg=00000000; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.199687] mtk-pcie 1a143000.pcie: Parsing ranges property...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.209175] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=5 arg=00000000; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.214436] mtk-pcie 1a143000.pcie:      MEM 0x0020000000..0x0027ffffff -> 0x0020000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.224215] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=55 arg=00000000; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.241374] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=55 arg=00000000; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.251267] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=55 arg=00000000; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.260881] mtk-msdc 11230000.mmc: msdc_track_cmd_data: cmd=55 arg=00000000; host->error=0x00000002␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.329196] mmc0: new HS200 MMC card at address 0001␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.335772] mmcblk0: mmc0:0001 008G30 7.28 GiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.343366] Alternate GPT is invalid, using primary GPT.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.348791]  mmcblk0: p1 p2 p3 p4 p128␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.354353] mmcblk0boot0: mmc0:0001 008G30 4.00 MiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.362294] mmcblk0boot1: mmc0:0001 008G30 4.00 MiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.369151] mmcblk0rpmb: mmc0:0001 008G30 4.00 MiB, chardev (248:0)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.438465] mtk-pcie 1a143000.pcie: Port0 link down␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.443785] mtk-pcie 1a143000.pcie: PCI host bridge to bus 0000:00␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.450040] pci_bus 0000:00: root bus resource [bus 00-ff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.455532] pci_bus 0000:00: root bus resource [mem 0x20000000-0x27ffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.462415] pci_bus 0000:00: scanning bus␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.467948] pci_bus 0000:00: fixups for bus␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.472145] pci_bus 0000:00: bus scan returning with max=00␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.477719] pci_bus 0000:00: resource 4 [mem 0x20000000-0x27ffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.484499] mtk-pcie 1a145000.pcie: host bridge /pcie@1a145000 ranges:␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.491076] mtk-pcie 1a145000.pcie: Parsing ranges property...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.496912] mtk-pcie 1a145000.pcie:      MEM 0x0028000000..0x002fffffff -> 0x0028000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.708462] mtk-pcie 1a145000.pcie: Port1 link down␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.713602] mtk-pcie 1a145000.pcie: PCI host bridge to bus 0001:00␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.719830] pci_bus 0001:00: root bus resource [bus 00-ff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.725322] pci_bus 0001:00: root bus resource [mem 0x28000000-0x2fffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.732204] pci_bus 0001:00: scanning bus␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.737605] pci_bus 0001:00: fixups for bus␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.741800] pci_bus 0001:00: bus scan returning with max=00␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.747373] pci_bus 0001:00: resource 4 [mem 0x28000000-0x2fffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.754496] mtk_hsdma 1b007000.dma-controller: MediaTek HSDMA driver registered␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.763825] FIT: Detected U-Boot 2024.10-OpenWrt-r28199-1bdb6d8404␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.770046] FIT: Selected configuration: "config-1" (OpenWrt bananapi_bpi-r64)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.777276] FIT:           kernel sub-image 0x00001000..0x005a35ba "kernel-1" (ARM64 OpenWrt Linux-6.6.63) ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.787040] FIT:          flat_dt sub-image 0x005a4000..0x005ad6cb "fdt-1" (ARM64 OpenWrt bananapi_bpi-r64 device tree blob) ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.798411] FIT:          flat_dt sub-image 0x005ae000..0x005ae11a "fdt-mt7622-bananapi-bpi-r64-pcie1" (ARM64 OpenWrt bananapi_bpi-r64 device tree overlay mt7622-bananapi-bpi-r64-pcie1) ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.815027] FIT:          flat_dt sub-image 0x005af000..0x005af20f "fdt-mt7622-bananapi-bpi-r64-sata" (ARM64 OpenWrt bananapi_bpi-r64 device tree overlay mt7622-bananapi-bpi-r64-sata) ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.831463] FIT:       filesystem sub-image 0x005b0000..0x06515fff "rootfs-1" (ARM64 OpenWrt bananapi_bpi-r64 rootfs) ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.842668] block mmcblk0p4: mapped 1 uImage.FIT filesystem sub-image as /dev/fit0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.850728] block mmcblk0p4: mapped remaining space as /dev/fitrw␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.953912] mt7530-mdio mdio-bus:1f: configuring for fixed/rgmii link mode␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.961317] mt7530-mdio mdio-bus:1f: Link is Up - 1Gbps/Full - flow control rx/tx␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.961779] mt7530-mdio mdio-bus:1f: configuring for fixed/2500base-x link mode␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.977962] mt7530-mdio mdio-bus:1f: Link is Up - 2.5Gbps/Full - flow control rx/tx␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    2.987972] mt7530-mdio mdio-bus:1f wan (uninitialized): PHY [mt7530-0:00] driver [MediaTek MT7531 PHY] (irq=133)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.013952] mt7530-mdio mdio-bus:1f lan1 (uninitialized): PHY [mt7530-0:01] driver [MediaTek MT7531 PHY] (irq=134)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.039589] mt7530-mdio mdio-bus:1f lan2 (uninitialized): PHY [mt7530-0:02] driver [MediaTek MT7531 PHY] (irq=135)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.065277] mt7530-mdio mdio-bus:1f lan3 (uninitialized): PHY [mt7530-0:03] driver [MediaTek MT7531 PHY] (irq=136)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.090927] mt7530-mdio mdio-bus:1f lan4 (uninitialized): PHY [mt7530-0:04] driver [MediaTek MT7531 PHY] (irq=137)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.106477] mtk_soc_eth 1b100000.ethernet eth1: entered promiscuous mode␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.113262] mtk_soc_eth 1b100000.ethernet eth0: entered promiscuous mode␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.120013] DSA: tree 0 setup␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.123396] clk: Disabling unused clocks␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.127626] PM: genpd: Disabling unused power domains␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.133360] Freeing unused kernel memory: 960K␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.137854] Run /init as init process␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.141524]   with arguments:␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.144483]     /init␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.146753]   with environment:␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.149889]     HOME=/␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.152241]     TERM=linux␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.324491] init: Console is alive␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.328214] init: - watchdog -␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.339400] kmodloader: loading kernel modules from /etc/modules-boot.d/*␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.354129] usbcore: registered new interface driver usbfs␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.359707] usbcore: registered new interface driver hub␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.365075] usbcore: registered new device driver usb␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.370792] gpio_button_hotplug: loading out-of-tree module taints kernel.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.386831] xhci-mtk 1a0c0000.usb: xHCI Host Controller␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.392112] xhci-mtk 1a0c0000.usb: new USB bus registered, assigned bus number 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.401232] xhci-mtk 1a0c0000.usb: hcc params 0x01403198 hci version 0x96 quirks 0x0000000000200010␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.410358] xhci-mtk 1a0c0000.usb: irq 138, io mem 0x1a0c0000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.416250] xhci-mtk 1a0c0000.usb: xHCI Host Controller␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.421490] xhci-mtk 1a0c0000.usb: new USB bus registered, assigned bus number 2␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.428897] xhci-mtk 1a0c0000.usb: Host supports USB 3.0 SuperSpeed␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.435639] hub 1-0:1.0: USB hub found␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.439455] hub 1-0:1.0: 2 ports detected␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.443905] usb usb2: We don't know the algorithms for LPM for this host, disabling LPM.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.452441] hub 2-0:1.0: USB hub found␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.456230] hub 2-0:1.0: 1 port detected␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.465069] kmodloader: done loading kernel modules from /etc/modules-boot.d/*␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.474912] init: - preinit -␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.547352] mtk_soc_eth 1b100000.ethernet eth0: configuring for fixed/2500base-x link mode␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.556050] mtk_soc_eth 1b100000.ethernet eth0: Link is Up - 2.5Gbps/Full - flow control rx/tx␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    3.893942] mt7530-mdio mdio-bus:1f lan1: configuring for phy/gmii link mode␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Press the [f] key and hit [enter] to enter failsafe mode␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Press the [1], [2], [3] or [4] key and hit [enter] to select the debug level␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    5.304910] mt7530-mdio mdio-bus:1f lan1: Link is Up - 1Gbps/Full - flow control rx/tx␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < cfg016cb7␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < cfg026cb7␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < grep: /etc/fw_env.config: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < - generating board file -␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    8.564188] mt7530-mdio mdio-bus:1f lan1: Link is Down␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    8.575189] procd: - early -␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    8.578153] procd: - watchdog -␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.116950] procd: - watchdog -␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.120830] procd: - ubus -␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.176541] procd: - init -␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Please press Enter to activate this console.␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(1, b'.18.37 (builder@buildhost) (aarch64-openwrt-linux-musl-gcc (OpenWrt GCC 14.4.0 r35205-97d6719c… [8.578s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > root␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['root@[\\w()]+:[^ ]+ ', 'Please press Enter to activate this console.', 'Password: ', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ro[    9.423919] kmodloader: loading kernel modules from /etc/modules.d/*␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < o[    9.441008] hid: raw HID events driver (C) Jiri Kosina␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < t␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.462956] Bluetooth: Core ver 2.22␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.466645] NET: Registered PF_BLUETOOTH protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.472013] Bluetooth: HCI device and connection manager initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.478374] Bluetooth: HCI socket layer initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.483275] Bluetooth: L2CAP socket layer initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.488332] Bluetooth: SCO socket layer initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < login[1163]: roo[    9.495155] Bluetooth: BNEP (Ethernet Emulation) ver 1.3␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < t login on 'cons[    9.500708] Bluetooth: BNEP filters: protocol multicast␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ole'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < BusyBo[    9.507242] Bluetooth: BNEP socket layer initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < x v1.38.0 (2026-05-13 02:19:59 UTC) built-in she[    9.517159] Loading modules backported from Linux version v6.18.26-0-g1fe060681␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ll (ash)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <   __[    9.525084] Backport generated by backports.git 6ecbb44␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < _____                     ______[    9.533503] Bluetooth: HCI UART driver ver 2.3␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < __        __␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  |[    9.538948] Bluetooth: HCI UART protocol H4 registered␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <        |.-----.-[    9.545432] Bluetooth: HCI UART protocol BCSP registered␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ----.-----.|  | [    9.552155] Bluetooth: HCI UART protocol ATH3K registered␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  |  |.----.|  |_␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  |   -   ||  _  |  -__|     ||[    9.562324] Bluetooth: HIDP (Human Interface Emulation) ver 1.2␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <   |  |  ||   _||[    9.569067] Bluetooth: HIDP socket layer initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <    _|␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  |_______||   __|_____|__|__||________||__|  |____|␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <           |__| W I R E L E S S   F R E E D O M␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  -----------------------------------------------------␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  OpenWrt SNAPSHOT, r35205-97d6719ca7␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  -----------------------------------------------------␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  === WARNING! =====================================␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  There is no root password defined on this device!␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  Use the "passwd" command to set up a new password␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  in order to prevent unauthorized SSH logins.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  --------------------------------------------------␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@(none):~# [    9.627809] urngd: v1.0.2 started.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.628450] Bluetooth: RFCOMM TTY layer initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.636101] Bluetooth: RFCOMM ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b'\r\nro[    9.423919] kmodloader: loading kernel modules from /etc/modules.d/*\r\no[    9.44100… [0.333s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > dmesg -n 1␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['root@[\\w()]+:[^ ]+ ', 'Please press Enter to activate this console.', 'Password: ', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < socket layer initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.641264] Bluetooth: RFCOMM ver 1.11␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.701393] mt7622-wmac 18000000.wmac: Invalid MAC address, using random address 8e:83:a4:51:c8:df␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.729234] ieee80211 phy0: Selected rate control algorithm 'minstrel_ht'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.770253] mt7622-wmac 18000000.wmac: HW/SW Version: 0x8a108a10, Build Time: 20190801210006a␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < [    9.770253] ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < d[    9.805226] mt7622-wmac 18000000.wmac: N9 Firmware Version: _reserved_, Build Time: 20220630094834␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < me[    9.826006] PPP generic driver version 2.4.2␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < sg [    9.848498] NET: Registered PF_PPPOX protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < -n[    9.869227] kmodloader: done loading kernel modules from /etc/modules.d/*␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) <  1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@(none):~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"[    9.627809] urngd: v1.0.2 started.\r\n[    9.628450] Bluetooth: RFCOMM TTY layer initialize… [0.362s]
+[32mINFO   [0m      StepLogger:   → SerialDriver.settle(quiet_time=5) 
+[32mINFO   [0m      StepLogger:   ← SerialDriver.settle() [5.000s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'PUHT''LQVXLT'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='PUHTLQVXLT\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'PUHT''LQVXLT'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < PUHTLQVXLT␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'PUHT''LQVXLT'\r\n", <re.Match object; span=(21, 49), match=b'PUHTLQVXLT\r\nroot@OpenWrt:… [0.267s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver._await_login() [14.907s]
+[34mCONSOLE[0m SerialLogger.ma:  SerialDriver(main) > run() { echo -n "$MARKER"; sh -c "$@"; echo "$MARKER $?"; }␤␍␤
+[32mINFO   [0m      StepLogger:  → SerialDriver.expect(pattern='root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < run() { echo -n "$MARKER"; sh -c "$@"; echo "$MARKER $?"; }␍␤
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:  ← SerialDriver.expect() result=(0, b'run() { echo -n "$MARKER"; sh -c "$@"; echo "$MARKER $?"; }\r\n', <re.Match object; span=(61, … [0.296s]
+[32mINFO   [0m SSHDriver(main):  Connected to 192.168.1.1%vlan102
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='apk list') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['apk-mbedtls-3.0.5-r3 aarch64_cortex-a53 {feeds/base/system/apk} (GPL-2.0-only) [installed]', 'atte… [0.594s]
+[32mPASSED[0m[32m                                                                   [  2%][0m
+tests/test_apk.py::TestApk::test_apk_add_ucert [33mSKIPPED[0m (LG_FEATURE_O...)[33m [  5%][0m
+tests/test_apk.py::TestApk::test_apk_audit 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='apk audit') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['A etc/urandom.seed', 'A etc/board.json', 'A etc/fw_env.config', 'A etc/apk/arch', 'A etc/apk/keys/… [0.462s]
+[32mPASSED[0m[33m                                                                   [  8%][0m
+tests/test_base.py::test_shell 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → ShellDriver.run_check(cmd='true') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'KHCH''HZLGVO'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='KHCHHZLGVO\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'KHCH''HZLGVO'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < KHCHHZLGVO␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'KHCH''HZLGVO'\r\n", <re.Match object; span=(21, 49), match=b'KHCHHZLGVO\r\nroot@OpenWrt:… [0.275s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > MARKER='CONE''FUGJSK' run true␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='CONEFUGJSK(.*)CONEFUGJSK\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MARKER='CONE''FUGJSK' run true␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < CONEFUGJSKCONEFUGJSK 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"MARKER='CONE''FUGJSK' run true\r\n", <re.Match object; span=(32, 72), match=b'CONEFUGJSKCONEFU… [0.307s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=[] [1.100s]
+[32mPASSED[0m[33m                                                                   [ 11%][0m
+tests/test_base.py::test_firmware_version 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → ShellDriver.run_check(cmd='source /etc/os-release; echo $BUILD_ID') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'UBLK''NYNFFO'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='UBLKNYNFFO\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'UBLK''NYNFFO'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < UBLKNYNFFO␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'UBLK''NYNFFO'\r\n", <re.Match object; span=(21, 49), match=b'UBLKNYNFFO\r\nroot@OpenWrt:… [0.276s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > MARKER='JMOL''YWXAUE' run 'source /etc/os-release; echo $BUILD_ID'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='JMOLYWXAUE(.*)JMOLYWXAUE\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MARKER='JMOL''YWXAUE' run 'source /etc/os-release; echo $BUILD_I␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < D'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < JMOLYWXAUEr35205-97d6719ca7␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < JMOLYWXAUE 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"MARKER='JMOL''YWXAUE' run 'source /etc/os-release; echo $BUILD_I\r\r\nD'\r\n", <re.Match objec… [0.226s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=['r35205-97d6719ca7'] [1.382s]
+[32mPASSED[0m[33m                                                                   [ 14%][0m
+tests/test_base.py::test_dropbear_startup 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'NPFS''EBHYSQ'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='NPFSEBHYSQ\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'NPFS''EBHYSQ'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < NPFSEBHYSQ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'NPFS''EBHYSQ'\r\n", <re.Match object; span=(21, 49), match=b'NPFSEBHYSQ\r\nroot@OpenWrt:… [0.276s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > MARKER='LGBS''FLEANV' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='LGBSFLEANV(.*)LGBSFLEANV\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MARKER='LGBS''FLEANV' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < y'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < LGBSFLEANV/etc/dropbear/dropbear_rsa_host_key␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < LGBSFLEANV 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"MARKER='LGBS''FLEANV' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.226s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['/etc/dropbear/dropbear_rsa_host_key'], [], 0) [1.382s]
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='netstat -tlpn | grep 0.0.0.0:22') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'AOLH''HTEVYM'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='AOLHHTEVYM\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'AOLH''HTEVYM'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < AOLHHTEVYM␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'AOLH''HTEVYM'\r\n", <re.Match object; span=(21, 49), match=b'AOLHHTEVYM\r\nroot@OpenWrt:… [0.276s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > MARKER='GTSC''WNMQNE' run 'netstat -tlpn | grep 0.0.0.0:22'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='GTSCWNMQNE(.*)GTSCWNMQNE\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MARKER='GTSC''WNMQNE' run 'netstat -tlpn | grep 0.0.0.0:22'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < GTSCWNMQNEtcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1760/dropbear␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < GTSCWNMQNE 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"MARKER='GTSC''WNMQNE' run 'netstat -tlpn | grep 0.0.0.0:22'\r\n", <re.Match object; span=(61, … [0.296s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1760/dropbear'], … [1.383s]
+[32mPASSED[0m[33m                                                                   [ 17%][0m
+tests/test_base.py::test_ssh 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='true') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=[] [0.463s]
+[32mPASSED[0m[33m                                                                   [ 20%][0m
+tests/test_base.py::test_echo 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd="echo 'hello world'") 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['hello world'] [0.463s]
+[32mPASSED[0m[33m                                                                   [ 22%][0m
+tests/test_base.py::test_uname 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='uname -a') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['Linux OpenWrt 6.18.37 #0 SMP Fri Jul  3 20:14:17 2026 aarch64 GNU/Linux'] [0.462s]
+[32mPASSED[0m[33m                                                                   [ 25%][0m
+tests/test_base.py::test_ubus_system_board 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd="ubus call system board '{}'") 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['{', '\t"kernel": "6.18.37",', '\t"hostname": "OpenWrt",', '\t"system": "ARMv8 Processor rev 4",', … [0.462s]
+[32mPASSED[0m[33m                                                                   [ 28%][0m
+tests/test_base.py::test_free_memory 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='free -m') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['              total        used        free      shared  buff/cache   available', 'Mem:        101… [0.462s]
+[32mPASSED[0m[33m                                                                   [ 31%][0m
+tests/test_base.py::test_sysupgrade_backup [33mSKIPPED[0m (unsupported feat...)[33m [ 34%][0m
+tests/test_base.py::test_sysupgrade_backup_u [33mSKIPPED[0m (unsupported fe...)[33m [ 37%][0m
+tests/test_base.py::test_kernel_errors 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='dmesg') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd034]', '[    0.000000] Linux ver… [0.441s]
+[32mPASSED[0m[33m                                                                   [ 40%][0m
+tests/test_lan.py::test_lan_wait_for_link_ready 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='dmesg | grep br-lan | grep forwarding') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'XTBS''AUSKAU'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='XTBSAUSKAU\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'XTBS''AUSKAU'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < XTBSAUSKAU␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'XTBS''AUSKAU'\r\n", <re.Match object; span=(21, 49), match=b'XTBSAUSKAU\r\nroot@OpenWrt:… [0.276s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > MARKER='QEJB''HAAUPA' run 'dmesg | grep br-lan | grep forwarding'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='QEJBHAAUPA(.*)QEJBHAAUPA\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MARKER='QEJB''HAAUPA' run 'dmesg | grep br-lan | grep forwarding␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < '␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < QEJBHAAUPA[   17.181614] br-lan: port 1(lan1) entered forwarding state␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < QEJBHAAUPA 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"MARKER='QEJB''HAAUPA' run 'dmesg | grep br-lan | grep forwarding\r\r\n'\r\n", <re.Match object… [0.237s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['[   17.181614] br-lan: port 1(lan1) entered forwarding state'], [], 0) [1.384s]
+[32mPASSED[0m[33m                                                                   [ 42%][0m
+tests/test_lan.py::test_lan_wait_for_network 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → ShellDriver.run_check(cmd="ubus call network.interface.lan status '{}'") 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'UEPO''MHZGYS'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='UEPOMHZGYS\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'UEPO''MHZGYS'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < UEPOMHZGYS␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'UEPO''MHZGYS'\r\n", <re.Match object; span=(21, 49), match=b'UEPOMHZGYS\r\nroot@OpenWrt:… [0.276s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > MARKER='EEAQ''LHBXXA' run 'ubus call network.interface.lan status '"'"'{}'"'"''␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='EEAQLHBXXA(.*)EEAQLHBXXA\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MARKER='EEAQ''LHBXXA' run 'ubus call network.interface.lan statu␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < s '"'"'{}'"'"''␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < EEAQLHBXXA{␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"up": true,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"pending": false,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"available": true,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"autostart": true,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"dynamic": false,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"uptime": 17,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"l3_device": "br-lan",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"proto": "static",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"device": "br-lan",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"updated": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"addresses"␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"metric": 0,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"dns_metric": 0,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"delegation": true,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"ipv4-address": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		{␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"address": "192.168.1.1",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"mask": 24␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		}␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"ipv6-address": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"ipv6-prefix": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"ipv6-prefix-assignment": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		{␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"address": "fd46:90b:3cb4::",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"mask": 60,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"local-address": {␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 				"address": "fd46:90b:3cb4::1",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 				"mask": 60␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			}␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		}␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"route": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"dns-server": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"dns-search": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"neighbors": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"inactive": {␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"ipv4-address": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"ipv6-address": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"route": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"dns-server": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"dns-search": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"neighbors": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	},␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"data": {␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	}␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < }␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < EEAQLHBXXA 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b'MARKER=\'EEAQ\'\'LHBXXA\' run \'ubus call network.interface.lan statu\r\r\ns \'"\'"\'{}\'"\'"\… [0.238s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=['{', '\t"up": true,', '\t"pending": false,', '\t"available": true,', '\t"autostart": true,', '\t"dy… [1.526s]
+[32mPASSED[0m[33m                                                                   [ 45%][0m
+tests/test_lan.py::test_lan_interface_address 
+[1m-------------------------------- live log call ---------------------------------[0m
+[34mCONSOLE[0m SerialLogger.ma:  SerialDriver(main) > echo 'YJVJ''TBSJCU'␤␍␤
+[32mINFO   [0m      StepLogger:  → SerialDriver.expect(pattern='YJVJTBSJCU\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < echo 'YJVJ''TBSJCU'␍␤
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < YJVJTBSJCU␍␤
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:  ← SerialDriver.expect() result=(0, b"echo 'YJVJ''TBSJCU'\r\n", <re.Match object; span=(21, 49), match=b'YJVJTBSJCU\r\nroot@OpenWrt:… [0.286s]
+[34mCONSOLE[0m SerialLogger.ma:  SerialDriver(main) > MARKER='LTFZ''XKTAWN' run 'ip -o addr show dev br-lan'␤␍␤
+[32mINFO   [0m      StepLogger:  → SerialDriver.expect(pattern='LTFZXKTAWN(.*)LTFZXKTAWN\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < MARKER='LTFZ''XKTAWN' run 'ip -o addr show dev br-lan'␍␤
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < LTFZXKTAWN9: br-lan    inet 192.168.1.1/24 brd 192.168.1.255 scope global br-lan\       valid_lft forever preferred_lft forever␍␤
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < 9: br-lan    inet6 fd46:90b:3cb4::1/60 scope global noprefixroute \       valid_lft forever preferred_lft forever␍␤
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < 9: br-lan    inet6 fe80::90d8:9dff:fe1d:f838/64 scope link \       valid_lft forever preferred_lft forever␍␤
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < LTFZXKTAWN 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:  ← SerialDriver.expect() result=(0, b"MARKER='LTFZ''XKTAWN' run 'ip -o addr show dev br-lan'\r\n", <re.Match object; span=(56, 438),… [0.205s]
+[32mPASSED[0m[33m                                                                   [ 48%][0m
+tests/test_lan.py::test_lan_interface_has_neighbor 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ping -c 3 ff02::1%br-lan') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'AVXS''KMGQOT'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='AVXSKMGQOT\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'AVXS''KMGQOT'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < AVXSKMGQOT␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'AVXS''KMGQOT'\r\n", <re.Match object; span=(21, 49), match=b'AVXSKMGQOT\r\nroot@OpenWrt:… [0.276s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > MARKER='PBQE''FWPNYU' run 'ping -c 3 ff02::1%br-lan'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='PBQEFWPNYU(.*)PBQEFWPNYU\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MARKER='PBQE''FWPNYU' run 'ping -c 3 ff02::1%br-lan'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < PBQEFWPNYUPING ff02::1%br-lan (ff02::1%9): 56 data bytes␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 64 bytes from fe80::90d8:9dff:fe1d:f838: seq=0 ttl=64 time=0.577 ms␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 64 bytes from fe80::603b:c4ff:fe46:13b7: seq=0 ttl=64 time=0.866 ms (DUP!)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 64 bytes from fe80::90d8:9dff:fe1d:f838: seq=1 ttl=64 time=0.497 ms␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 64 bytes from fe80::603b:c4ff:fe46:13b7: seq=1 ttl=64 time=0.866 ms (DUP!)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 64 bytes from fe80::90d8:9dff:fe1d:f838: seq=2 ttl=64 time=0.490 ms␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < --- ff02::1%br-lan ping statistics ---␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 3 packets transmitted, 3 packets received, 2 duplicates, 0% packet loss␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < round-trip min/avg/max = 0.490/0.659/0.866 ms␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < PBQEFWPNYU 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"MARKER='PBQE''FWPNYU' run 'ping -c 3 ff02::1%br-lan'\r\n", <re.Match object; span=(54, 663), m… [2.297s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['PING ff02::1%br-lan (ff02::1%9): 56 data bytes', '64 bytes from fe80::90d8:9dff:fe1d:f838: seq=0 … [3.312s]
+[32mPASSED[0m[33m                                                                   [ 51%][0m
+tests/test_network_security.py::test_ssh_supported_algorithms [32mPASSED[0m[33m     [ 54%][0m
+tests/test_opkg.py::test_opkg_procd_installed [33mSKIPPED[0m (unsupported f...)[33m [ 57%][0m
+tests/test_opkg.py::test_opkg_install_ucert [33mSKIPPED[0m (unsupported fea...)[33m [ 60%][0m
+tests/test_system_health.py::TestSystemHealth::test_memory_usage 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='free -m') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['              total        used        free      shared  buff/cache   available', 'Mem:        101… [0.581s]
+[32mPASSED[0m[33m                                                                   [ 62%][0m
+tests/test_system_health.py::TestSystemHealth::test_filesystem_usage 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='test -d /') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='df -h / | tail -1') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['tmpfs                   494.3M     17.5M    476.8M   4% /'] [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='test -d /tmp') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.463s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='df -h /tmp | tail -1') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['tmpfs                   494.3M    424.0K    493.9M   0% /tmp'] [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='test -d /overlay') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='df -h /overlay | tail -1') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['tmpfs                   494.3M     17.5M    476.8M   4% /'] [0.462s]
+[32mPASSED[0m[33m                                                                   [ 65%][0m
+tests/test_system_health.py::TestSystemHealth::test_system_uptime 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='cat /proc/uptime') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['40.65 63.82'] [0.462s]
+[32mPASSED[0m[33m                                                                   [ 68%][0m
+tests/test_system_health.py::TestSystemHealth::test_temperature_sensors 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='ls /sys/class/thermal/thermal_zone*/temp 2>/dev/null') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=(['/sys/class/thermal/thermal_zone0/temp'], [], 0) [0.463s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='cat /sys/class/thermal/thermal_zone0/temp') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['52700'] [0.462s]
+[32mPASSED[0m[33m                                                                   [ 71%][0m
+tests/test_system_health.py::TestSystemHealth::test_process_count 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='ps | wc -l') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['110'] [0.462s]
+[32mPASSED[0m[33m                                                                   [ 74%][0m
+tests/test_system_health.py::TestSystemHealth::test_entropy_available 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='cat /proc/sys/kernel/random/entropy_avail') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['256'] [0.462s]
+[32mPASSED[0m[33m                                                                   [ 77%][0m
+tests/test_system_health.py::TestSystemHealth::test_open_file_descriptors 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='cat /proc/sys/fs/file-nr') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['392\t0\t100577'] [0.462s]
+[32mPASSED[0m[33m                                                                   [ 80%][0m
+tests/test_wan.py::test_wan_firewall_zone 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='uci show firewall | grep "=zone" | while read zone; do section=${zone%%=zone}; name=$(uci get "${section}.name"); [ "$name" = "wan" ] && echo found && exit 0; done') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'GHEK''SBVQFF'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='GHEKSBVQFF\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'GHEK''SBVQFF'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < GHEKSBVQFF␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'GHEK''SBVQFF'\r\n", <re.Match object; span=(21, 49), match=b'GHEKSBVQFF\r\nroot@OpenWrt:… [0.276s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > MARKER='SCYV''ZXQUCV' run 'uci show firewall | grep "=zone" | while read zone; do section=${zone%%=zone}; name=$(uci get "${section}.name"); [ "$name" = "wan" ] && echo found && exit 0; done'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='SCYVZXQUCV(.*)SCYVZXQUCV\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MARKER='SCYV''ZXQUCV' run 'uci show firewall | grep "=zone" | wh␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ile read zone; do section=${zone%%=zone}; name=$(uci get "${section}.name"); [ "␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < $name" = "wan" ] && echo found && exit 0; done'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < SCYVZXQUCVfound␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < SCYVZXQUCV 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b'MARKER=\'SCYV\'\'ZXQUCV\' run \'uci show firewall | grep "=zone" | wh\r\r\nile read zone; do s… [0.236s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['found'], [], 0) [2.654s]
+[32mPASSED[0m[33m                                                                   [ 82%][0m
+tests/test_wan.py::test_wan_interface_device 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → ShellDriver.run_check(cmd="ubus call network.interface.wan status '{}'") 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'QAAV''LGFVWH'␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='QAAVLGFVWH\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'QAAV''LGFVWH'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < QAAVLGFVWH␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b"echo 'QAAV''LGFVWH'\r\n", <re.Match object; span=(21, 49), match=b'QAAVLGFVWH\r\nroot@OpenWrt:… [0.276s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > MARKER='YHHF''HMVWPM' run 'ubus call network.interface.wan status '"'"'{}'"'"''␤␍␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='YHHFHMVWPM(.*)YHHFHMVWPM\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MARKER='YHHF''HMVWPM' run 'ubus call network.interface.wan statu␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < s '"'"'{}'"'"''␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < YHHFHMVWPM{␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"up": true,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"pending": false,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"available": true,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"autostart": true,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"dynamic": false,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"uptime": 29,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"l3_device": "wan",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"proto": "dhcp",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"device": "wan",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"updated": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"addresses",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"routes",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"data"␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"metric": 0,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"dns_metric": 0,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"delegation": true,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"ipv4-address": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		{␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"address": "192.168.101.124",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"mask": 24␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		}␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"ipv6-address": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"ipv6-prefix": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"ipv6-prefix-assignment": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"route": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		{␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"target": "0.0.0.0",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"mask": 0,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"nexthop": "192.168.101.1",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			"source": "192.168.101.124/32"␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		}␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"dns-server": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"dns-search": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"neighbors": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"inactive": {␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"ipv4-address": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"ipv6-address": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"route": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"dns-server": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"dns-search": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		],␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"neighbors": [␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 			␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		]␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	},␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	"data": {␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"dhcpserver": "192.168.101.1",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"hostname": "OpenWrt",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 		"leasetime": 86400␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 	}␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < }␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < YHHFHMVWPM 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < root@OpenWrt:~# ␍␤
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b'MARKER=\'YHHF\'\'HMVWPM\' run \'ubus call network.interface.wan statu\r\r\ns \'"\'"\'{}\'"\'"\… [0.377s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=['{', '\t"up": true,', '\t"pending": false,', '\t"available": true,', '\t"autostart": true,', '\t"dy… [1.666s]
+[32mPASSED[0m[33m                                                                   [ 85%][0m
+tests/test_wan.py::test_https_download [33mSKIPPED[0m (unsupported feature(...)[33m [ 88%][0m
+tests/test_wifi.py::test_wifi_wpa3 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci delete wireless.default_radio0.disabled') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci delete wireless.radio0.disabled') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], ['uci: Entry not found'], 1) [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci set wireless.default_radio0.encryption=sae') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci set wireless.default_radio0.key=openwrt4all') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.463s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci commit') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.633s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='wifi down') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.461s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='wifi up') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.463s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='ubus -t 15 wait_for hostapd.phy0-ap0') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], ['Command failed: Request timed out'], 7) [15.456s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='iwinfo') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=(['wl0-ap0 ESSID: "OpenWrt"', '         Access Point: 92:d8:9d:1d:f8:3a', '         Mode: Master  Ch… [0.462s]
+[32mPASSED[0m[33m                                                                   [ 91%][0m
+tests/test_wifi.py::test_wifi_wpa2 
+[1m-------------------------------- live log call ---------------------------------[0m
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci delete wireless.default_radio0.disabled') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], ['uci: Entry not found'], 1) [0.633s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci delete wireless.radio0.disabled') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], ['uci: Entry not found'], 1) [0.463s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci set wireless.default_radio0.encryption=psk2') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci set wireless.default_radio0.key=openwrt4all') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='uci commit') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.463s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='wifi down') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='wifi up') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.462s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='ubus -t 15 wait_for hostapd.phy0-ap0') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], ['Command failed: Request timed out'], 7) [15.457s]
+[32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='iwinfo') 
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=(['wl0-ap0 ESSID: "OpenWrt"', '         Access Point: 92:d8:9d:1d:f8:3a', '         Mode: Master  Ch… [0.462s]
+[32mPASSED[0m[33m                                                                   [ 94%][0m
+tests/test_wifi.py::test_wifi_scan [33mSKIPPED[0m (unsupported feature(s): ...)[33m [ 97%][0m
+tests/test_wifi.py::test_wifi_hwsim_sae_mixed [33mSKIPPED[0m (unsupported f...)[33m [100%][0m
+[1m------------------------------ live log teardown -------------------------------[0m
+[32mINFO   [0m SSHConnection(h:  Closing SSH connection to labgrid-hsn
+
+
+[33m=============================== warnings summary ===============================[0m
+tests/test_apk.py::TestApk::test_apk_procd_installed
+  /home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/serial/rfc2217.py:469: DeprecationWarning: setDaemon() is deprecated, set the daemon attribute instead
+    self._thread.setDaemon(True)
+
+tests/test_apk.py::TestApk::test_apk_procd_installed
+  /home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/serial/rfc2217.py:470: DeprecationWarning: setName() is deprecated, set the name attribute instead
+    self._thread.setName('pySerial RFC 2217 reader thread for {}'.format(self._port))
+
+tests/test_base.py::test_firmware_version
+  tests/test_base.py:14: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_firmware_version(shell_command, record_property):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /home/runner/work/openwrt-tests/openwrt-tests/bananapi_bpi-r64-snapshot/report.xml -
+[33m============ [32m27 passed[0m, [33m[1m8 skipped[0m, [33m[1m3 warnings[0m[33m in 127.49s (0:02:07)[0m[33m =============[0m
