@@ -1,7 +1,16 @@
+## These consoles hang off an 8-port WCH CH34x adapter whose 8 ports share ONE
+## USB interface (…:2:1.0), so ID_PATH / ID_SERIAL / ID_USB_INTERFACE_NUM are
+## identical for every port and can't select one. The stable per-port key is the
+## parent's sysfs attr `port_number` (== the /dev/serial/by-path -portN index),
+## reached with labgrid's `@` ancestor-match (udev.py match_single checks sysfs
+## attributes). ID_PATH scopes to this adapter; @port_number picks the channel.
+## (labgrid renders this file with jinja2; '#' is a statement, '##' a comment.)
 labgrid-bryan-glinet_gl-mt6000:
   location: labgrid-bryan
   USBSerialPort:
-    port: "/dev/ttyUSB1"
+    match:
+      ID_PATH: "platform-xhci-hcd.1-usb-0:2:1.0"
+      "@port_number": "1"
     speed: 115200
   PDUDaemonPort:
     host: localhost:16421
@@ -17,7 +26,9 @@ labgrid-bryan-glinet_gl-mt6000:
 labgrid-bryan-bananapi_bpi-r4:
   location: hsn-desk
   USBSerialPort:
-    port: "/dev/ttyUSB2"
+    match:
+      ID_PATH: "platform-xhci-hcd.1-usb-0:2:1.0"
+      "@port_number": "2"
     speed: 115200
   PDUDaemonPort:
     host: localhost:16421
@@ -33,7 +44,9 @@ labgrid-bryan-bananapi_bpi-r4:
 labgrid-bryan-teltonika_rut976:
   location: labgrid-bryan
   USBSerialPort:
-    port: "/dev/ttyUSB3"
+    match:
+      ID_PATH: "platform-xhci-hcd.1-usb-0:2:1.0"
+      "@port_number": "3"
     speed: 115200
   PDUDaemonPort:
     host: localhost:16421
@@ -46,7 +59,7 @@ labgrid-bryan-teltonika_rut976:
     address: "192.168.1.1%vlan105"
     username: "root"
 
-  labgrid-bryan-gemtek_w1700k-ubi:
+ labgrid-bryan-gemtek_w1700k-ubi:
   location: labgrid-bryan
   USBSerialPort:
     port: "/dev/ttyUSB4"
