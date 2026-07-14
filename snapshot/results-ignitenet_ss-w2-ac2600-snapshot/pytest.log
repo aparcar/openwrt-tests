@@ -1,0 +1,230 @@
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0 -- /home/runner/work/openwrt-tests/openwrt-tests/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/runner/work/openwrt-tests/openwrt-tests
+configfile: pyproject.toml
+plugins: check-2.8.0, labgrid-25.1.dev346, harvest-1.10.5
+[1mcollecting ... [0mcollected 35 items
+
+tests/test_apk.py::TestApk::test_apk_procd_installed 
+[1m-------------------------------- live log setup --------------------------------[0m
+[32mINFO   [0m SSHConnection(h: Created new SSH connection to labgrid-aparcar
+[32mINFO   [0m      StepLogger:  → PDUDaemonDriver.off() 
+[32mINFO   [0m      StepLogger:  ← PDUDaemonDriver.off() [1.045s]
+[32mINFO   [0m      StepLogger:  → TFTPProviderDriver.stage(filename='/home/runner/work/openwrt-tests/openwrt-tests/tftp/ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb') 
+[32mINFO   [0m ManagedFile(loc:   Synchronizing /home/runner/work/openwrt-tests/openwrt-tests/tftp/ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb to labgrid-aparcar
+[32mINFO   [0m      StepLogger:   → ProcessWrapper.check_output(command=['rsync', '--compress', '--sparse', '--copy-links', '--verbose', '--progress', '--times', '-e', 'ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-3rj0g6mm/control-labgrid-aparcar', '/home/runner/work/openwrt-tests/openwrt-tests/tftp/ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb', 'labgrid-aparcar:/var/cache/labgrid/labgrid-dev/8bc19167fa4a93475bfe9f6c811c6af2b382d26ca1d24a32d7027f72e7136376/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb']) 
+[32mINFO   [0m         Process:    [2673] command: rsync --compress --sparse --copy-links --verbose --progress --times -e ssh -x -o LogLevel=ERROR -o PasswordAuthentication=no -o ControlMaster=no -o ControlPath=/tmp/lg-con-3rj0g6mm/control-labgrid-aparcar /home/runner/work/openwrt-tests/openwrt-tests/tftp/ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb labgrid-aparcar:/var/cache/labgrid/labgrid-dev/8bc19167fa4a93475bfe9f6c811c6af2b382d26ca1d24a32d7027f72e7136376/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb
+[32mINFO   [0m         Process:    [2673] openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb
+[32mINFO   [0m         Process:    [2673]          32,768   0%    0.00kB/s    0:00:00  
+[32mINFO   [0m         Process:    [2673]       2,752,512  25%    2.51MB/s    0:00:03  
+[32mINFO   [0m         Process:    [2673]       5,898,240  53%    2.63MB/s    0:00:01  
+[32mINFO   [0m         Process:    [2673]      11,004,120 100%    3.55MB/s    0:00:02 (xfr#1, to-chk=0/1)
+[32mINFO   [0m         Process:    [2673] sent 10,984,506 bytes  received 35 bytes  2,441,009.11 bytes/sec
+[32mINFO   [0m         Process:    [2673] total size is 11,004,120  speedup is 1.00
+[32mINFO   [0m      StepLogger:   ← ProcessWrapper.check_output() result=b'openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb\n\n         32,768   0%   … [4.716s]
+[32mINFO   [0m ManagedFile(loc:   Linking
+[32mINFO   [0m      StepLogger:  ← TFTPProviderDriver.stage() result=ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb [6.727s]
+[32mINFO   [0m      StepLogger:  → PDUDaemonDriver.cycle() 
+[32mINFO   [0m      StepLogger:  ← PDUDaemonDriver.cycle() [6.603s]
+[32mINFO   [0m      StepLogger:  → UBootDriver._await_prompt() 
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['\\(IPQ\\) #', 'stop autoboot', 'enter Password:', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(3, b'', <class 'pexpect.exceptions.TIMEOUT'>, <class 'pexpect.exceptions.TIMEOUT'>) [2.001s]
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['\\(IPQ\\) #', 'stop autoboot', 'enter Password:', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < U-Boot 2012.07 [ 2.1.0,2935] (Feb 08 2018 - 09:26:59)␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < smem ram ptable found: ver: 0 len: 5␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < DRAM:  238 MiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < NAND:  SF: Detected W25Q128FW with page size 64 KiB, total 16 MiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ipq_spi: page_size: 0x100, sector_size: 0x10000, size: 0x1000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 144 MiB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MMC:   ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < PCI1 Link Intialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < PCI2 Link Intialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < In:    serial␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Out:   serial␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Err:   serial␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MMC Device 0 not found␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < cdp: get part failed for 0:HLOS␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MMC Device 0 not found␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < cdp: get part failed for rootfs␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Net:   
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(3, b'\r\n\r\nU-Boot 2012.07 [ 2.1.0,2935] (Feb 08 2018 - 09:26:59)\r\n\r\nsmem ram ptable found: ve… [2.000s]
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['\\(IPQ\\) #', 'stop autoboot', 'enter Password:', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MAC2 addr:28:76:10:24:5e:75␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Full duplex link␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Link 2 up, Phy_status = b0b0a0a␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Port:2 speed 1000Mbps␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < MAC3 addr:28:76:10:24:5e:76␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Full duplex link␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Link 3 up, Phy_status = b0b0a0a␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Port:3 speed 1000Mbps␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < eth0, eth1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Erasing Nand...␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␍Erasing at 0x170000 -- 100% complete.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Writing to Nand... done␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Hit any key to stop autoboot:  2 
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(1, b'\r\n\r\nU-Boot 2012.07 [ 2.1.0,2935] (Feb 08 2018 - 09:26:59)\r\n\r\nsmem ram ptable found: ve… [0.821s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > ␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern=['\\(IPQ\\) #', 'stop autoboot', 'enter Password:', <class 'pexpect.exceptions.TIMEOUT'>]) 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ␈␈␈ 0 ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < (IPQ) # 
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b':  2 \x08\x08\x08 0 \r\n', <re.Match object; span=(13, 20), match=b'(IPQ) #'>, b'(IPQ) #') [0.198s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'HCNF''TVZZNB'␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='HCNFTVZZNB') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'HCNF''TVZZNB'␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < HCNFTVZZNB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < (IPQ) # 
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b" echo 'HCNF''TVZZNB'\r\r\n", <re.Match object; span=(23, 33), match=b'HCNFTVZZNB'>, b'HCNFTVZZ… [0.314s]
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='\\(IPQ\\) #') 
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b'\r\n', <re.Match object; span=(2, 9), match=b'(IPQ) #'>, b'(IPQ) #') 
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'ZQEM''GYPOYX'; setenv bootfile ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb; echo "$?"; echo 'ZQEM''GYPOYX';␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='\\(IPQ\\) #') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'ZQEM''GYPOYX'; setenv bootfile ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb; echo "$?"; echo 'ZQEM''GYPOYX';␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ZQEMGYPOYX␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < ZQEMGYPOYX␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < (IPQ) # 
+[32mINFO   [0m      StepLogger:   ← SerialDriver.expect() result=(0, b' echo \'ZQEM\'\'GYPOYX\'; setenv bootfile ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignit… [0.264s]
+[34mCONSOLE[0m SerialLogger.ma:   SerialDriver(main) > echo 'KKYC''WVUSEE'; tftp; echo "$?"; echo 'KKYC''WVUSEE';␤
+[32mINFO   [0m      StepLogger:   → SerialDriver.expect(pattern='\\(IPQ\\) #') 
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < echo 'KKYC''WVUSEE'; tftp; echo "$?"; echo 'KKYC''WVUSEE';␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < KKYCWVUSEE␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Using eth0 device␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < TFTP from server 192.168.1.120; our IP address is 192.168.1.1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Filename 'ignitenet_ss-w2-ac2600/openwrt-ipq806x-generic-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb'.␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Load address: 0x44000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:    SerialDriver(main) < Loading: *␈T T T T T 
+[32mINFO   [0m      StepLogger:   ⚠ SerialDriver.expect() [30.001s] exception=Timeout of 4.67 seconds exceeded or connection closed by peer
+<labgrid.util.expect.PtxExpect object at 0x7fbd6fd17380>
+command: None
+args: None
+buffer (last 100 chars): b"c-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb'.\r\nLoad address: 0x44000000\r\nLoading: *\x08T T T T T "
+before (last 100 chars): b"c-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb'.\r\nLoad address: 0x44000000\r\nLoading: *\x08T T T T T "
+after: <class 'pexpect.exceptions.TIMEOUT'>
+match: None
+match_index: None
+exitstatus: None
+pid: None
+child_fd: -1
+closed: True
+timeout: 30
+delimiter: <class 'pexpect.exceptions.EOF'>
+logfile: None
+logfile_read: None
+logfile_send: None
+maxread: 1
+ignorecase: False
+searchwindowsize: None
+delaybeforesend: 0.05
+delayafterclose: 0.1
+delayafterterminate: 0.1
+searcher: searcher_re:
+    0: re.compile(b'\\(IPQ\\) #')
+[32mINFO   [0m      StepLogger:  ⚠ UBootDriver._await_prompt() [38.081s] exception=Timeout of 4.67 seconds exceeded or connection closed by peer
+<labgrid.util.expect.PtxExpect object at 0x7fbd6fd17380>
+command: None
+args: None
+buffer (last 100 chars): b"c-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb'.\r\nLoad address: 0x44000000\r\nLoading: *\x08T T T T T "
+before (last 100 chars): b"c-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb'.\r\nLoad address: 0x44000000\r\nLoading: *\x08T T T T T "
+after: <class 'pexpect.exceptions.TIMEOUT'>
+match: None
+match_index: None
+exitstatus: None
+pid: None
+child_fd: -1
+closed: True
+timeout: 30
+delimiter: <class 'pexpect.exceptions.EOF'>
+logfile: None
+logfile_read: None
+logfile_send: None
+maxread: 1
+ignorecase: False
+searchwindowsize: None
+delaybeforesend: 0.05
+delayafterclose: 0.1
+delayafterterminate: 0.1
+searcher: searcher_re:
+    0: re.compile(b'\\(IPQ\\) #')
+[1m[31mERROR  [0m        conftest:  Failed to transition to state shell
+Traceback (most recent call last):
+  File "/home/runner/work/openwrt-tests/openwrt-tests/tests/conftest.py", line 111, in shell_command
+    strategy.transition("shell")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/targets/../strategies/tftpstrategy.py", line 85, in transition
+    self.transition(Status.uboot)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/targets/../strategies/tftpstrategy.py", line 82, in transition
+    self.target.activate(self.uboot)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/target.py", line 472, in activate
+    client.on_activate()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/driver/ubootdriver.py", line 65, in on_activate
+    self._await_prompt()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/step.py", line 220, in wrapper
+    _result = func(*_args, **_kwargs)
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/driver/ubootdriver.py", line 201, in _await_prompt
+    self._run_check(command)
+    ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/driver/commandmixin.py", line 77, in _run_check
+    stdout, stderr, exitcode = self._run(cmd, timeout=timeout, codec=codec, decodeerrors=decodeerrors)
+                               ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/driver/ubootdriver.py", line 81, in _run
+    _, before, _, _ = self.console.expect(self.prompt, timeout=timeout)
+                      ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/binding.py", line 101, in wrapper
+    return func(self, *_args, **_kwargs)
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/step.py", line 220, in wrapper
+    _result = func(*_args, **_kwargs)
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/labgrid/driver/consoleexpectmixin.py", line 61, in expect
+    index = self._expect.expect(pattern, timeout=timeout)
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/pexpect/spawnbase.py", line 354, in expect
+    return self.expect_list(compiled_pattern_list,
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+            timeout, searchwindowsize, async_)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/pexpect/spawnbase.py", line 383, in expect_list
+    return exp.expect_loop(timeout)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/pexpect/expect.py", line 181, in expect_loop
+    return self.timeout(e)
+           ~~~~~~~~~~~~^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.14/site-packages/pexpect/expect.py", line 144, in timeout
+    raise exc
+pexpect.exceptions.TIMEOUT: Timeout of 4.67 seconds exceeded or connection closed by peer
+<labgrid.util.expect.PtxExpect object at 0x7fbd6fd17380>
+command: None
+args: None
+buffer (last 100 chars): b"c-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb'.\r\nLoad address: 0x44000000\r\nLoading: *\x08T T T T T "
+before (last 100 chars): b"c-ignitenet_ss-w2-ac2600-initramfs-fit-uImage.itb'.\r\nLoad address: 0x44000000\r\nLoading: *\x08T T T T T "
+after: <class 'pexpect.exceptions.TIMEOUT'>
+match: None
+match_index: None
+exitstatus: None
+pid: None
+child_fd: -1
+closed: True
+timeout: 30
+delimiter: <class 'pexpect.exceptions.EOF'>
+logfile: None
+logfile_read: None
+logfile_send: None
+maxread: 1
+ignorecase: False
+searchwindowsize: None
+delaybeforesend: 0.05
+delayafterclose: 0.1
+delayafterterminate: 0.1
+searcher: searcher_re:
+    0: re.compile(b'\\(IPQ\\) #')
+[1m---------------------------- live log sessionfinish ----------------------------[0m
+[32mINFO   [0m SSHConnection(h:  Closing SSH connection to labgrid-aparcar
+
+
+[33m======================== [33m[1m2 warnings[0m[33m in 61.94s (0:01:01)[0m[33m ========================[0m
+!!!!!!!!!! _pytest.outcomes.Exit: Failed to transition to state shell !!!!!!!!!!
