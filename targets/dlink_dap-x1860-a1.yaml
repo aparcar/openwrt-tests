@@ -1,0 +1,39 @@
+openwrt:
+  name: dlink_dap-x1860-a1
+  target: ramips-mt7621
+  profile: dlink_dap-x1860-a1
+targets:
+  main:
+    features:
+      - wan_port
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      - PDUDaemonDriver: {}
+      - TFTPProviderDriver: {}
+      - SerialDriver:
+          txdelay: 0.01
+      - UBootDriver:
+          boot_expression: "Hit any key to stop autoboot:"
+          interrupt: "0"
+          prompt: "=>"
+          init_commands:
+            - setenv ipaddr "192.168.$vlan109.2"
+            - setenv serverip "$address"
+          boot_command: tftpboot
+      - ShellDriver:
+          prompt: 'root@[\w()]+:[^ ]+ '
+          login_prompt: Please press Enter to activate this console.
+          await_login_timeout: 15
+          login_timeout: 120
+          post_login_settle_time: 5
+          username: root
+      - UBootTFTPStrategy: {}
+      - SSHDriver:
+          connection_timeout: 120.0
+          explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/tftpstrategy.py
