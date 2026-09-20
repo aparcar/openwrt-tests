@@ -23,9 +23,15 @@ def test_lan_wait_for_network(shell_command):
     assert False, "LAN interface did not come up within 60 seconds"
 
 
-def test_lan_interface_address(shell_command):
+def test_lan_interface_address(shell_command, env):
+    # Keep the standard OpenWrt LAN address unless the target explicitly
+    # overrides it, for example when using an isolated test subnet.
+    expected_address = env.config.data.get("openwrt", {}).get(
+        "lan_ipv4", "192.168.1.1/24"
+    )
+
     assert shell_command.get_ip_addresses("br-lan")[0] == IPv4Interface(
-        "192.168.1.1/24"
+        expected_address
     )
 
 
