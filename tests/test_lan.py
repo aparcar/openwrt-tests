@@ -1,24 +1,32 @@
 from ipaddress import IPv4Interface
-from time import sleep
+from time import monotonic, sleep
 
 from conftest import ubus_call
 
 
 def test_lan_wait_for_link_ready(shell_command):
-    for _ in range(60):
+    deadline = monotonic() + 60
+
+    while monotonic() < deadline:
         if shell_command.run("dmesg | grep br-lan | grep forwarding")[2] == 0:
             return
+
         sleep(1)
 
     assert False, "LAN interface did not come up within 60 seconds"
 
 
 def test_lan_wait_for_network(shell_command):
-    for _ in range(60):
+    # Give the LAN interface a reasonable amount of time to obtain an IPv4 address.
+    deadline = monotonic() + 60
+
+    while monotonic() < deadline:
         if ubus_call(shell_command, "network.interface.lan", "status").get(
             "ipv4-address"
         ):
             return
+
+        sleep(1)
 
     assert False, "LAN interface did not come up within 60 seconds"
 
