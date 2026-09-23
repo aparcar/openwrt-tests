@@ -104,7 +104,8 @@ global-coordinator -> labgrid-aparcar -> openwrt-one
 You can request access to existing labs or contribute your own. To do this,
 submit a pull request modifying the `labnet.yaml` file. If you have multiple
 devices of the same model, see [docs/sharing-target-files.md](docs/sharing-target-files.md)
-for how to avoid duplicate target files.
+for how to avoid duplicate target files. For repository-specific metadata under
+`openwrt:`, see [docs/openwrt-target-attributes.md](docs/openwrt-target-attributes.md)
 
 To access a remote device, configure the following environment variables.
 Notably, `LG_PROXY` sets the proxy host (always the lab name):
