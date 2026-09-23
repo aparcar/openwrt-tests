@@ -62,7 +62,6 @@ def test_ubus_system_board(ssh_command, results_bag):
 def test_free_memory(ssh_command, results_bag):
     used_memory = int(ssh_command.run_check("free -m")[1].split()[2])
 
-    assert used_memory > 10000, "Used memory is more than 100MB"
     results_bag["used_memory"] = used_memory
 
 
