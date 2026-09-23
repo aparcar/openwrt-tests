@@ -32,6 +32,9 @@ openwrt:
   # image.type defaults to "kernel"; override only for factory / combined images
 ```
 
+See [OpenWrt Target Attributes](openwrt-target-attributes.md) for the
+repository-specific options available under `openwrt:`
+
 This will create three different labgrid places from the same configuration file.
 - `labgrid-example-router_1` → `targets/linksys_e8450.yaml`
 - `labgrid-example-router_2` → `targets/linksys_e8450.yaml`
