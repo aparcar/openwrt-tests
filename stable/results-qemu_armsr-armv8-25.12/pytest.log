@@ -4,16 +4,16 @@ Creating virtual environment at: .venv
     Updated https://github.com/aparcar/labgrid.git (a457f36c5660fa8761e224d2959a796084f087c9)
    Building labgrid @ git+https://github.com/aparcar/labgrid.git@a457f36c5660fa8761e224d2959a796084f087c9
 Downloading cryptography (4.5MiB)
-Downloading ruff (9.9MiB)
 Downloading pygments (1.2MiB)
+Downloading grpcio (6.8MiB)
+Downloading ruff (9.9MiB)
 Downloading isort (1.6MiB)
 Downloading ansible (54.9MiB)
 Downloading ansible-core (2.1MiB)
-Downloading grpcio (6.8MiB)
  Downloaded pygments
  Downloaded isort
- Downloaded cryptography
  Downloaded ansible-core
+ Downloaded cryptography
  Downloaded grpcio
  Downloaded ruff
       Built labgrid @ git+https://github.com/aparcar/labgrid.git@a457f36c5660fa8761e224d2959a796084f087c9
@@ -21,7 +21,7 @@ Downloading grpcio (6.8MiB)
 warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
          If the cache and target directories are on different filesystems, hardlinking may not be supported.
          If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
-Installed 40 packages in 3.35s
+Installed 40 packages in 3.41s
 [1m============================= test session starts ==============================[0m
 platform linux -- Python 3.13.5, pytest-9.1.1, pluggy-1.6.0 -- /__w/openwrt-tests/openwrt-tests/.venv/bin/python
 cachedir: .pytest_cache
@@ -43,7 +43,7 @@ tests/test_base.py::test_shell
 [32mINFO   [0m      StepLogger:   → ShellDriver._await_login() 
 [32mINFO   [0m      StepLogger:    → QEMUDriver.expect(pattern=['root@[\\w()]+:[^ ]+ ', 'Please press Enter to activate this console.', 'Password: ', <class 'pexpect.exceptions.TIMEOUT'>]) 
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] Booting Linux on physical CPU 0x0000000000 [0x411fd070]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] Linux version 6.12.108 (builder@buildhost) (aarch64-openwrt-linux-musl-gcc (OpenWrt GCC 14.3.0 r33236-e73b5f91a3) 14.3.0, GNU ld (GNU Binutils) 2.44) #0 SMP Tue Sep 22 19:45:49 2026␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] Linux version 6.12.108 (builder@buildhost) (aarch64-openwrt-linux-musl-gcc (OpenWrt GCC 14.3.0 r33241-44b73b738d) 14.3.0, GNU ld (GNU Binutils) 2.44) #0 SMP Fri Sep 25 07:06:29 2026␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] KASLR enabled␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] random: crng init done␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] Machine model: linux,dummy-virt␍␤
@@ -95,183 +95,183 @@ tests/test_base.py::test_shell
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=1␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] RCU Tasks Trace: Setting shift to 0 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=1.␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] Root IRQ handler: 0xffffae4a972100c0␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] Root IRQ handler: 0xffffdb7834e100c0␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] GICv2m: range[mem 0x08020000-0x08020fff], SPI[80:143]␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] rcu: srcu_init: Setting srcu_struct sizes based on contention.␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] arch_timer: cp15 timer(s) running at 62.50MHz (virt).␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000000] clocksource: arch_sys_counter: mask: 0x1ffffffffffffff max_cycles: 0x1cd42e208c, max_idle_ns: 881590405314 ns␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.000062] sched_clock: 57 bits at 63MHz, resolution 16ns, wraps every 4398046511096ns␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.003096] Console: colour dummy device 80x25␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.003535] printk: legacy console [tty0] enabled␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.007691] Calibrating delay loop (skipped), value calculated using timer frequency.. 125.00 BogoMIPS (lpj=625000)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.007850] pid_max: default: 32768 minimum: 301␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.013411] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.013473] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.040171] cacheinfo: Unable to detect cache hierarchy for CPU 0␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.051461] rcu: Hierarchical SRCU implementation.␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.051530] rcu: 	Max phase no-delay instances is 1000.␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.054892] EFI services will not be available.␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.055771] smp: Bringing up secondary CPUs ...␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.056372] smp: Brought up 1 node, 1 CPU␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.056417] SMP: Total of 1 processors activated.␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.056468] CPU: All CPU(s) started at EL1␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.056720] CPU features: detected: 32-bit EL0 Support␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.056754] CPU features: detected: 32-bit EL1 Support␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.056910] CPU features: detected: CRC32 instructions␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.068873] alternatives: applying system-wide alternatives␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.077839] CPU features: emulated: Privileged Access Never (PAN) using TTBR0_EL1 switching␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.091069] Memory: 57216K/131072K available (12672K kernel code, 1572K rwdata, 3424K rodata, 17088K init, 761K bss, 39764K reserved, 32768K cma-reserved)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.125191] futex hash table entries: 256 (order: 2, 16384 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.127544] 2G module region forced by RANDOMIZE_MODULE_REGION_FULL␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.127622] 0 pages in range for non-PLT usage␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.127679] 515344 pages in range for PLT usage␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.128968] pinctrl core: initialized pinctrl subsystem␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.141261] DMI not present or invalid.␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.158117] NET: Registered PF_NETLINK/PF_ROUTE protocol family␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.168465] DMA: preallocated 128 KiB GFP_KERNEL pool for atomic allocations␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.169029] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.169292] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.173620] thermal_sys: Registered thermal governor 'step_wise'␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.173943] cpuidle: using governor ladder␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.174140] cpuidle: using governor menu␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.174943] ASID allocator initialised with 32768 entries␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.176814] Serial: AMBA PL011 UART driver␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.205718] 9000000.pl011: ttyAMA0 at MMIO 0x9000000 (irq = 13, base_baud = 0) is a PL011 rev1␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.207300] printk: legacy console [ttyAMA0] enabled␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.445102] HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.445393] HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.445638] HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.448759] HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.449073] HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.449406] HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.449731] HugeTLB: registered 64.0 KiB page size, pre-allocated 0 pages␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.459707] HugeTLB: 0 KiB vmemmap can be freed for a 64.0 KiB page␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.467250] cryptd: max_cpu_qlen set to 1000␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.473044] ACPI: Interpreter disabled.␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.475615] iommu: Default domain type: Passthrough␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.476971] SCSI subsystem initialized␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.478889] usbcore: registered new interface driver usbfs␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.479348] usbcore: registered new interface driver hub␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.479708] usbcore: registered new device driver usb␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.499907] clocksource: Switched to clocksource arch_sys_counter␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.502151] netfs: FS-Cache loaded␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.503110] pnp: PnP ACPI: disabled␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.512458] NET: Registered PF_INET protocol family␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.514148] IP idents hash table entries: 2048 (order: 2, 16384 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.519909] tcp_listen_portaddr_hash hash table entries: 256 (order: 0, 4096 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.520294] Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.522945] TCP established hash table entries: 1024 (order: 1, 8192 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.523539] TCP bind hash table entries: 1024 (order: 3, 32768 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.523960] TCP: Hash tables configured (established 1024 bind 1024)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.525637] MPTCP token hash table entries: 256 (order: 1, 6144 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.534296] UDP hash table entries: 256 (order: 1, 8192 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.534993] UDP-Lite hash table entries: 256 (order: 1, 8192 bytes, linear)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.536822] NET: Registered PF_UNIX/PF_LOCAL protocol family␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.537554] PCI: CLS 0 bytes, default 64␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.569548] kvm [1]: HYP mode not available␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.574329] workingset: timestamp_bits=42 max_order=15 bucket_order=0␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.576420] squashfs: version 4.0 (2009/01/31) Phillip Lougher␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.576717] jffs2: version 2.2 (NAND) (SUMMARY) (LZMA) (RTIME) (CMODE_PRIORITY) (c) 2001-2006 Red Hat, Inc.␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.590277] 9p: Installing v9fs 9p2000 file system support␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.593020] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 250)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.603674] atomic64_test: passed␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.615207] pl061_gpio 9030000.pl061: PL061 GPIO chip registered␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.617578] pci-host-generic 4010000000.pcie: host bridge /pcie@10000000 ranges:␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.618560] pci-host-generic 4010000000.pcie:       IO 0x003eff0000..0x003effffff -> 0x0000000000␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.619579] pci-host-generic 4010000000.pcie:      MEM 0x0010000000..0x003efeffff -> 0x0010000000␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.625864] pci-host-generic 4010000000.pcie:      MEM 0x8000000000..0xffffffffff -> 0x8000000000␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.626910] pci-host-generic 4010000000.pcie: Memory resource size exceeds max for 32 bits␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.627750] pci-host-generic 4010000000.pcie: ECAM at [mem 0x4010000000-0x401fffffff] for [bus 00-ff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.638312] pci-host-generic 4010000000.pcie: PCI host bridge to bus 0000:00␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.639075] pci_bus 0000:00: root bus resource [bus 00-ff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.639362] pci_bus 0000:00: root bus resource [io  0x0000-0xffff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.639645] pci_bus 0000:00: root bus resource [mem 0x10000000-0x3efeffff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.648645] pci_bus 0000:00: root bus resource [mem 0x8000000000-0xffffffffff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.650764] pci 0000:00:00.0: [1b36:0008] type 00 class 0x060000 conventional PCI endpoint␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.655267] pci 0000:00:01.0: [1af4:1000] type 00 class 0x020000 conventional PCI endpoint␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.655878] pci 0000:00:01.0: BAR 0 [io  0x0000-0x001f]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.660026] pci 0000:00:01.0: BAR 4 [mem 0x00000000-0x00003fff 64bit pref]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.660489] pci 0000:00:01.0: ROM [mem 0x00000000-0x0003ffff pref]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.661066] pci 0000:00:02.0: [1af4:1005] type 00 class 0x00ff00 conventional PCI endpoint␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.661394] pci 0000:00:02.0: BAR 0 [io  0x0000-0x001f]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.670829] pci 0000:00:02.0: BAR 1 [mem 0x00000000-0x00000fff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.671168] pci 0000:00:02.0: BAR 4 [mem 0x00000000-0x00003fff 64bit pref]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.671966] pci 0000:00:03.0: [1af4:1000] type 00 class 0x020000 conventional PCI endpoint␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.672298] pci 0000:00:03.0: BAR 0 [io  0x0000-0x001f]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.681881] pci 0000:00:03.0: BAR 1 [mem 0x00000000-0x00000fff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.682226] pci 0000:00:03.0: BAR 4 [mem 0x00000000-0x00003fff 64bit pref]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.682582] pci 0000:00:03.0: ROM [mem 0x00000000-0x0003ffff pref]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.685188] pci 0000:00:01.0: ROM [mem 0x10000000-0x1003ffff pref]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.693176] pci 0000:00:03.0: ROM [mem 0x10040000-0x1007ffff pref]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.693748] pci 0000:00:01.0: BAR 4 [mem 0x8000000000-0x8000003fff 64bit pref]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.694295] pci 0000:00:02.0: BAR 4 [mem 0x8000004000-0x8000007fff 64bit pref]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.694662] pci 0000:00:03.0: BAR 4 [mem 0x8000008000-0x800000bfff 64bit pref]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.704539] pci 0000:00:02.0: BAR 1 [mem 0x10080000-0x10080fff]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.704980] pci 0000:00:03.0: BAR 1 [mem 0x10081000-0x10081fff]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.705318] pci 0000:00:01.0: BAR 0 [io  0x1000-0x101f]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.714708] pci 0000:00:02.0: BAR 0 [io  0x1020-0x103f]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.715048] pci 0000:00:03.0: BAR 0 [io  0x1040-0x105f]: assigned␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.715740] pci_bus 0000:00: resource 4 [io  0x0000-0xffff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.715975] pci_bus 0000:00: resource 5 [mem 0x10000000-0x3efeffff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.716205] pci_bus 0000:00: resource 6 [mem 0x8000000000-0xffffffffff]␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.728953] hv_vmbus: registering driver hyperv_fb␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.828405] virtio-pci 0000:00:01.0: enabling device (0000 -> 0003)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.831915] virtio-pci 0000:00:02.0: enabling device (0000 -> 0003)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.833466] virtio-pci 0000:00:03.0: enabling device (0000 -> 0003)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.836499] Serial: 8250/16550 driver, 16 ports, IRQ sharing enabled␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.844458] SuperH (H)SCI(F) driver initialized␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.881043] loop: module loaded␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.882170] hv_vmbus: registering driver hv_storvsc␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.896799] hv_vmbus: registering driver hv_netvsc␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.899717] usbcore: registered new interface driver usb-storage␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.902624] hv_vmbus: registering driver hyperv_keyboard␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.905469] rtc-pl031 9010000.pl031: registered as rtc0␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.906310] rtc-pl031 9010000.pl031: setting system clock to 2026-09-25T02:51:48 UTC (1790304708)␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.911289] sdhci: Secure Digital Host Controller Interface driver␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.911531] sdhci: Copyright(c) Pierre Ossman␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.912243] Synopsys Designware Multimedia Card Interface Driver␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.913063] sdhci-pltfm: SDHCI platform and OF driver helper␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.915010] hid: raw HID events driver (C) Jiri Kosina␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.918695] usbcore: registered new interface driver usbhid␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.919153] usbhid: USB HID core driver␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.922158] NET: Registered PF_INET6 protocol family␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.941572] Segment Routing with IPv6␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.941936] In-situ OAM (IOAM) with IPv6␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.942567] NET: Registered PF_PACKET protocol family␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.943304] bridge: filtering via arp/ip/ip6tables is no longer available by default. Update your scripts to load br_netfilter if you need this.␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.953122] 8021q: 802.1Q VLAN Support v1.8␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.954095] 9pnet: Installing 9P2000 support␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.008026] Demotion targets for Node 0: null␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.017514] clk: Disabling unused clocks␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.017930] PM: genpd: Disabling unused power domains␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.067007] Freeing unused kernel memory: 17088K␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.071501] Run /init as init process␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    2.997296] init: Console is alive␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.086166] kmodloader: loading kernel modules from /etc/modules-boot.d/*␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.113408] pps_core: LinuxPPS API ver. 1 registered␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.113691] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.158052] PTP clock support registered␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.191085] e1000e: Intel(R) PRO/1000 Network Driver␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.191434] e1000e: Copyright(c) 1999 - 2015 Intel Corporation.␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.193785] kmodloader: done loading kernel modules from /etc/modules-boot.d/*␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.205837] init: - preinit -␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    4.533131] 8021q: adding VLAN 0 to HW filter on device eth0␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.003089] Console: colour dummy device 80x25␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.003524] printk: legacy console [tty0] enabled␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.007652] Calibrating delay loop (skipped), value calculated using timer frequency.. 125.00 BogoMIPS (lpj=625000)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.007803] pid_max: default: 32768 minimum: 301␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.013294] Mount-cache hash table entries: 512 (order: 0, 4096 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.013360] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.039949] cacheinfo: Unable to detect cache hierarchy for CPU 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.050906] rcu: Hierarchical SRCU implementation.␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.050976] rcu: 	Max phase no-delay instances is 1000.␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.054327] EFI services will not be available.␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.055197] smp: Bringing up secondary CPUs ...␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.055766] smp: Brought up 1 node, 1 CPU␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.055808] SMP: Total of 1 processors activated.␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.055859] CPU: All CPU(s) started at EL1␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.056116] CPU features: detected: 32-bit EL0 Support␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.056148] CPU features: detected: 32-bit EL1 Support␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.056312] CPU features: detected: CRC32 instructions␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.066332] alternatives: applying system-wide alternatives␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.076482] CPU features: emulated: Privileged Access Never (PAN) using TTBR0_EL1 switching␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.090117] Memory: 57216K/131072K available (12672K kernel code, 1572K rwdata, 3424K rodata, 17088K init, 761K bss, 39764K reserved, 32768K cma-reserved)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.124430] futex hash table entries: 256 (order: 2, 16384 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.126861] 2G module region forced by RANDOMIZE_MODULE_REGION_FULL␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.126934] 0 pages in range for non-PLT usage␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.126987] 515344 pages in range for PLT usage␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.128239] pinctrl core: initialized pinctrl subsystem␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.140223] DMI not present or invalid.␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.156913] NET: Registered PF_NETLINK/PF_ROUTE protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.167188] DMA: preallocated 128 KiB GFP_KERNEL pool for atomic allocations␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.167726] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.168000] DMA: preallocated 128 KiB GFP_KERNEL|GFP_DMA32 pool for atomic allocations␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.172102] thermal_sys: Registered thermal governor 'step_wise'␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.172442] cpuidle: using governor ladder␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.172657] cpuidle: using governor menu␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.173451] ASID allocator initialised with 32768 entries␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.175319] Serial: AMBA PL011 UART driver␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.204599] 9000000.pl011: ttyAMA0 at MMIO 0x9000000 (irq = 13, base_baud = 0) is a PL011 rev1␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.206172] printk: legacy console [ttyAMA0] enabled␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.444332] HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.444640] HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.444883] HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.447910] HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.448268] HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.448604] HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.448950] HugeTLB: registered 64.0 KiB page size, pre-allocated 0 pages␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.458918] HugeTLB: 0 KiB vmemmap can be freed for a 64.0 KiB page␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.466210] cryptd: max_cpu_qlen set to 1000␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.471968] ACPI: Interpreter disabled.␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.474488] iommu: Default domain type: Passthrough␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.475892] SCSI subsystem initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.477794] usbcore: registered new interface driver usbfs␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.478268] usbcore: registered new interface driver hub␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.478681] usbcore: registered new device driver usb␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.499086] clocksource: Switched to clocksource arch_sys_counter␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.501401] netfs: FS-Cache loaded␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.502370] pnp: PnP ACPI: disabled␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.511868] NET: Registered PF_INET protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.513550] IP idents hash table entries: 2048 (order: 2, 16384 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.519379] tcp_listen_portaddr_hash hash table entries: 256 (order: 0, 4096 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.519767] Table-perturb hash table entries: 65536 (order: 6, 262144 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.522301] TCP established hash table entries: 1024 (order: 1, 8192 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.522950] TCP bind hash table entries: 1024 (order: 3, 32768 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.523395] TCP: Hash tables configured (established 1024 bind 1024)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.525066] MPTCP token hash table entries: 256 (order: 1, 6144 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.534088] UDP hash table entries: 256 (order: 1, 8192 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.534606] UDP-Lite hash table entries: 256 (order: 1, 8192 bytes, linear)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.536260] NET: Registered PF_UNIX/PF_LOCAL protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.537021] PCI: CLS 0 bytes, default 64␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.578337] kvm [1]: HYP mode not available␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.589144] workingset: timestamp_bits=42 max_order=15 bucket_order=0␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.591520] squashfs: version 4.0 (2009/01/31) Phillip Lougher␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.591772] jffs2: version 2.2 (NAND) (SUMMARY) (LZMA) (RTIME) (CMODE_PRIORITY) (c) 2001-2006 Red Hat, Inc.␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.593517] 9p: Installing v9fs 9p2000 file system support␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.603008] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 250)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.622346] atomic64_test: passed␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.634032] pl061_gpio 9030000.pl061: PL061 GPIO chip registered␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.636359] pci-host-generic 4010000000.pcie: host bridge /pcie@10000000 ranges:␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.637352] pci-host-generic 4010000000.pcie:       IO 0x003eff0000..0x003effffff -> 0x0000000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.638406] pci-host-generic 4010000000.pcie:      MEM 0x0010000000..0x003efeffff -> 0x0010000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.644636] pci-host-generic 4010000000.pcie:      MEM 0x8000000000..0xffffffffff -> 0x8000000000␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.645619] pci-host-generic 4010000000.pcie: Memory resource size exceeds max for 32 bits␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.646446] pci-host-generic 4010000000.pcie: ECAM at [mem 0x4010000000-0x401fffffff] for [bus 00-ff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.657010] pci-host-generic 4010000000.pcie: PCI host bridge to bus 0000:00␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.657628] pci_bus 0000:00: root bus resource [bus 00-ff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.657928] pci_bus 0000:00: root bus resource [io  0x0000-0xffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.658363] pci_bus 0000:00: root bus resource [mem 0x10000000-0x3efeffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.666385] pci_bus 0000:00: root bus resource [mem 0x8000000000-0xffffffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.668599] pci 0000:00:00.0: [1b36:0008] type 00 class 0x060000 conventional PCI endpoint␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.673139] pci 0000:00:01.0: [1af4:1000] type 00 class 0x020000 conventional PCI endpoint␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.677600] pci 0000:00:01.0: BAR 0 [io  0x0000-0x001f]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.678215] pci 0000:00:01.0: BAR 4 [mem 0x00000000-0x00003fff 64bit pref]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.678575] pci 0000:00:01.0: ROM [mem 0x00000000-0x0003ffff pref]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.679176] pci 0000:00:02.0: [1af4:1005] type 00 class 0x00ff00 conventional PCI endpoint␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.688474] pci 0000:00:02.0: BAR 0 [io  0x0000-0x001f]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.688782] pci 0000:00:02.0: BAR 1 [mem 0x00000000-0x00000fff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.689078] pci 0000:00:02.0: BAR 4 [mem 0x00000000-0x00003fff 64bit pref]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.689788] pci 0000:00:03.0: [1af4:1000] type 00 class 0x020000 conventional PCI endpoint␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.699322] pci 0000:00:03.0: BAR 0 [io  0x0000-0x001f]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.699631] pci 0000:00:03.0: BAR 1 [mem 0x00000000-0x00000fff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.699980] pci 0000:00:03.0: BAR 4 [mem 0x00000000-0x00003fff 64bit pref]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.700275] pci 0000:00:03.0: ROM [mem 0x00000000-0x0003ffff pref]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.712862] pci 0000:00:01.0: ROM [mem 0x10000000-0x1003ffff pref]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.713318] pci 0000:00:03.0: ROM [mem 0x10040000-0x1007ffff pref]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.713657] pci 0000:00:01.0: BAR 4 [mem 0x8000000000-0x8000003fff 64bit pref]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.714079] pci 0000:00:02.0: BAR 4 [mem 0x8000004000-0x8000007fff 64bit pref]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.724071] pci 0000:00:03.0: BAR 4 [mem 0x8000008000-0x800000bfff 64bit pref]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.724466] pci 0000:00:02.0: BAR 1 [mem 0x10080000-0x10080fff]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.724714] pci 0000:00:03.0: BAR 1 [mem 0x10081000-0x10081fff]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.734340] pci 0000:00:01.0: BAR 0 [io  0x1000-0x101f]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.734724] pci 0000:00:02.0: BAR 0 [io  0x1020-0x103f]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.735086] pci 0000:00:03.0: BAR 0 [io  0x1040-0x105f]: assigned␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.735630] pci_bus 0000:00: resource 4 [io  0x0000-0xffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.735861] pci_bus 0000:00: resource 5 [mem 0x10000000-0x3efeffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.745668] pci_bus 0000:00: resource 6 [mem 0x8000000000-0xffffffffff]␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.749056] hv_vmbus: registering driver hyperv_fb␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.848759] virtio-pci 0000:00:01.0: enabling device (0000 -> 0003)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.852221] virtio-pci 0000:00:02.0: enabling device (0000 -> 0003)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.853867] virtio-pci 0000:00:03.0: enabling device (0000 -> 0003)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.856915] Serial: 8250/16550 driver, 16 ports, IRQ sharing enabled␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.865044] SuperH (H)SCI(F) driver initialized␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.901750] loop: module loaded␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.902830] hv_vmbus: registering driver hv_storvsc␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.917374] hv_vmbus: registering driver hv_netvsc␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.920286] usbcore: registered new interface driver usb-storage␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.923186] hv_vmbus: registering driver hyperv_keyboard␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.926154] rtc-pl031 9010000.pl031: registered as rtc0␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.927005] rtc-pl031 9010000.pl031: setting system clock to 2026-09-26T02:55:04 UTC (1790391304)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.931722] sdhci: Secure Digital Host Controller Interface driver␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.931985] sdhci: Copyright(c) Pierre Ossman␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.932657] Synopsys Designware Multimedia Card Interface Driver␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.933493] sdhci-pltfm: SDHCI platform and OF driver helper␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.935452] hid: raw HID events driver (C) Jiri Kosina␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.939789] usbcore: registered new interface driver usbhid␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.940124] usbhid: USB HID core driver␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.943010] NET: Registered PF_INET6 protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.963650] Segment Routing with IPv6␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.964016] In-situ OAM (IOAM) with IPv6␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.964646] NET: Registered PF_PACKET protocol family␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.965381] bridge: filtering via arp/ip/ip6tables is no longer available by default. Update your scripts to load br_netfilter if you need this.␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.976124] 8021q: 802.1Q VLAN Support v1.8␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    0.977070] 9pnet: Installing 9P2000 support␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.030661] Demotion targets for Node 0: null␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.039689] clk: Disabling unused clocks␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.040111] PM: genpd: Disabling unused power domains␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.089059] Freeing unused kernel memory: 17088K␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    1.093323] Run /init as init process␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.052103] init: Console is alive␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.135380] kmodloader: loading kernel modules from /etc/modules-boot.d/*␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.161861] pps_core: LinuxPPS API ver. 1 registered␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.162123] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.204119] PTP clock support registered␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.234283] e1000e: Intel(R) PRO/1000 Network Driver␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.234555] e1000e: Copyright(c) 1999 - 2015 Intel Corporation.␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.236694] kmodloader: done loading kernel modules from /etc/modules-boot.d/*␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    3.250822] init: - preinit -␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    4.567079] 8021q: adding VLAN 0 to HW filter on device eth0␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < Press the [f] key and hit [enter] to enter failsafe mode␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < Press the [1], [2], [3] or [4] key and hit [enter] to select the debug level␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < - generating board file -␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    9.738496] procd: - early -␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [   10.778301] procd: - ubus -␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [   10.988913] procd: - init -␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [    9.767782] procd: - early -␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [   10.805141] procd: - ubus -␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < [   11.019022] procd: - init -␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < Please press Enter to activate this console.␍␤
-[32mINFO   [0m      StepLogger:    ← QEMUDriver.expect() result=(1, b"[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x411fd070]\r\n[    0.000000] Linux… [11.136s]
+[32mINFO   [0m      StepLogger:    ← QEMUDriver.expect() result=(1, b"[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x411fd070]\r\n[    0.000000] Linux… [11.129s]
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) > root␤
 [32mINFO   [0m      StepLogger:    → QEMUDriver.expect(pattern=['root@[\\w()]+:[^ ]+ ', 'Please press Enter to activate this console.', 'Password: ', <class 'pexpect.exceptions.TIMEOUT'>]) 
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < root␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < login[1168]: root login on 'ttyAMA0'␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < login[1165]: root login on 'ttyAMA0'␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < ␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < ␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < BusyBox v1.37.0 (2026-09-22 19:45:49 UTC) built-in shell (ash)␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < BusyBox v1.37.0 (2026-09-25 07:06:29 UTC) built-in shell (ash)␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < ␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) <   _______                     ________        __␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) <  |       |.-----.-----.-----.|  |  |  |.----.|  |_␍␤
@@ -279,7 +279,7 @@ tests/test_base.py::test_shell
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) <  |_______||   __|_____|__|__||________||__|  |____|␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) <           |__| W I R E L E S S   F R E E D O M␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) <  -----------------------------------------------------␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) <  OpenWrt 25.12-SNAPSHOT, r33236-e73b5f91a3 Dave's Guitar␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) <  OpenWrt 25.12-SNAPSHOT, r33241-44b73b738d Dave's Guitar␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) <  -----------------------------------------------------␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < ␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) <  === WARNING! =====================================␍␤
@@ -306,44 +306,44 @@ tests/test_base.py::test_shell
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < https://openwrt.org/docs/guide-user/additional-software/opkg-to-apk-cheatsheet␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < ␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:    ← QEMUDriver.expect() result=(0, b'\r\nroot\r\nlogin[1168]: root login on \'ttyAMA0\'\r\n\r\n\r\nBusyBox v1.37.0 (2026-09-22 19:4… [0.449s]
+[32mINFO   [0m      StepLogger:    ← QEMUDriver.expect() result=(0, b'\r\nroot\r\nlogin[1165]: root login on \'ttyAMA0\'\r\n\r\n\r\nBusyBox v1.37.0 (2026-09-25 07:0… [0.418s]
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) > dmesg -n 1␤
 [32mINFO   [0m      StepLogger:    → QEMUDriver.expect(pattern=['root@[\\w()]+:[^ ]+ ', 'Please press Enter to activate this console.', 'Password: ', <class 'pexpect.exceptions.TIMEOUT'>]) 
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < dmesg -n 1␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:    ← QEMUDriver.expect() result=(0, b'dmesg -n 1\r\n', <re.Match object; span=(12, 27), match=b'root@(none):~# '>, b'root@(none):~# … [0.038s]
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) > echo 'SFPY''XAYSST'␤
-[32mINFO   [0m      StepLogger:    → QEMUDriver.expect(pattern='SFPYXAYSST\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < echo 'SFPY''XAYSST'␍␤
-[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < SFPYXAYSST␍␤
+[32mINFO   [0m      StepLogger:    ← QEMUDriver.expect() result=(0, b'dmesg -n 1\r\n', <re.Match object; span=(12, 27), match=b'root@(none):~# '>, b'root@(none):~# … [0.050s]
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) > echo 'WSPF''TUSNZY'␤
+[32mINFO   [0m      StepLogger:    → QEMUDriver.expect(pattern='WSPFTUSNZY\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < echo 'WSPF''TUSNZY'␍␤
+[34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < WSPFTUSNZY␍␤
 [34mCONSOLE[0m SerialLogger.ma:     QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:    ← QEMUDriver.expect() result=(0, b"echo 'SFPY''XAYSST'\r\n", <re.Match object; span=(21, 48), match=b'SFPYXAYSST\r\nroot@(none):~… [0.012s]
-[32mINFO   [0m      StepLogger:   ← ShellDriver._await_login() [11.637s]
+[32mINFO   [0m      StepLogger:    ← QEMUDriver.expect() result=(0, b"echo 'WSPF''TUSNZY'\r\n", <re.Match object; span=(21, 48), match=b'WSPFTUSNZY\r\nroot@(none):~… [0.012s]
+[32mINFO   [0m      StepLogger:   ← ShellDriver._await_login() [11.613s]
 [34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > run() { echo -n "$MARKER"; sh -c "$@"; echo "$MARKER $?"; }␤
 [32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='root@[\\w()]+:[^ ]+ ') 
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < run() { echo -n "$MARKER"; sh -c "$@"; echo "$MARKER $?"; }␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b'run() { echo -n "$MARKER"; sh -c "$@"; echo "$MARKER $?"; }\r\n', <re.Match object; span=(61, … [0.067s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b'run() { echo -n "$MARKER"; sh -c "$@"; echo "$MARKER $?"; }\r\n', <re.Match object; span=(61, … [0.029s]
 [32mINFO   [0m      StepLogger:   → QEMUNetworkStrategy.update_network_service() 
-[32mINFO   [0m      StepLogger:    → QEMUDriver.monitor_command(command='human-monitor-command' arguments={'command-line': 'hostfwd_add lan tcp:127.0.0.1:36989-192.168.1.1:22'}) 
-[32mINFO   [0m      StepLogger:    ← QEMUDriver.monitor_command() result= [0.001s]
+[32mINFO   [0m      StepLogger:    → QEMUDriver.monitor_command(command='human-monitor-command' arguments={'command-line': 'hostfwd_add lan tcp:127.0.0.1:44711-192.168.1.1:22'}) 
+[32mINFO   [0m      StepLogger:    ← QEMUDriver.monitor_command() result= [0.002s]
 [32mINFO   [0m      StepLogger:   ← QEMUNetworkStrategy.update_network_service() [0.002s]
-[32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() [12.226s]
+[32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() [12.167s]
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → ShellDriver.run_check(cmd='true') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'TWAT''YLTECH'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='TWATYLTECH\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'TWAT''YLTECH'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < TWATYLTECH␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'QLEA''XWTMQS'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='QLEAXWTMQS\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'QLEA''XWTMQS'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QLEAXWTMQS␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'TWAT''YLTECH'\r\n", <re.Match object; span=(21, 48), match=b'TWATYLTECH\r\nroot@(none):~… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='JOZZ''ZCMXEK' run true␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='JOZZZCMXEK(.*)JOZZZCMXEK\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='JOZZ''ZCMXEK' run true␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < JOZZZCMXEKJOZZZCMXEK 0␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'QLEA''XWTMQS'\r\n", <re.Match object; span=(21, 48), match=b'QLEAXWTMQS\r\nroot@(none):~… [0.034s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='ATOU''XZFLGS' run true␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='ATOUXZFLGS(.*)ATOUXZFLGS\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='ATOU''XZFLGS' run true␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ATOUXZFLGSATOUXZFLGS 0␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='JOZZ''ZCMXEK' run true\r\n", <re.Match object; span=(32, 71), match=b'JOZZZCMXEKJOZZZC… [0.056s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=[] [0.069s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='ATOU''XZFLGS' run true\r\n", <re.Match object; span=(32, 71), match=b'ATOUXZFLGSATOUXZ… [0.069s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=[] [0.104s]
 [32mPASSED[0m[32m                                                                   [ 11%][0m
 tests/test_base.py::test_firmware_version 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -352,21 +352,21 @@ tests/test_base.py::test_firmware_version
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → ShellDriver.run_check(cmd='source /etc/os-release; echo $BUILD_ID') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'CCJJ''QAGEKP'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='CCJJQAGEKP\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'CCJJ''QAGEKP'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < CCJJQAGEKP␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'KBOT''BPCONW'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='KBOTBPCONW\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'KBOT''BPCONW'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < KBOTBPCONW␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'CCJJ''QAGEKP'\r\n", <re.Match object; span=(21, 48), match=b'CCJJQAGEKP\r\nroot@(none):~… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='HETB''TZSYCJ' run 'source /etc/os-release; echo $BUILD_ID'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='HETBTZSYCJ(.*)HETBTZSYCJ\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='HETB''TZSYCJ' run 'source /etc/os-release; echo $BUILD_ID␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'KBOT''BPCONW'\r\n", <re.Match object; span=(21, 48), match=b'KBOTBPCONW\r\nroot@(none):~… [0.027s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='MQGP''UZZOLM' run 'source /etc/os-release; echo $BUILD_ID'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='MQGPUZZOLM(.*)MQGPUZZOLM\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='MQGP''UZZOLM' run 'source /etc/os-release; echo $BUILD_ID␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < HETBTZSYCJr33236-e73b5f91a3␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < HETBTZSYCJ 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MQGPUZZOLMr33241-44b73b738d␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MQGPUZZOLM 0␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='HETB''TZSYCJ' run 'source /etc/os-release; echo $BUILD_ID\r\r\n'\r\n", <re.Match objec… [0.087s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=['r33236-e73b5f91a3'] [0.102s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='MQGP''UZZOLM' run 'source /etc/os-release; echo $BUILD_ID\r\r\n'\r\n", <re.Match objec… [0.079s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=['r33241-44b73b738d'] [0.108s]
 [32mPASSED[0m[32m                                                                   [ 14%][0m
 tests/test_base.py::test_dropbear_startup 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -375,277 +375,229 @@ tests/test_base.py::test_dropbear_startup
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'JJJS''JAOANV'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='JJJSJAOANV\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'JJJS''JAOANV'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < JJJSJAOANV␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'VPYA''YWFTLO'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='VPYAYWFTLO\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'VPYA''YWFTLO'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < VPYAYWFTLO␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'JJJS''JAOANV'\r\n", <re.Match object; span=(21, 48), match=b'JJJSJAOANV\r\nroot@(none):~… [0.011s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='QLFN''YUYNMK' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='QLFNYUYNMK(.*)QLFNYUYNMK\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='QLFN''YUYNMK' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'VPYA''YWFTLO'\r\n", <re.Match object; span=(21, 48), match=b'VPYAYWFTLO\r\nroot@(none):~… [0.026s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='MHHE''VNMLWN' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='MHHEVNMLWN(.*)MHHEVNMLWN\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='MHHE''VNMLWN' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QLFNYUYNMKls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QLFNYUYNMK 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MHHEVNMLWNls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MHHEVNMLWN 1␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='QLFN''YUYNMK' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.093s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.105s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='MHHE''VNMLWN' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.077s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.104s]
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'OGCM''GTVYCS'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='OGCMGTVYCS\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'OGCM''GTVYCS'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < OGCMGTVYCS␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'HAYS''OZZVHE'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='HAYSOZZVHE\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'HAYS''OZZVHE'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < HAYSOZZVHE␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'OGCM''GTVYCS'\r\n", <re.Match object; span=(21, 48), match=b'OGCMGTVYCS\r\nroot@(none):~… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='QEVB''SUWECT' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='QEVBSUWECT(.*)QEVBSUWECT\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='QEVB''SUWECT' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'HAYS''OZZVHE'\r\n", <re.Match object; span=(21, 48), match=b'HAYSOZZVHE\r\nroot@(none):~… [0.025s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='PBJC''UGUONM' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='PBJCUGUONM(.*)PBJCUGUONM\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='PBJC''UGUONM' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QEVBSUWECTls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QEVBSUWECT 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < PBJCUGUONMls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < PBJCUGUONM 1␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='QEVB''SUWECT' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.106s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.119s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='PBJC''UGUONM' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.158s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.185s]
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'KJVS''KZHLON'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='KJVSKZHLON\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'KJVS''KZHLON'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < KJVSKZHLON␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'CYFV''MAXMJW'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='CYFVMAXMJW\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'CYFV''MAXMJW'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < CYFVMAXMJW␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'KJVS''KZHLON'\r\n", <re.Match object; span=(21, 48), match=b'KJVSKZHLON\r\nroot@(none):~… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='TVWO''KSECHN' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='TVWOKSECHN(.*)TVWOKSECHN\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='TVWO''KSECHN' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'CYFV''MAXMJW'\r\n", <re.Match object; span=(21, 48), match=b'CYFVMAXMJW\r\nroot@(none):~… [0.027s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='QMHH''FBESMN' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='QMHHFBESMN(.*)QMHHFBESMN\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='QMHH''FBESMN' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < TVWOKSECHNls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < TVWOKSECHN 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QMHHFBESMNls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QMHHFBESMN 1␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='TVWO''KSECHN' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.077s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.090s]
-[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'YELC''PNMOEX'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='YELCPNMOEX\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'YELC''PNMOEX'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < YELCPNMOEX␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'YELC''PNMOEX'\r\n", <re.Match object; span=(21, 48), match=b'YELCPNMOEX\r\nroot@(none):~… [0.011s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='TWYN''CJWHVB' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='TWYNCJWHVB(.*)TWYNCJWHVB\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='TWYN''CJWHVB' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < TWYNCJWHVBls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < TWYNCJWHVB 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='TWYN''CJWHVB' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.077s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.090s]
-[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'ZEBW''AWSYKZ'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='ZEBWAWSYKZ\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'ZEBW''AWSYKZ'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ZEBWAWSYKZ␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'ZEBW''AWSYKZ'\r\n", <re.Match object; span=(21, 48), match=b'ZEBWAWSYKZ\r\nroot@(none):~… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='YPVJ''KOVCFO' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='YPVJKOVCFO(.*)YPVJKOVCFO\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='YPVJ''KOVCFO' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < YPVJKOVCFOls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < YPVJKOVCFO 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='YPVJ''KOVCFO' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.087s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.100s]
-[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'FSCP''HPZWTQ'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='FSCPHPZWTQ\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'FSCP''HPZWTQ'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < FSCPHPZWTQ␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'FSCP''HPZWTQ'\r\n", <re.Match object; span=(21, 48), match=b'FSCPHPZWTQ\r\nroot@(none):~… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='GZJC''QAQZKW' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='GZJCQAQZKW(.*)GZJCQAQZKW\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='GZJC''QAQZKW' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < GZJCQAQZKWls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < GZJCQAQZKW 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='GZJC''QAQZKW' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.075s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.089s]
-[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'LYOV''KYMUHP'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='LYOVKYMUHP\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'LYOV''KYMUHP'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < LYOVKYMUHP␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'LYOV''KYMUHP'\r\n", <re.Match object; span=(21, 49), match=b'LYOVKYMUHP\r\nroot@OpenWrt:… [0.033s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='APKS''HQJZSO' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='APKSHQJZSO(.*)APKSHQJZSO\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='APKS''HQJZSO' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < APKSHQJZSOls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < APKSHQJZSO 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='APKS''HQJZSO' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.120s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.154s]
-[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'LENZ''ZVHFLV'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='LENZZVHFLV\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'LENZ''ZVHFLV'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < LENZZVHFLV␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'LENZ''ZVHFLV'\r\n", <re.Match object; span=(21, 49), match=b'LENZZVHFLV\r\nroot@OpenWrt:… [0.034s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='WLSE''WQXHVW' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='WLSEWQXHVW(.*)WLSEWQXHVW\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='WLSE''WQXHVW' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < WLSEWQXHVWls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < WLSEWQXHVW 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='WLSE''WQXHVW' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.144s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.179s]
-[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'UOAQ''FYTSEQ'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='UOAQFYTSEQ\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'UOAQ''FYTSEQ'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < UOAQFYTSEQ␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'UOAQ''FYTSEQ'\r\n", <re.Match object; span=(21, 49), match=b'UOAQFYTSEQ\r\nroot@OpenWrt:… [0.018s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='NWFZ''LZFHZU' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='NWFZLZFHZU(.*)NWFZLZFHZU\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='NWFZ''LZFHZU' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < NWFZLZFHZUls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < NWFZLZFHZU 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='NWFZ''LZFHZU' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.176s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.195s]
-[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'VTPO''GOABPS'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='VTPOGOABPS\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'VTPO''GOABPS'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < VTPOGOABPS␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'VTPO''GOABPS'\r\n", <re.Match object; span=(21, 49), match=b'VTPOGOABPS\r\nroot@OpenWrt:… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='BHSV''OGSPYN' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='BHSVOGSPYN(.*)BHSVOGSPYN\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='BHSV''OGSPYN' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < BHSVOGSPYNls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < BHSVOGSPYN 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='BHSV''OGSPYN' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.096s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='QMHH''FBESMN' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.081s]
 [32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.109s]
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'JQLO''JFPWJE'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='JQLOJFPWJE\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'JQLO''JFPWJE'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < JQLOJFPWJE␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'JQLO''JFPWJE'\r\n", <re.Match object; span=(21, 49), match=b'JQLOJFPWJE\r\nroot@OpenWrt:… [0.033s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='HCSL''GSNJBY' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='HCSLGSNJBY(.*)HCSLGSNJBY\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='HCSL''GSNJBY' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < HCSLGSNJBYls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < HCSLGSNJBY 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='HCSL''GSNJBY' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.182s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.216s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'ZLFS''JQWFLU'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='ZLFSJQWFLU\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'ZLFS''JQWFLU'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ZLFSJQWFLU␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'ZLFS''JQWFLU'\r\n", <re.Match object; span=(21, 48), match=b'ZLFSJQWFLU\r\nroot@(none):~… [0.012s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='YHAV''MSNKLM' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='YHAVMSNKLM(.*)YHAVMSNKLM\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='YHAV''MSNKLM' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < YHAVMSNKLMls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < YHAVMSNKLM 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='YHAV''MSNKLM' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.086s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.099s]
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'HKXZ''WNCZKM'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='HKXZWNCZKM\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'HKXZ''WNCZKM'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < HKXZWNCZKM␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'HKXZ''WNCZKM'\r\n", <re.Match object; span=(21, 49), match=b'HKXZWNCZKM\r\nroot@OpenWrt:… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='ELOP''OUBPYC' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='ELOPOUBPYC(.*)ELOPOUBPYC\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='ELOP''OUBPYC' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ELOPOUBPYCls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ELOPOUBPYC 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='ELOP''OUBPYC' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.087s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.100s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'ALVY''FMZWQA'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='ALVYFMZWQA\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'ALVY''FMZWQA'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ALVYFMZWQA␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'ALVY''FMZWQA'\r\n", <re.Match object; span=(21, 48), match=b'ALVYFMZWQA\r\nroot@(none):~… [0.025s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='CVJA''WXOCKZ' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='CVJAWXOCKZ(.*)CVJAWXOCKZ\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='CVJA''WXOCKZ' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < CVJAWXOCKZls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < CVJAWXOCKZ 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='CVJA''WXOCKZ' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.084s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.110s]
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'NQGE''NQVEMW'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='NQGENQVEMW\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'NQGE''NQVEMW'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < NQGENQVEMW␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'NQGE''NQVEMW'\r\n", <re.Match object; span=(21, 49), match=b'NQGENQVEMW\r\nroot@OpenWrt:… [0.026s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='QBCJ''LZNNTQ' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='QBCJLZNNTQ(.*)QBCJLZNNTQ\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='QBCJ''LZNNTQ' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QBCJLZNNTQls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QBCJLZNNTQ 1␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='QBCJ''LZNNTQ' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.078s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.105s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'WZSS''YEVJLA'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='WZSSYEVJLA\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'WZSS''YEVJLA'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < WZSSYEVJLA␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'WZSS''YEVJLA'\r\n", <re.Match object; span=(21, 48), match=b'WZSSYEVJLA\r\nroot@(none):~… [0.012s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='OTXH''UNTHCO' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='OTXHUNTHCO(.*)OTXHUNTHCO\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='OTXH''UNTHCO' run 'ls /etc/dropbear/dropbear_rsa_host_key␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < OTXHUNTHCOls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < OTXHUNTHCO 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@(none):~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='OTXH''UNTHCO' run 'ls /etc/dropbear/dropbear_rsa_host_key\r\r\n'\r\n", <re.Match objec… [0.097s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.110s]
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'AZEU''GPKPFX'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='AZEUGPKPFX\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'AZEU''GPKPFX'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < AZEUGPKPFX␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'PXHK''WGNBTM'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='PXHKWGNBTM\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'PXHK''WGNBTM'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < PXHKWGNBTM␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'AZEU''GPKPFX'\r\n", <re.Match object; span=(21, 49), match=b'AZEUGPKPFX\r\nroot@OpenWrt:… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='ZYGU''OQCGUK' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='ZYGUOQCGUK(.*)ZYGUOQCGUK\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='ZYGU''OQCGUK' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'PXHK''WGNBTM'\r\n", <re.Match object; span=(21, 49), match=b'PXHKWGNBTM\r\nroot@OpenWrt:… [0.028s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='NOSM''MMUFLZ' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='NOSMMMUFLZ(.*)NOSMMMUFLZ\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='NOSM''MMUFLZ' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ZYGUOQCGUKls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ZYGUOQCGUK 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < NOSMMMUFLZls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < NOSMMMUFLZ 1␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='ZYGU''OQCGUK' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.076s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.089s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='NOSM''MMUFLZ' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.152s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.181s]
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'HFMW''HGPQSH'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='HFMWHGPQSH\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'HFMW''HGPQSH'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < HFMWHGPQSH␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'QSZG''OFMQSO'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='QSZGOFMQSO\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'QSZG''OFMQSO'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QSZGOFMQSO␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'HFMW''HGPQSH'\r\n", <re.Match object; span=(21, 49), match=b'HFMWHGPQSH\r\nroot@OpenWrt:… [0.012s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='MQVE''WLOFVF' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='MQVEWLOFVF(.*)MQVEWLOFVF\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='MQVE''WLOFVF' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'QSZG''OFMQSO'\r\n", <re.Match object; span=(21, 49), match=b'QSZGOFMQSO\r\nroot@OpenWrt:… [0.025s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='PYKJ''LLWUTO' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='PYKJLLWUTO(.*)PYKJLLWUTO\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='PYKJ''LLWUTO' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MQVEWLOFVFls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MQVEWLOFVF 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < PYKJLLWUTOls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < PYKJLLWUTO 1␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='MQVE''WLOFVF' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.076s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.090s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='PYKJ''LLWUTO' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.132s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.158s]
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'PSNX''CBAOVU'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='PSNXCBAOVU\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'PSNX''CBAOVU'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < PSNXCBAOVU␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'YEBF''QZEJXB'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='YEBFQZEJXB\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'YEBF''QZEJXB'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < YEBFQZEJXB␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'PSNX''CBAOVU'\r\n", <re.Match object; span=(21, 49), match=b'PSNXCBAOVU\r\nroot@OpenWrt:… [0.041s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='WKWG''TVFAZT' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='WKWGTVFAZT(.*)WKWGTVFAZT\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='WKWG''TVFAZT' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'YEBF''QZEJXB'\r\n", <re.Match object; span=(21, 49), match=b'YEBFQZEJXB\r\nroot@OpenWrt:… [0.048s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='AEHL''EKJXEF' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='AEHLEKJXEF(.*)AEHLEKJXEF\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='AEHL''EKJXEF' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < WKWGTVFAZT/etc/dropbear/dropbear_rsa_host_key␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < WKWGTVFAZT 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < AEHLEKJXEFls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < AEHLEKJXEF 1␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='WKWG''TVFAZT' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.161s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['/etc/dropbear/dropbear_rsa_host_key'], [], 0) [0.203s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='AEHL''EKJXEF' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.210s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.259s]
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'XPVP''LQWCTO'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='XPVPLQWCTO\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'XPVP''LQWCTO'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < XPVPLQWCTO␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'XPVP''LQWCTO'\r\n", <re.Match object; span=(21, 49), match=b'XPVPLQWCTO\r\nroot@OpenWrt:… [0.026s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='FOFW''VUHOSN' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='FOFWVUHOSN(.*)FOFWVUHOSN\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='FOFW''VUHOSN' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < FOFWVUHOSNls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < FOFWVUHOSN 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='FOFW''VUHOSN' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.090s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.118s]
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'VZQO''VKWFSB'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='VZQOVKWFSB\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'VZQO''VKWFSB'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < VZQOVKWFSB␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'VZQO''VKWFSB'\r\n", <re.Match object; span=(21, 49), match=b'VZQOVKWFSB\r\nroot@OpenWrt:… [0.012s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='ZNEW''KMJOSP' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='ZNEWKMJOSP(.*)ZNEWKMJOSP\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='ZNEW''KMJOSP' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ZNEWKMJOSPls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ZNEWKMJOSP 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='ZNEW''KMJOSP' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.172s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.186s]
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'SGVL''JYAKNG'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='SGVLJYAKNG\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'SGVL''JYAKNG'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < SGVLJYAKNG␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'SGVL''JYAKNG'\r\n", <re.Match object; span=(21, 49), match=b'SGVLJYAKNG\r\nroot@OpenWrt:… [0.012s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='KEPW''XFEAJO' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='KEPWXFEAJO(.*)KEPWXFEAJO\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='KEPW''XFEAJO' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < KEPWXFEAJOls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < KEPWXFEAJO 1␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='KEPW''XFEAJO' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.099s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['ls: /etc/dropbear/dropbear_rsa_host_key: No such file or directory'], [], 1) [0.112s]
+[32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ls /etc/dropbear/dropbear_rsa_host_key') 
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'JQBX''XVKTUZ'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='JQBXXVKTUZ\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'JQBX''XVKTUZ'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < JQBXXVKTUZ␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'JQBX''XVKTUZ'\r\n", <re.Match object; span=(21, 49), match=b'JQBXXVKTUZ\r\nroot@OpenWrt:… [0.012s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='CCZH''BWOVBV' run 'ls /etc/dropbear/dropbear_rsa_host_key'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='CCZHBWOVBV(.*)CCZHBWOVBV\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='CCZH''BWOVBV' run 'ls /etc/dropbear/dropbear_rsa_host_ke␍␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < y'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < CCZHBWOVBV/etc/dropbear/dropbear_rsa_host_key␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < CCZHBWOVBV 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='CCZH''BWOVBV' run 'ls /etc/dropbear/dropbear_rsa_host_ke\r\r\ny'\r\n", <re.Match objec… [0.132s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['/etc/dropbear/dropbear_rsa_host_key'], [], 0) [0.146s]
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='netstat -tlpn | grep 0.0.0.0:22') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'GJQB''CUOVFS'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='GJQBCUOVFS\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'GJQB''CUOVFS'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < GJQBCUOVFS␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'VJSO''OTAXUT'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='VJSOOTAXUT\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'VJSO''OTAXUT'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < VJSOOTAXUT␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'GJQB''CUOVFS'\r\n", <re.Match object; span=(21, 49), match=b'GJQBCUOVFS\r\nroot@OpenWrt:… [0.011s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='AZSG''NCOHVS' run 'netstat -tlpn | grep 0.0.0.0:22'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='AZSGNCOHVS(.*)AZSGNCOHVS\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='AZSG''NCOHVS' run 'netstat -tlpn | grep 0.0.0.0:22'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < AZSGNCOHVSnetstat: showing only processes with your user ID␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1980/dropbear␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < AZSGNCOHVS 0␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'VJSO''OTAXUT'\r\n", <re.Match object; span=(21, 49), match=b'VJSOOTAXUT\r\nroot@OpenWrt:… [0.012s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='BNTM''LAKOTH' run 'netstat -tlpn | grep 0.0.0.0:22'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='BNTMLAKOTH(.*)BNTMLAKOTH\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='BNTM''LAKOTH' run 'netstat -tlpn | grep 0.0.0.0:22'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < BNTMLAKOTHnetstat: showing only processes with your user ID␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1971/dropbear␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < BNTMLAKOTH 0␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='AZSG''NCOHVS' run 'netstat -tlpn | grep 0.0.0.0:22'\r\n", <re.Match object; span=(61, … [0.531s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['netstat: showing only processes with your user ID', 'tcp        0      0 0.0.0.0:22              … [0.543s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='BNTM''LAKOTH' run 'netstat -tlpn | grep 0.0.0.0:22'\r\n", <re.Match object; span=(61, … [0.570s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['netstat: showing only processes with your user ID', 'tcp        0      0 0.0.0.0:22              … [0.583s]
 [32mPASSED[0m[33m                                                                   [ 17%][0m
 tests/test_base.py::test_ssh 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -655,7 +607,7 @@ tests/test_base.py::test_ssh
 [32mINFO   [0m SSHDriver(main):  Connected to 127.0.0.1
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='true') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=[] [0.145s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=[] [0.148s]
 [32mPASSED[0m[33m                                                                   [ 20%][0m
 tests/test_base.py::test_echo 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -664,7 +616,7 @@ tests/test_base.py::test_echo
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd="echo 'hello world'") 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['hello world'] [0.104s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['hello world'] [0.106s]
 [32mPASSED[0m[33m                                                                   [ 22%][0m
 tests/test_base.py::test_uname 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -673,7 +625,7 @@ tests/test_base.py::test_uname
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='uname -a') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['Linux OpenWrt 6.12.108 #0 SMP Tue Sep 22 19:45:49 2026 aarch64 GNU/Linux'] [0.139s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['Linux OpenWrt 6.12.108 #0 SMP Fri Sep 25 07:06:29 2026 aarch64 GNU/Linux'] [0.138s]
 [32mPASSED[0m[33m                                                                   [ 25%][0m
 tests/test_base.py::test_ubus_system_board 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -682,7 +634,7 @@ tests/test_base.py::test_ubus_system_board
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd="ubus call system board '{}'") 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['{', '\t"kernel": "6.12.108",', '\t"hostname": "OpenWrt",', '\t"system": "ARMv8 Processor rev 0",',… [0.211s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['{', '\t"kernel": "6.12.108",', '\t"hostname": "OpenWrt",', '\t"system": "ARMv8 Processor rev 0",',… [0.228s]
 [32mPASSED[0m[33m                                                                   [ 28%][0m
 tests/test_base.py::test_free_memory 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -691,7 +643,7 @@ tests/test_base.py::test_free_memory
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='free -m') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['              total        used        free      shared  buff/cache   available', 'Mem:         10… [0.147s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['              total        used        free      shared  buff/cache   available', 'Mem:         10… [0.206s]
 [32mPASSED[0m[33m                                                                   [ 31%][0m
 tests/test_base.py::test_sysupgrade_backup [33mSKIPPED[0m (unsupported feat...)[33m [ 34%][0m
 tests/test_base.py::test_sysupgrade_backup_u [33mSKIPPED[0m (unsupported fe...)[33m [ 37%][0m
@@ -702,7 +654,7 @@ tests/test_base.py::test_kernel_errors
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='dmesg') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x411fd070]', '[    0.000000] Linux ver… [0.203s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x411fd070]', '[    0.000000] Linux ver… [0.327s]
 [32mPASSED[0m[33m                                                                   [ 40%][0m
 tests/test_lan.py::test_lan_wait_for_link_ready 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -711,21 +663,21 @@ tests/test_lan.py::test_lan_wait_for_link_ready
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='dmesg | grep br-lan | grep forwarding') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'UOOH''XVUUZV'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='UOOHXVUUZV\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'UOOH''XVUUZV'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < UOOHXVUUZV␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'NFZF''EBSZQJ'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='NFZFEBSZQJ\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'NFZF''EBSZQJ'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < NFZFEBSZQJ␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'UOOH''XVUUZV'\r\n", <re.Match object; span=(21, 49), match=b'UOOHXVUUZV\r\nroot@OpenWrt:… [0.025s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='LJZM''KCMZVZ' run 'dmesg | grep br-lan | grep forwarding'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='LJZMKCMZVZ(.*)LJZMKCMZVZ\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='LJZM''KCMZVZ' run 'dmesg | grep br-lan | grep forwarding␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'NFZF''EBSZQJ'\r\n", <re.Match object; span=(21, 49), match=b'NFZFEBSZQJ\r\nroot@OpenWrt:… [0.016s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='CWAL''SWSXJF' run 'dmesg | grep br-lan | grep forwarding'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='CWALSWSXJF(.*)CWALSWSXJF\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='CWAL''SWSXJF' run 'dmesg | grep br-lan | grep forwarding␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < '␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < LJZMKCMZVZ[   37.999522] br-lan: port 1(eth0) entered forwarding state␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < LJZMKCMZVZ 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < CWALSWSXJF[   34.798842] br-lan: port 1(eth0) entered forwarding state␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < CWALSWSXJF 0␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='LJZM''KCMZVZ' run 'dmesg | grep br-lan | grep forwarding\r\r\n'\r\n", <re.Match object… [0.420s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['[   37.999522] br-lan: port 1(eth0) entered forwarding state'], [], 0) [0.446s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='CWAL''SWSXJF' run 'dmesg | grep br-lan | grep forwarding\r\r\n'\r\n", <re.Match object… [0.454s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['[   34.798842] br-lan: port 1(eth0) entered forwarding state'], [], 0) [0.470s]
 [32mPASSED[0m[33m                                                                   [ 42%][0m
 tests/test_lan.py::test_lan_wait_for_network 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -734,23 +686,23 @@ tests/test_lan.py::test_lan_wait_for_network
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → ShellDriver.run_check(cmd="ubus call network.interface.lan status '{}'") 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'HGWG''AOOHLH'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='HGWGAOOHLH\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'HGWG''AOOHLH'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < HGWGAOOHLH␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'CVPJ''XJQLNX'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='CVPJXJQLNX\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'CVPJ''XJQLNX'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < CVPJXJQLNX␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'HGWG''AOOHLH'\r\n", <re.Match object; span=(21, 49), match=b'HGWGAOOHLH\r\nroot@OpenWrt:… [0.017s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='QCCC''TXPQLN' run 'ubus call network.interface.lan status '"'"'{}'"'"''␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='QCCCTXPQLN(.*)QCCCTXPQLN\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='QCCC''TXPQLN' run 'ubus call network.interface.lan statu␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'CVPJ''XJQLNX'\r\n", <re.Match object; span=(21, 49), match=b'CVPJXJQLNX\r\nroot@OpenWrt:… [0.016s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='EOGN''QGZYKZ' run 'ubus call network.interface.lan status '"'"'{}'"'"''␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='EOGNQGZYKZ(.*)EOGNQGZYKZ\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='EOGN''QGZYKZ' run 'ubus call network.interface.lan statu␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < s '"'"'{}'"'"''␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QCCCTXPQLN{␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < EOGNQGZYKZ{␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"up": true,␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"pending": false,␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"available": true,␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"autostart": true,␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"dynamic": false,␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"uptime": 12,␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"uptime": 13,␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"l3_device": "br-lan",␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"proto": "static",␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"device": "br-lan",␍␤
@@ -774,10 +726,10 @@ tests/test_lan.py::test_lan_wait_for_network
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	],␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"ipv6-prefix-assignment": [␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 		{␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 			"address": "fd47:5ef4:3ce9::",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 			"address": "fdf5:bb2d:de26::",␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 			"mask": 60,␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 			"local-address": {␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 				"address": "fd47:5ef4:3ce9::1",␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 				"address": "fdf5:bb2d:de26::1",␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 				"mask": 60␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 			}␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 		}␍␤
@@ -818,10 +770,10 @@ tests/test_lan.py::test_lan_wait_for_network
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 		␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	}␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < }␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < QCCCTXPQLN 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < EOGNQGZYKZ 0␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b'MARKER=\'QCCC\'\'TXPQLN\' run \'ubus call network.interface.lan statu\r\r\ns \'"\'"\'{}\'"\'"\… [0.561s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=['{', '\t"up": true,', '\t"pending": false,', '\t"available": true,', '\t"autostart": true,', '\t"dy… [0.579s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b'MARKER=\'EOGN\'\'QGZYKZ\' run \'ubus call network.interface.lan statu\r\r\ns \'"\'"\'{}\'"\'"\… [0.588s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=['{', '\t"up": true,', '\t"pending": false,', '\t"available": true,', '\t"autostart": true,', '\t"dy… [0.605s]
 [32mPASSED[0m[33m                                                                   [ 45%][0m
 tests/test_lan.py::test_lan_interface_address 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -829,21 +781,21 @@ tests/test_lan.py::test_lan_interface_address
 [32mINFO   [0m      StepLogger:  ↓ QEMUNetworkStrategy.transition() skipped=nothing to do
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
-[34mCONSOLE[0m SerialLogger.ma:  QemuDriver(main) > echo 'FWCQ''WMTHQY'␤
-[32mINFO   [0m      StepLogger:  → QEMUDriver.expect(pattern='FWCQWMTHQY\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < echo 'FWCQ''WMTHQY'␍␤
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < FWCQWMTHQY␍␤
+[34mCONSOLE[0m SerialLogger.ma:  QemuDriver(main) > echo 'KFBY''PCYCCW'␤
+[32mINFO   [0m      StepLogger:  → QEMUDriver.expect(pattern='KFBYPCYCCW\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < echo 'KFBY''PCYCCW'␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < KFBYPCYCCW␍␤
 [34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:  ← QEMUDriver.expect() result=(0, b"echo 'FWCQ''WMTHQY'\r\n", <re.Match object; span=(21, 49), match=b'FWCQWMTHQY\r\nroot@OpenWrt:… [0.065s]
-[34mCONSOLE[0m SerialLogger.ma:  QemuDriver(main) > MARKER='FVBY''LHFCXA' run 'ip -o addr show dev br-lan'␤
-[32mINFO   [0m      StepLogger:  → QEMUDriver.expect(pattern='FVBYLHFCXA(.*)FVBYLHFCXA\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < MARKER='FVBY''LHFCXA' run 'ip -o addr show dev br-lan'␍␤
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < FVBYLHFCXA4: br-lan    inet 192.168.1.1/24 brd 192.168.1.255 scope global br-lan\       valid_lft forever preferred_lft forever␍␤
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < 4: br-lan    inet6 fd47:5ef4:3ce9::1/60 scope global noprefixroute \       valid_lft forever preferred_lft forever␍␤
+[32mINFO   [0m      StepLogger:  ← QEMUDriver.expect() result=(0, b"echo 'KFBY''PCYCCW'\r\n", <re.Match object; span=(21, 49), match=b'KFBYPCYCCW\r\nroot@OpenWrt:… [0.018s]
+[34mCONSOLE[0m SerialLogger.ma:  QemuDriver(main) > MARKER='GHCB''UYKFEL' run 'ip -o addr show dev br-lan'␤
+[32mINFO   [0m      StepLogger:  → QEMUDriver.expect(pattern='GHCBUYKFEL(.*)GHCBUYKFEL\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < MARKER='GHCB''UYKFEL' run 'ip -o addr show dev br-lan'␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < GHCBUYKFEL4: br-lan    inet 192.168.1.1/24 brd 192.168.1.255 scope global br-lan\       valid_lft forever preferred_lft forever␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < 4: br-lan    inet6 fdf5:bb2d:de26::1/60 scope global noprefixroute \       valid_lft forever preferred_lft forever␍␤
 [34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < 4: br-lan    inet6 fe80::5054:ff:fe12:3456/64 scope link \       valid_lft forever preferred_lft forever␍␤
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < FVBYLHFCXA 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < GHCBUYKFEL 0␍␤
 [34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:  ← QEMUDriver.expect() result=(0, b"MARKER='FVBY''LHFCXA' run 'ip -o addr show dev br-lan'\r\n", <re.Match object; span=(56, 437),… [0.281s]
+[32mINFO   [0m      StepLogger:  ← QEMUDriver.expect() result=(0, b"MARKER='GHCB''UYKFEL' run 'ip -o addr show dev br-lan'\r\n", <re.Match object; span=(56, 437),… [0.302s]
 [32mPASSED[0m[33m                                                                   [ 48%][0m
 tests/test_lan.py::test_lan_interface_has_neighbor 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -852,27 +804,27 @@ tests/test_lan.py::test_lan_interface_has_neighbor
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='ping -c 3 ff02::1%br-lan') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'MLMS''MYVQGE'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='MLMSMYVQGE\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'MLMS''MYVQGE'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MLMSMYVQGE␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'FSKP''COSCOW'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='FSKPCOSCOW\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'FSKP''COSCOW'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < FSKPCOSCOW␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'MLMS''MYVQGE'\r\n", <re.Match object; span=(21, 49), match=b'MLMSMYVQGE\r\nroot@OpenWrt:… [0.015s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='BVEB''GWHZXQ' run 'ping -c 3 ff02::1%br-lan'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='BVEBGWHZXQ(.*)BVEBGWHZXQ\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='BVEB''GWHZXQ' run 'ping -c 3 ff02::1%br-lan'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < BVEBGWHZXQPING ff02::1%br-lan (ff02::1%4): 56 data bytes␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 64 bytes from fe80::5054:ff:fe12:3456: seq=0 ttl=64 time=19.838 ms␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 64 bytes from fe80::5054:ff:fe12:3456: seq=1 ttl=64 time=2.148 ms␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 64 bytes from fe80::5054:ff:fe12:3456: seq=2 ttl=64 time=2.069 ms␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'FSKP''COSCOW'\r\n", <re.Match object; span=(21, 49), match=b'FSKPCOSCOW\r\nroot@OpenWrt:… [0.053s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='JKWL''FMOOVT' run 'ping -c 3 ff02::1%br-lan'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='JKWLFMOOVT(.*)JKWLFMOOVT\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='JKWL''FMOOVT' run 'ping -c 3 ff02::1%br-lan'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < JKWLFMOOVTPING ff02::1%br-lan (ff02::1%4): 56 data bytes␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 64 bytes from fe80::5054:ff:fe12:3456: seq=0 ttl=64 time=42.749 ms␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 64 bytes from fe80::5054:ff:fe12:3456: seq=1 ttl=64 time=2.177 ms␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 64 bytes from fe80::5054:ff:fe12:3456: seq=2 ttl=64 time=2.152 ms␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < --- ff02::1%br-lan ping statistics ---␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 3 packets transmitted, 3 packets received, 0% packet loss␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < round-trip min/avg/max = 2.069/8.018/19.838 ms␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < BVEBGWHZXQ 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < round-trip min/avg/max = 2.152/15.692/42.749 ms␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < JKWLFMOOVT 0␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='BVEB''GWHZXQ' run 'ping -c 3 ff02::1%br-lan'\r\n", <re.Match object; span=(54, 493), m… [2.262s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['PING ff02::1%br-lan (ff02::1%4): 56 data bytes', '64 bytes from fe80::5054:ff:fe12:3456: seq=0 tt… [2.278s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"MARKER='JKWL''FMOOVT' run 'ping -c 3 ff02::1%br-lan'\r\n", <re.Match object; span=(54, 494), m… [2.289s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['PING ff02::1%br-lan (ff02::1%4): 56 data bytes', '64 bytes from fe80::5054:ff:fe12:3456: seq=0 tt… [2.343s]
 [32mPASSED[0m[33m                                                                   [ 51%][0m
 tests/test_network_security.py::test_ssh_supported_algorithms 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -889,7 +841,7 @@ tests/test_system_health.py::TestSystemHealth::test_memory_usage
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='free -m') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['              total        used        free      shared  buff/cache   available', 'Mem:         10… [0.194s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['              total        used        free      shared  buff/cache   available', 'Mem:         10… [0.220s]
 [32mPASSED[0m[33m                                                                   [ 62%][0m
 tests/test_system_health.py::TestSystemHealth::test_filesystem_usage 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -898,17 +850,17 @@ tests/test_system_health.py::TestSystemHealth::test_filesystem_usage
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='test -d /') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.154s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.137s]
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='df -h / | tail -1') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['tmpfs                    52.9M     17.5M     35.4M  33% /'] [0.228s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['tmpfs                    52.9M     17.5M     35.4M  33% /'] [0.195s]
 [32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='test -d /tmp') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.149s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.126s]
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='df -h /tmp | tail -1') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['tmpfs                    52.9M    168.0K     52.8M   0% /tmp'] [0.225s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['tmpfs                    52.9M    172.0K     52.8M   0% /tmp'] [0.211s]
 [32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='test -d /overlay') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.110s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 0) [0.147s]
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='df -h /overlay | tail -1') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['tmpfs                    52.9M     17.5M     35.4M  33% /'] [0.202s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['tmpfs                    52.9M     17.5M     35.4M  33% /'] [0.276s]
 [32mPASSED[0m[33m                                                                   [ 65%][0m
 tests/test_system_health.py::TestSystemHealth::test_system_uptime 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -917,7 +869,7 @@ tests/test_system_health.py::TestSystemHealth::test_system_uptime
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='cat /proc/uptime') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['54.19 4.54'] [0.235s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['51.59 4.54'] [0.208s]
 [32mPASSED[0m[33m                                                                   [ 68%][0m
 tests/test_system_health.py::TestSystemHealth::test_temperature_sensors 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -926,7 +878,7 @@ tests/test_system_health.py::TestSystemHealth::test_temperature_sensors
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run(cmd='ls /sys/class/thermal/thermal_zone*/temp 2>/dev/null') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 1) [0.287s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run() result=([], [], 1) [0.200s]
 [32mPASSED[0m[33m                                                                   [ 71%][0m
 tests/test_system_health.py::TestSystemHealth::test_process_count 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -935,7 +887,7 @@ tests/test_system_health.py::TestSystemHealth::test_process_count
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='ps | wc -l') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['80'] [0.733s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['74'] [0.437s]
 [32mPASSED[0m[33m                                                                   [ 74%][0m
 tests/test_system_health.py::TestSystemHealth::test_entropy_available 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -944,7 +896,7 @@ tests/test_system_health.py::TestSystemHealth::test_entropy_available
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='cat /proc/sys/kernel/random/entropy_avail') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['256'] [0.262s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['256'] [0.110s]
 [32mPASSED[0m[33m                                                                   [ 77%][0m
 tests/test_system_health.py::TestSystemHealth::test_open_file_descriptors 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -953,7 +905,7 @@ tests/test_system_health.py::TestSystemHealth::test_open_file_descriptors
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → SSHDriver.run_check(cmd='cat /proc/sys/fs/file-nr') 
-[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['384\t0\t8192'] [0.179s]
+[32mINFO   [0m      StepLogger:  ← SSHDriver.run_check() result=['320\t0\t8192'] [0.115s]
 [32mPASSED[0m[33m                                                                   [ 80%][0m
 tests/test_wan.py::test_wan_firewall_zone 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -962,22 +914,22 @@ tests/test_wan.py::test_wan_firewall_zone
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → ShellDriver.run(cmd='uci show firewall | grep "=zone" | while read zone; do section=${zone%%=zone}; name=$(uci get "${section}.name"); [ "$name" = "wan" ] && echo found && exit 0; done') 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'VVZF''EEETVX'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='VVZFEEETVX\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'VVZF''EEETVX'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < VVZFEEETVX␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'ZTOO''QSQCBQ'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='ZTOOQSQCBQ\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'ZTOO''QSQCBQ'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ZTOOQSQCBQ␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'VVZF''EEETVX'\r\n", <re.Match object; span=(21, 49), match=b'VVZFEEETVX\r\nroot@OpenWrt:… [0.026s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='NQEW''FHWJXK' run 'uci show firewall | grep "=zone" | while read zone; do section=${zone%%=zone}; name=$(uci get "${section}.name"); [ "$name" = "wan" ] && echo found && exit 0; done'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='NQEWFHWJXK(.*)NQEWFHWJXK\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='NQEW''FHWJXK' run 'uci show firewall | grep "=zone" | wh␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'ZTOO''QSQCBQ'\r\n", <re.Match object; span=(21, 49), match=b'ZTOOQSQCBQ\r\nroot@OpenWrt:… [0.011s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='XXTB''EATOOX' run 'uci show firewall | grep "=zone" | while read zone; do section=${zone%%=zone}; name=$(uci get "${section}.name"); [ "$name" = "wan" ] && echo found && exit 0; done'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='XXTBEATOOX(.*)XXTBEATOOX\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='XXTB''EATOOX' run 'uci show firewall | grep "=zone" | wh␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < ile read zone; do section=${zone%%=zone}; name=$(uci get "${section}.name"); [ "␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < $name" = "wan" ] && echo found && exit 0; done'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < NQEWFHWJXKfound␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < NQEWFHWJXK 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < XXTBEATOOXfound␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < XXTBEATOOX 0␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b'MARKER=\'NQEW\'\'FHWJXK\' run \'uci show firewall | grep "=zone" | wh\r\r\nile read zone; do s… [0.701s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['found'], [], 0) [0.729s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b'MARKER=\'XXTB\'\'EATOOX\' run \'uci show firewall | grep "=zone" | wh\r\r\nile read zone; do s… [0.603s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run() result=(['found'], [], 0) [0.616s]
 [32mPASSED[0m[33m                                                                   [ 82%][0m
 tests/test_wan.py::test_wan_interface_device 
 [1m-------------------------------- live log setup --------------------------------[0m
@@ -986,17 +938,17 @@ tests/test_wan.py::test_wan_interface_device
 [32mINFO   [0m      StepLogger:  ← QEMUNetworkStrategy.transition() 
 [1m-------------------------------- live log call ---------------------------------[0m
 [32mINFO   [0m      StepLogger:  → ShellDriver.run_check(cmd="ubus call network.interface.wan status '{}'") 
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'BWVZ''KFNFZV'␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='BWVZKFNFZV\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'BWVZ''KFNFZV'␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < BWVZKFNFZV␍␤
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > echo 'NKTA''QESTJC'␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='NKTAQESTJC\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < echo 'NKTA''QESTJC'␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < NKTAQESTJC␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'BWVZ''KFNFZV'\r\n", <re.Match object; span=(21, 49), match=b'BWVZKFNFZV\r\nroot@OpenWrt:… [0.013s]
-[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='KGCN''KQVVKZ' run 'ubus call network.interface.wan status '"'"'{}'"'"''␤
-[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='KGCNKQVVKZ(.*)KGCNKQVVKZ\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='KGCN''KQVVKZ' run 'ubus call network.interface.wan statu␍␍␤
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b"echo 'NKTA''QESTJC'\r\n", <re.Match object; span=(21, 49), match=b'NKTAQESTJC\r\nroot@OpenWrt:… [0.016s]
+[34mCONSOLE[0m SerialLogger.ma:   QemuDriver(main) > MARKER='JMGO''YBHBTN' run 'ubus call network.interface.wan status '"'"'{}'"'"''␤
+[32mINFO   [0m      StepLogger:   → QEMUDriver.expect(pattern='JMGOYBHBTN(.*)JMGOYBHBTN\\s+(\\d+)\\s+root@[\\w()]+:[^ ]+ ') 
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < MARKER='JMGO''YBHBTN' run 'ubus call network.interface.wan statu␍␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < s '"'"'{}'"'"''␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < KGCNKQVVKZ{␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < JMGOYBHBTN{␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"up": true,␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"pending": false,␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	"available": true,␍␤
@@ -1071,10 +1023,10 @@ tests/test_wan.py::test_wan_interface_device
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 		"leasetime": 86400␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < 	}␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < }␍␤
-[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < KGCNKQVVKZ 0␍␤
+[34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < JMGOYBHBTN 0␍␤
 [34mCONSOLE[0m SerialLogger.ma:    QemuDriver(main) < root@OpenWrt:~# 
-[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b'MARKER=\'KGCN\'\'KQVVKZ\' run \'ubus call network.interface.wan statu\r\r\ns \'"\'"\'{}\'"\'"\… [0.493s]
-[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=['{', '\t"up": true,', '\t"pending": false,', '\t"available": true,', '\t"autostart": true,', '\t"dy… [0.507s]
+[32mINFO   [0m      StepLogger:   ← QEMUDriver.expect() result=(0, b'MARKER=\'JMGO\'\'YBHBTN\' run \'ubus call network.interface.wan statu\r\r\ns \'"\'"\'{}\'"\'"\… [0.373s]
+[32mINFO   [0m      StepLogger:  ← ShellDriver.run_check() result=['{', '\t"up": true,', '\t"pending": false,', '\t"available": true,', '\t"autostart": true,', '\t"dy… [0.390s]
 [32mPASSED[0m[33m                                                                   [ 85%][0m
 tests/test_wan.py::test_https_download [33mSKIPPED[0m (unsupported feature(...)[33m [ 88%][0m
 tests/test_wifi.py::test_wifi_wpa3 [33mSKIPPED[0m (unsupported feature(s): ...)[33m [ 91%][0m
@@ -1084,7 +1036,7 @@ tests/test_wifi.py::test_wifi_hwsim_sae_mixed [33mSKIPPED[0m (unsupported f...
 [1m------------------------------ live log teardown -------------------------------[0m
 [32mINFO   [0m      StepLogger:  → QEMUDriver.monitor_command(command='quit' arguments={}) 
 
-[32mINFO   [0m      StepLogger:  ← QEMUDriver.monitor_command() result={} [0.001s]
+[32mINFO   [0m      StepLogger:  ← QEMUDriver.monitor_command() result={} 
 
 
 [33m=============================== warnings summary ===============================[0m
@@ -1094,4 +1046,4 @@ tests/test_base.py::test_firmware_version
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 - generated xml file: /__w/openwrt-tests/openwrt-tests/armsr-armv8-25.12/report.xml -
-[33m================== [32m23 passed[0m, [33m[1m12 skipped[0m, [33m[1m1 warning[0m[33m in 57.71s[0m[33m ==================[0m
+[33m================== [32m23 passed[0m, [33m[1m12 skipped[0m, [33m[1m1 warning[0m[33m in 54.24s[0m[33m ==================[0m
