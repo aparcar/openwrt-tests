@@ -44,7 +44,7 @@ def check_download(
 
 @pytest.mark.lg_feature("wan_port")
 def test_wan_firewall_zone(shell_command):
-    stdout, _, exitcode = shell_command.run(
+    stdout, _, _ = shell_command.run(
         'uci show firewall | grep "=zone" | while read zone; do '
         "section=${zone%%=zone}; "
         'name=$(uci get "${section}.name"); '

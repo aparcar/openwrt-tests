@@ -24,10 +24,12 @@ def test_firmware_version(shell_command, record_property):
 
 
 def test_dropbear_startup(shell_command):
-    for i in range(120):
-        if shell_command.run("ls /etc/dropbear/dropbear_rsa_host_key")[2] == 0:
-            if shell_command.run("netstat -tlpn | grep 0.0.0.0:22")[2] == 0:
-                return
+    for _ in range(120):
+        if (
+            shell_command.run("ls /etc/dropbear/dropbear_rsa_host_key")[2] == 0
+            and shell_command.run("netstat -tlpn | grep 0.0.0.0:22")[2] == 0
+        ):
+            return
         time.sleep(1)
 
     assert False, "Dropbear did not start up within 120 seconds"
@@ -72,8 +74,8 @@ def test_sysupgrade_backup(ssh_command):
         ssh_command.run_check("sysupgrade -b /tmp/backup.tar.gz")
         ssh_command.get("/tmp/backup.tar.gz")
 
-        backup = tarfile.open("backup.tar.gz", "r")
-        assert "etc/config/dropbear" in backup.getnames()
+        with tarfile.open("backup.tar.gz", "r") as backup:
+            assert "etc/config/dropbear" in backup.getnames()
     finally:
         ssh_command.run("rm -rf /tmp/backup.tar.gz")
 
@@ -84,8 +86,8 @@ def test_sysupgrade_backup_u(ssh_command):
         ssh_command.run_check("sysupgrade -u -b /tmp/backup.tar.gz")
         ssh_command.get("/tmp/backup.tar.gz")
 
-        backup = tarfile.open("backup.tar.gz", "r")
-        assert "etc/config/dropbear" not in backup.getnames()
+        with tarfile.open("backup.tar.gz", "r") as backup:
+            assert "etc/config/dropbear" not in backup.getnames()
     finally:
         ssh_command.run("rm -rf /tmp/backup.tar.gz")
 

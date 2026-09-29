@@ -26,6 +26,9 @@ RELEASE="${RELEASE:-}"
 
 die() { echo "healthcheck: $*" >&2; exit 1; }
 
+# Print a variable and its current value (empty if unset).
+show_env() { echo "healthcheck: env $1=${!1-}"; }
+
 [ "$#" -eq 2 ] || die "usage: $0 <lab> <device>"
 
 LAB="$1"
@@ -83,6 +86,7 @@ if [ -z "${LG_IMAGE:-}" ]; then
     # regressed on newer OpenWrt); an explicit $RELEASE env still overrides it.
     hc_version=$(yq -r '.openwrt.healthcheck_version // ""' "$TARGET_FILE")
     release="${RELEASE:-${hc_version:-$DEFAULT_RELEASE}}"
+    echo "healthcheck: release=$release"
 
     upstream_url="https://downloads.openwrt.org/releases/${release}/targets"
     profiles_json=$(curl -sf "$upstream_url/${target/-//}/profiles.json") \
@@ -121,13 +125,16 @@ if [ -z "${LG_IMAGE:-}" ]; then
     export LG_IMAGE="$PWD/$final_path"
 fi
 
-echo "healthcheck: lab=$LAB device=$DEVICE image=$LG_IMAGE"
+show_env LG_PROXY
+show_env LG_IMAGE
 
 # Reserve a free place for this device (no LG_ENV yet — see note above), then
 # always release on exit once we know the reservation token.
 eval "$(uv run labgrid-client reserve --wait --shell "device=$DEVICE")"
 [ -n "${LG_TOKEN:-}" ] || die "reservation failed: no LG_TOKEN returned"
 export LG_PLACE="+"
+show_env LG_TOKEN
+show_env LG_PLACE
 
 cleanup() {
     uv run labgrid-client power off || true
@@ -141,6 +148,7 @@ uv run labgrid-client -p "+$LG_TOKEN" lock
 
 # Only now that LG_PLACE is set is it safe to load the target YAML.
 export LG_ENV="$TARGET_FILE"
+show_env LG_ENV
 
 uv run pytest \
     tests/test_base.py::test_shell \

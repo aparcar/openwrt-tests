@@ -55,19 +55,20 @@ def _resolve_target_from_place():
             if (repo_root / target_file).exists():
                 return str(repo_root / target_file)
 
-        for lab_name, lab_config in labnet.get("labs", {}).items():
+        for lab_config in labnet.get("labs", {}).values():
             device_instances = lab_config.get("device_instances", {})
             for base_device, instances in device_instances.items():
-                if device_instance in instances:
-                    if base_device in labnet.get("devices", {}):
-                        device_config = labnet["devices"][base_device]
-                        target_name = device_config.get("target_file", base_device)
-                        target_file = f"targets/{target_name}.yaml"
-                        if (repo_root / target_file).exists():
-                            return str(repo_root / target_file)
+                if device_instance in instances and base_device in labnet.get(
+                    "devices", {}
+                ):
+                    device_config = labnet["devices"][base_device]
+                    target_name = device_config.get("target_file", base_device)
+                    target_file = f"targets/{target_name}.yaml"
+                    if (repo_root / target_file).exists():
+                        return str(repo_root / target_file)
 
     except Exception:
-        pass
+        logger.exception("Failed to resolve LG_ENV from LG_PLACE")
 
     return None
 
@@ -89,7 +90,9 @@ def pytest_addoption(parser):
     parser.addoption("--firmware", action="store", default="firmware.bin")
 
 
-def ubus_call(command, namespace, method, params={}):
+def ubus_call(command, namespace, method, params=None):
+    if params is None:
+        params = {}
     output = command.run_check(f"ubus call {namespace} {method} '{json.dumps(params)}'")
 
     try:

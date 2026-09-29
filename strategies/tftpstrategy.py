@@ -1,5 +1,6 @@
 import enum
 import ipaddress
+from typing import ClassVar
 from urllib.parse import urlparse
 
 import attr
@@ -20,7 +21,7 @@ class Status(enum.Enum):
 class UBootTFTPStrategy(Strategy):
     """UbootStrategy - Strategy to switch to uboot or shell"""
 
-    bindings = {
+    bindings: ClassVar[dict] = {
         "power": "PowerProtocol",
         "console": "ConsoleProtocol",
         "uboot": "LinuxBootProtocol",
@@ -101,5 +102,5 @@ class UBootTFTPStrategy(Strategy):
         elif status == Status.shell:
             self.target.activate(self.shell)
         else:
-            raise StrategyError("can not force state {}".format(status))
+            raise StrategyError(f"can not force state {status}")
         self.status = status

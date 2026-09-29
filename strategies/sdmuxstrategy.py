@@ -1,4 +1,5 @@
 import enum
+from typing import ClassVar
 
 import attr
 from labgrid.driver import USBSDMuxDriver, USBStorageDriver
@@ -17,7 +18,7 @@ class Status(enum.Enum):
 class SDMuxStrategy(Strategy):
     """UbootStrategy - Strategy to switch to uboot or shell"""
 
-    bindings = {
+    bindings: ClassVar[dict] = {
         "power": "PowerProtocol",
         "console": "ConsoleProtocol",
         "shell": "ShellDriver",

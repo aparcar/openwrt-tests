@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import enum
+from typing import ClassVar
 
 import attr
 from labgrid import step, target_factory
@@ -29,7 +30,7 @@ class Status(enum.Enum):
 @target_factory.reg_driver
 @attr.s(eq=False)
 class QEMUNetworkStrategy(Strategy):
-    bindings = {
+    bindings: ClassVar[dict] = {
         "qemu": "QEMUDriver",
         "shell": "ShellDriver",
         "ssh": "SSHDriver",
