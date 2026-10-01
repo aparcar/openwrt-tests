@@ -1,0 +1,24 @@
+#!/bin/sh /etc/rc.common
+
+START=95
+STOP=05
+USE_PROCD=1
+
+start_service() {
+	. /etc/labgrid/lab.conf
+
+	mkdir -p /var/cache/labgrid/labgrid-dev
+	chown labgrid-dev:labgrid-dev /var/cache/labgrid/labgrid-dev
+
+	procd_open_instance
+	procd_set_param command /usr/bin/labgrid-exporter \
+		--coordinator 127.0.0.1:20408 \
+		--name "$LAB" --hostname "$LAB" /etc/labgrid/exporter.yaml
+	procd_set_param env PYTHONUNBUFFERED=1
+	# runs as root: serial ports, GPIOs and ser2net need no udev permission rules
+	procd_set_param respawn 3600 30 0
+	procd_set_param file /etc/labgrid/exporter.yaml
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}

@@ -1,0 +1,122 @@
+#!/bin/sh
+# Create stable names for USB serial adapters, OpenWrt has no udevd.
+#
+#   /dev/labgrid/by-path/<ID_PATH>-port<N>        (used by generated exporter.yaml)
+#   /dev/labgrid/by-serial/<SERIAL>-if<NN>-port<N>
+#   /dev/serial/by-path/<ID_PATH>[-port<N>]       (udev compatible)
+#   /dev/serial/by-id/usb-<VENDOR>_<MODEL>_<SERIAL>-if<NN>[-port<N>]
+#
+# <ID_PATH> follows the algorithm of udev's path_id builtin, so existing
+# ID_PATH values from exporter.yaml files keep working.
+
+case "$DEVNAME" in
+	ttyUSB*|ttyACM*) ;;
+	*) exit 0 ;;
+esac
+
+remove_links() {
+	for link in /dev/labgrid/by-path/* /dev/labgrid/by-serial/* \
+		/dev/serial/by-path/* /dev/serial/by-id/*; do
+		[ -L "$link" ] || continue
+		[ "$(readlink "$link")" = "/dev/$DEVNAME" ] && rm -f "$link"
+	done
+}
+
+# replace characters udev considers unsafe in by-id names
+sanitize() {
+	printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+		-e 's/[[:space:]]\+/_/g' -e 's/[^0-9A-Za-z#+.:=@_-]/_/g'
+}
+
+subsystem() {
+	[ -L "$1/subsystem" ] && basename "$(readlink "$1/subsystem")"
+}
+
+devtype() {
+	[ -f "$1/uevent" ] && sed -n 's/^DEVTYPE=//p' "$1/uevent"
+}
+
+# walk up while the parent is in the same subsystem
+skip_subsystem() {
+	local dev="$1" sub="$2"
+	while [ "$(subsystem "$(dirname "$dev")")" = "$sub" ]; do
+		dev="$(dirname "$dev")"
+	done
+	echo "$dev"
+}
+
+id_path() {
+	local dev="$1" path="" name
+
+	while [ "$dev" != "/sys/devices" ] && [ "$dev" != "/sys" ] && [ "$dev" != "/" ]; do
+		name="$(basename "$dev")"
+		case "$(subsystem "$dev")" in
+		usb)
+			case "$(devtype "$dev")" in
+			usb_interface|usb_device)
+				# 1-1.2:1.0 -> usb-0:1.2:1.0
+				path="usb-0:${name#*-}${path:+-$path}"
+				dev="$(skip_subsystem "$dev" usb)"
+				;;
+			esac
+			;;
+		pci)
+			path="pci-$name${path:+-$path}"
+			dev="$(skip_subsystem "$dev" pci)"
+			;;
+		platform)
+			path="platform-$name${path:+-$path}"
+			dev="$(skip_subsystem "$dev" platform)"
+			;;
+		esac
+		dev="$(dirname "$dev")"
+	done
+
+	echo "$path"
+}
+
+add_link() {
+	mkdir -p "$(dirname "$1")"
+	ln -sfn "/dev/$DEVNAME" "$1"
+}
+
+add_links() {
+	local sys port intf usbdev path serial ifnum vendor model
+
+	sys="$(readlink -f "/sys$DEVPATH")"
+	# /sys/.../<intf>/ttyUSB0/tty/ttyUSB0 or /sys/.../<intf>/tty/ttyACM0
+	intf="$sys"
+	while [ "$intf" != "/sys" ] && [ "$(devtype "$intf")" != "usb_interface" ]; do
+		intf="$(dirname "$intf")"
+	done
+	[ "$intf" = "/sys" ] && return 0
+	usbdev="$(dirname "$intf")"
+
+	port=""
+	for p in "$sys/device/port_number" "$(dirname "$(dirname "$sys")")/port_number"; do
+		[ -f "$p" ] && port="$(cat "$p")" && break
+	done
+
+	path="$(id_path "$intf")"
+	ifnum="$(cat "$intf/bInterfaceNumber" 2>/dev/null)"
+	serial="$(sanitize "$(cat "$usbdev/serial" 2>/dev/null)")"
+	vendor="$(sanitize "$(cat "$usbdev/manufacturer" 2>/dev/null || cat "$usbdev/idVendor")")"
+	model="$(sanitize "$(cat "$usbdev/product" 2>/dev/null || cat "$usbdev/idProduct")")"
+
+	if [ -n "$path" ]; then
+		add_link "/dev/labgrid/by-path/$path-port${port:-0}"
+		add_link "/dev/serial/by-path/$path${port:+-port$port}"
+	fi
+
+	if [ -n "$serial" ]; then
+		add_link "/dev/labgrid/by-serial/$serial-if${ifnum:-00}-port${port:-0}"
+		add_link "/dev/serial/by-id/usb-${vendor}_${model}_$serial-if${ifnum:-00}${port:+-port$port}"
+	fi
+
+	logger -t labgrid-serial "$DEVNAME: ${path:-?} port ${port:-0} serial ${serial:-?}"
+}
+
+case "$ACTION" in
+	add) remove_links; add_links ;;
+	remove) remove_links ;;
+esac

@@ -1,5 +1,6 @@
 
 curdir:=tests
+LAB_IMAGE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))lab-image
 
 OPENWRT_CI_TESTS = \
 	$(curdir)/x86-64 \
@@ -67,3 +68,10 @@ $(curdir)/malta-be:
 		$(pytest) \
 		--lg-env $(TESTSDIR)/targets/qemu_malta-be.yaml \
 		--firmware $(FIRMWARE)
+
+# OpenWrt image for a lab host running coordinator and exporter, e.g.
+#   make lab-image LAB=labgrid-aparcar PLATFORM=rpi-5
+lab-image:
+	$(MAKE) -C $(LAB_IMAGE_DIR) image
+
+.PHONY: lab-image

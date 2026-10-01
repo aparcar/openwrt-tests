@@ -1,0 +1,4 @@
+#!/bin/sh
+# labgrid and its Python dependencies are bundled in /usr/lib/labgrid
+export PYTHONPATH=/usr/lib/labgrid${PYTHONPATH:+:$PYTHONPATH}
+exec python3 -c 'import sys; from labgrid.remote.client import main; sys.argv[0] = "labgrid-client"; sys.exit(main())' "$@"

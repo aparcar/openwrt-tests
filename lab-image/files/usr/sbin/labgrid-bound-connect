@@ -1,0 +1,39 @@
+#!/bin/sh
+# Connect stdio to a TCP port reachable via a specific interface.
+# labgrid runs this via "sudo --non-interactive" for NetworkService
+# addresses like 192.168.1.1%vlan101. Shell port of ansible/files/labgrid-bound-connect.
+
+die() {
+	echo "ERROR: $*" >&2
+	exit 1
+}
+
+[ "$1" = "-d" ] || [ "$1" = "--debug" ] && shift
+
+[ $# -eq 3 ] || die "usage: $0 [-d] interface address port"
+ifname="$1"
+address="$2"
+port="$3"
+
+[ -n "$ifname" ] || die "Empty interface name."
+case "$ifname" in
+	*/*|*[[:space:]]*) die "Interface name '$ifname' contains invalid characters." ;;
+esac
+[ "${#ifname}" -le 16 ] || die "Interface name '$ifname' is too long."
+
+case "$port" in
+	''|*[!0-9]*) die "Invalid port '$port'." ;;
+esac
+[ "$port" -gt 0 ] && [ "$port" -lt 65535 ] || die "Invalid port '$port'."
+
+case "$address" in
+	''|*[!0-9a-fA-F:.]*) die "Invalid address '$address'." ;;
+	*:*) target="TCP6:[$address]:$port" ;;
+	*.*.*.*) target="TCP4:$address:$port" ;;
+	*) die "Invalid address '$address'." ;;
+esac
+
+# Delete the IP lookup cache for the address in case it is stale
+ip neigh del "$address" dev "$ifname" >/dev/null 2>&1
+
+exec socat STDIO "$target,so-bindtodevice=$ifname,connect-timeout=15,keepalive,keepcnt=3,keepidle=15,keepintvl=15,nodelay"

@@ -1,0 +1,120 @@
+#!/bin/sh
+# Minimal replacement for pdudaemon's HTTP listener, served by uhttpd on
+# localhost:16421 (see /etc/config/uhttpd). labgrid's PDUDaemonDriver calls
+#
+#   GET /power/control/{on,off,reboot}?hostname=<pdu>&port=<n>[&delay=<s>]
+#
+# PDUs are read from /etc/labgrid/pdudaemon.conf, the same JSON as before.
+# Supported drivers: ubus, tasmota, netio4, localcmdline.
+
+CONF=/etc/labgrid/pdudaemon.conf
+
+reply() {
+	printf 'Status: %s\r\nContent-Type: text/plain\r\n\r\n%s\n' "$1" "$2"
+	exit 0
+}
+
+param() {
+	printf '%s' "$QUERY_STRING" | tr '&' '\n' | sed -n "s/^$1=//p" | head -n1
+}
+
+pdu_get() {
+	jsonfilter -i "$CONF" -e "@.pdus['$PDU'].$1"
+}
+
+http_get() {
+	uclient-fetch -q -T 10 -O - "$1"
+}
+
+do_ubus() {
+	local enable=false
+	[ "$1" = on ] && enable=true
+	uclient-fetch -q -T 10 -O - --post-data \
+		"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"call\",\"params\":[\"00000000000000000000000000000000\",\"poe\",\"manage\",{\"port\":\"lan$PORT\",\"enable\":$enable}]}" \
+		"http://$PDU/ubus" | jsonfilter -e '@.result[0]' | grep -qx 0
+}
+
+do_tasmota() {
+	local host user pass state auth=""
+	host="$(pdu_get ip)"
+	user="$(pdu_get username)"
+	pass="$(pdu_get password)"
+	[ -n "$user" ] && [ -n "$pass" ] && auth="&user=$user&password=$pass"
+	state="$(http_get "http://${host:-$PDU}/cm?cmnd=Power$PORT%20$1$auth" | \
+		jsonfilter -e "@.POWER$PORT")"
+	[ "$state" = "$(echo "$1" | tr a-z A-Z)" ]
+}
+
+do_netio4() {
+	local user pass tport state=0
+	user="$(pdu_get username)"
+	pass="$(pdu_get password)"
+	tport="$(pdu_get telnetport)"
+	[ "$1" = on ] && state=1
+	{
+		sleep 1
+		printf 'login %s %s\r\n' "${user:-admin}" "${pass:-admin}"
+		sleep 1
+		printf 'port %s %s\r\n' "$PORT" "$state"
+		sleep 1
+		printf 'quit\r\n'
+		sleep 1
+	} | nc "$PDU" "${tport:-1234}" | grep -c '^250 OK' | grep -qx 2
+}
+
+do_localcmdline() {
+	local cmd out ret
+	cmd="$(pdu_get "cmd_$1")"
+	[ -n "$cmd" ] || return 0
+	# keep the command's output out of the HTTP response
+	# shellcheck disable=SC2059
+	out="$(sh -c "$(printf "$cmd" "$PORT")" 2>&1)"
+	ret=$?
+	[ -n "$out" ] && logger -t pdu "$out"
+	return $ret
+}
+
+switch() {
+	"do_$DRIVER" "$1"
+}
+
+ACTION="${PATH_INFO#/}"
+PDU="$(param hostname)"
+PORT="$(param port)"
+DELAY="$(param delay)"
+
+case "$ACTION" in
+	on|off|reboot) ;;
+	*) reply "404 Not Found" "unknown action '$ACTION'" ;;
+esac
+
+case "$PDU" in
+	''|*[!0-9A-Za-z._-]*) reply "400 Bad Request" "invalid hostname '$PDU'" ;;
+esac
+case "$PORT" in
+	''|*[!0-9A-Za-z._-]*) reply "400 Bad Request" "invalid port '$PORT'" ;;
+esac
+case "$DELAY" in
+	''|*[!0-9]*) DELAY=5 ;;
+esac
+
+DRIVER="$(pdu_get driver)"
+case "$DRIVER" in
+	ubus|tasmota|netio4|localcmdline) ;;
+	'') reply "404 Not Found" "unknown PDU '$PDU'" ;;
+	*) reply "500 Internal Server Error" "unsupported driver '$DRIVER'" ;;
+esac
+
+# serialize access per PDU like pdudaemon does
+LOCK="/var/lock/pdu-$PDU.lock"
+lock "$LOCK"
+case "$ACTION" in
+	on|off) switch "$ACTION" ;;
+	reboot) switch off && sleep "$DELAY" && switch on ;;
+esac
+ret=$?
+lock -u "$LOCK"
+
+logger -t pdu "$PDU port $PORT $ACTION ($DRIVER): $([ $ret -eq 0 ] && echo ok || echo failed)"
+[ $ret -eq 0 ] || reply "500 Internal Server Error" "$ACTION failed"
+reply "200 OK" "ok"
