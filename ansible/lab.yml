@@ -375,13 +375,15 @@
       tags:
         - udev
 
+    # WCH retired ch348ser_linux; CH348 is now supported by the ch9344 driver,
+    # which creates /dev/ttyCH9344USBx nodes.
     - name: Build and install CH348 USB-octal-serial kernel module
       when: ch348_module_enabled | default(false) | bool
       vars:
-        ch348_module_repo: "{{ ch348_module_repo_url | default('https://github.com/WCHSoftGroup/ch348ser_linux.git') }}"
+        ch348_module_repo: "{{ ch348_module_repo_url | default('https://github.com/WCHSoftGroup/ch9344ser_linux.git') }}"
         ch348_module_version: "{{ ch348_module_ref | default('main') }}"
-        ch348_source_dir: /usr/src/ch348
-        ch348_module_path: "/lib/modules/{{ ansible_kernel }}/kernel/drivers/usb/serial/ch348.ko"
+        ch348_source_dir: /usr/src/ch9344ser_linux
+        ch348_module_path: "/lib/modules/{{ ansible_kernel }}/kernel/drivers/usb/serial/ch9344.ko"
       tags:
         - ch348
       block:
@@ -392,7 +394,22 @@
               - "linux-headers-{{ ansible_kernel }}"
             state: present
 
-        - name: Clone CH348 driver source
+        - name: Unload legacy ch348 module
+          community.general.modprobe:
+            name: ch348
+            state: absent
+
+        - name: Remove legacy ch348 module, autoload config and source
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "/lib/modules/{{ ansible_kernel }}/kernel/drivers/usb/serial/ch348.ko"
+            - /etc/modules-load.d/ch348.conf
+            - /usr/src/ch348
+          register: ch348_legacy_removed
+
+        - name: Clone CH9344/CH348 driver source
           ansible.builtin.git:
             repo: "{{ ch348_module_repo }}"
             dest: "{{ ch348_source_dir }}"
@@ -400,22 +417,22 @@
             update: false
           register: ch348_clone
 
-        - name: Check whether ch348.ko is already installed
+        - name: Check whether ch9344.ko is already installed
           ansible.builtin.stat:
             path: "{{ ch348_module_path }}"
           register: ch348_installed
 
-        - name: Build CH348 kernel module
+        - name: Build ch9344 kernel module
           ansible.builtin.command:
             cmd: make
-            chdir: "{{ ch348_source_dir }}"
+            chdir: "{{ ch348_source_dir }}/driver"
           register: ch348_build
           when: ch348_clone is changed or not ch348_installed.stat.exists
           changed_when: ch348_build.rc == 0
 
-        - name: Install ch348.ko into kernel modules tree
+        - name: Install ch9344.ko into kernel modules tree
           ansible.builtin.copy:
-            src: "{{ ch348_source_dir }}/ch348.ko"
+            src: "{{ ch348_source_dir }}/driver/ch9344.ko"
             dest: "{{ ch348_module_path }}"
             remote_src: true
             mode: "0644"
@@ -424,17 +441,17 @@
 
         - name: Refresh module dependencies
           ansible.builtin.command: depmod -a
-          when: ch348_install is changed
+          when: ch348_install is changed or ch348_legacy_removed is changed
 
-        - name: Autoload ch348 at boot
+        - name: Autoload ch9344 at boot
           ansible.builtin.copy:
-            content: "ch348\n"
-            dest: /etc/modules-load.d/ch348.conf
+            content: "ch9344\n"
+            dest: /etc/modules-load.d/ch9344.conf
             mode: "0644"
 
-        - name: Load ch348 module now
+        - name: Load ch9344 module now
           community.general.modprobe:
-            name: ch348
+            name: ch9344
             state: present
 
   handlers:
