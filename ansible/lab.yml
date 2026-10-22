@@ -34,17 +34,22 @@
         comment: "{{ item }}"
       loop: "{{ ((labnet.labs[inventory_hostname].maintainers | default([])) + (labnet.labs[inventory_hostname].access | default([]))) | unique | list }}"
 
-    - name: Set /etc/hosts
-      lineinfile:
-        path: /etc/hosts
-        regexp: "^127.0.1.1"
-        line: "127.0.1.1 {{ inventory_hostname }}"
-        state: present
-
-    - name: Add public SSH key of coordinator
-      authorized_key:
-        user: "labgrid-dev"
-        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP0ZVlD9TmfAXL53Vq7V9WKE3KPomOa1jINyflrPWAlJ"
+    # sshd uses the first value it sees, so the 00- prefix wins over other
+    # drop-ins (e.g. cloud-init's 50-cloud-init.conf enabling passwords).
+    - name: Allow only key-based SSH logins
+      copy:
+        content: |
+          PubkeyAuthentication yes
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PermitRootLogin prohibit-password
+        dest: /etc/ssh/sshd_config.d/00-key-only.conf
+        owner: root
+        group: root
+        mode: "0644"
+        validate: /usr/sbin/sshd -t -f %s
+      notify:
+        - Reload sshd
 
     - name: Generate SSH key pair for labgrid
       community.crypto.openssh_keypair:
@@ -478,6 +483,11 @@
         daemon_reload: yes
         name: dnsmasq
         state: restarted
+
+    - name: Reload sshd
+      systemd:
+        name: ssh
+        state: reloaded
 
     - name: Reload udev rules
       command: udevadm control --reload-rules
