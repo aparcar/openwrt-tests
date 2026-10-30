@@ -1,0 +1,51 @@
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.15.2, pytest-9.2.0, pluggy-1.7.0 -- /home/runner/work/openwrt-tests/openwrt-tests/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/runner/work/openwrt-tests/openwrt-tests
+configfile: pyproject.toml
+plugins: check-3.0.3, harvest-1.10.5, labgrid-25.1.dev573
+[1mcollecting ... [0mcollected 35 items
+
+tests/test_apk.py::TestApk::test_apk_procd_installed 
+[1m-------------------------------- live log setup --------------------------------[0m
+[32mINFO   [0m SSHConnection(h: Created new SSH connection to labgrid-fcefyn
+[33mSKIPPED[0m (LG_FEATURE_APK not defined)[33m                                     [  2%][0m
+tests/test_apk.py::TestApk::test_apk_add_ucert [33mSKIPPED[0m (LG_FEATURE_O...)[33m [  5%][0m
+tests/test_apk.py::TestApk::test_apk_audit [33mSKIPPED[0m (LG_FEATURE_APK n...)[33m [  8%][0m
+tests/test_base.py::test_shell 
+[1m-------------------------------- live log setup --------------------------------[0m
+[31m[1mERROR  [0m        conftest: Failed to transition to state shell
+Traceback (most recent call last):
+  File "/home/runner/work/openwrt-tests/openwrt-tests/tests/conftest.py", line 114, in shell_command
+    strategy.transition("shell")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/targets/../strategies/tftpstrategy.py", line 86, in transition
+    self.transition(Status.uboot)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/targets/../strategies/tftpstrategy.py", line 50, in transition
+    self.transition(Status.off)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/targets/../strategies/tftpstrategy.py", line 47, in transition
+    self.target.activate(self.power)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.15/site-packages/labgrid/target.py", line 463, in activate
+    self.await_resources(resources)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.15/site-packages/labgrid/target.py", line 75, in await_resources
+    self.update_resources()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.15/site-packages/labgrid/target.py", line 54, in update_resources
+    resource.poll()
+    ~~~~~~~~~~~~~^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.15/site-packages/labgrid/resource/common.py", line 160, in poll
+    self.manager.poll()
+    ~~~~~~~~~~~~~~~~~^^
+  File "/home/runner/work/openwrt-tests/openwrt-tests/.venv/lib/python3.15/site-packages/labgrid/resource/remote.py", line 121, in poll
+    attrib = getattr(fields, k)
+AttributeError: 'RemoteTFTPProviderAttributes' object has no attribute 'external_ip'. Did you mean '.external' instead of '.external_ip'?
+[1m---------------------------- live log sessionfinish ----------------------------[0m
+[32mINFO   [0m SSHConnection(h: Closing SSH connection to labgrid-fcefyn
+
+
+[33m======================== [33m[1m3 skipped[0m, [33m[1m6 warnings[0m[33m in 6.60s[0m[33m ========================[0m
+!!!!!!!!!! _pytest.outcomes.Exit: Failed to transition to state shell !!!!!!!!!!
