@@ -187,6 +187,8 @@
           ansible.builtin.template:
             src: files/exporter/pdudaemon.service
             dest: /etc/systemd/system/pdudaemon.service
+          notify:
+            - Restart pdudaemon
 
         - name: Stat host specific pdudaemon configuration
           ansible.builtin.stat:
@@ -210,6 +212,14 @@
           notify:
             - Restart pdudaemon
           when: not (host_specific_pdudaemon_conf.stat.exists | default(false))
+
+        - name: Deploy Raspberry Pi GPIO port control script
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/../scripts/raspberry_relay_control.py"
+            dest: /usr/local/bin/raspberry_relay_control.py
+            mode: "0755"
+          notify:
+            - Restart pdudaemon
 
         - name: Start and enable pdudaemon
           ansible.builtin.systemd_service:
