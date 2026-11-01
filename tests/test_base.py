@@ -98,7 +98,7 @@ def test_kernel_errors(ssh_command):
     error_patterns = [
         r" Oops:",  # don't trigger on "ramoops"
         r"(PC is at |pc : )([^+\[ ]+).*",
-        r"BUG:",
+        r"\bBUG:",  # don't trigger on "DEBUG:"
         r"corruption",
         r"do_page_fault\(\): sending",
         r"EIP: \[<.*>\] ([^+ ]+).*",
