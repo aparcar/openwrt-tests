@@ -3,9 +3,6 @@ import os
 import pytest
 
 
-@pytest.mark.skipif(
-    os.getenv("LG_FEATURE_APK") is None, reason="LG_FEATURE_APK not defined"
-)
 class TestApk:
     def test_apk_procd_installed(self, ssh_command):
         assert "procd" in "\n".join(ssh_command.run_check("apk list"))
