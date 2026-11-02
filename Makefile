@@ -5,6 +5,7 @@ OPENWRT_CI_TESTS = \
 	$(curdir)/x86-64 \
 	$(curdir)/armsr-armv8 \
 	$(curdir)/malta-be \
+	$(curdir)/sifiveu \
 	$(curdir)/shell
 
 test: $(OPENWRT_CI_TESTS)
@@ -28,6 +29,8 @@ $(curdir)/setup:
 		(echo "Please install qemu-system-x86_64" && exit 1)
 	@[ -n "$$(command -v qemu-system-aarch64)" ] || \
 		(echo "Please install qemu-system-aarch64" && exit 1)
+	@[ -n "$$(command -v qemu-system-riscv64)" ] || \
+		(echo "Please install qemu-system-riscv64" && exit 1)
 	@uv --project $(TESTSDIR) sync
 
 
@@ -66,4 +69,14 @@ $(curdir)/malta-be:
 	LG_QEMU_BIN=$(QEMU_BIN) \
 		$(pytest) \
 		--lg-env $(TESTSDIR)/targets/qemu_malta-be.yaml \
+		--firmware $(FIRMWARE)
+
+$(curdir)/sifiveu: QEMU_BIN ?= qemu-system-riscv64
+$(curdir)/sifiveu: FIRMWARE ?= $(TOPDIR)/bin/targets/sifiveu/generic/openwrt-sifiveu-generic-sifive_unleashed-initramfs-kernel.bin
+$(curdir)/sifiveu:
+	[ -f $(FIRMWARE) ]
+
+	LG_QEMU_BIN=$(QEMU_BIN) \
+		$(pytest) \
+		--lg-env $(TESTSDIR)/targets/qemu_sifiveu.yaml \
 		--firmware $(FIRMWARE)

@@ -34,6 +34,7 @@ sudo apt-get -y install \
     qemu-system-mips \
     qemu-system-x86 \
     qemu-system-aarch64 \
+    qemu-system-misc \
     make
 ```
 
