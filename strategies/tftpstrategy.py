@@ -1,5 +1,6 @@
 import enum
 import ipaddress
+import os
 from typing import ClassVar
 from urllib.parse import urlparse
 
@@ -7,6 +8,11 @@ import attr
 from labgrid.driver import TFTPProviderDriver
 from labgrid.factory import target_factory
 from labgrid.strategy.common import Strategy, StrategyError
+from labgrid.util.managedfile import ManagedFile
+
+# U-Boot's TFTP client truncates the requested file name to 127 characters
+# (MAX_LEN in net/tftp.c), which full OpenWrt image names easily exceed
+HASH_LEN = 16
 
 
 class Status(enum.Enum):
@@ -35,6 +41,16 @@ class UBootTFTPStrategy(Strategy):
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
 
+    def _stage(self, filename):
+        """Like TFTPProviderDriver.stage(), but the symlink in the TFTP root
+        is named <sha256 prefix><ext> to keep the bootfile path short."""
+        provider = self.tftp.provider
+        mf = ManagedFile(filename, provider)
+        name = mf.get_hash()[:HASH_LEN] + os.path.splitext(filename)[1]
+        symlink = os.path.join(provider.internal, name)
+        mf.sync_to_resource(symlink=symlink)
+        return provider.external + symlink[len(provider.internal) :]
+
     def transition(self, status):
         if not isinstance(status, Status):
             status = Status[status]
@@ -51,7 +67,7 @@ class UBootTFTPStrategy(Strategy):
             self.target.activate(self.tftp)
             self.target.activate(self.console)
 
-            staged = self.tftp.stage(self.target.env.config.get_image_path("root"))
+            staged = self._stage(self.target.env.config.get_image_path("root"))
             parsed = urlparse(staged)
 
             if parsed.scheme == "tftp":
