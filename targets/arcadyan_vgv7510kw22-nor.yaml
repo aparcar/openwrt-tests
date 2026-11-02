@@ -1,0 +1,46 @@
+# Arcadyan VGV7510KW22 (o2 Box 6431), Lantiq VRX200 (xrx200)
+#
+# Needs the OpenWrt U-Boot (u-boot-vgv7510kw22_nor) flashed instead of the
+# stock brnboot. The U-Boot must load images at 0x82000000 with a 31 MiB
+# BOOTM_LEN. With the older 0x81000000/16 MiB settings, initramfs images
+# overwrite themselves while being decompressed.
+openwrt:
+  name: Arcadyan VGV7510KW22 (o2 Box 6431)
+  target: lantiq-xrx200
+  profile: arcadyan_vgv7510kw22-nor
+targets:
+  main:
+    features:
+      - wan_port
+      - wifi
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      PDUDaemonDriver: {}
+      TFTPProviderDriver: {}
+      SerialDriver:
+        txdelay: 0.01
+      UBootDriver:
+        prompt: "VGV7510KW22 #"
+        interrupt: "\n"
+        init_commands:
+          # use explicit addresses so a stale saved loadaddr does not matter
+          - tftp 0x82000000
+        boot_command: bootm 0x82000000
+        boot_timeout: 60
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 180
+        post_login_settle_time: 5
+        username: root
+      UBootTFTPStrategy: {}
+      SSHDriver:
+        connection_timeout: 120.0
+        explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/tftpstrategy.py
