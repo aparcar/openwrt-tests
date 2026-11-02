@@ -1,0 +1,44 @@
+openwrt:
+  name: StarFive VisionFive2 v1.2a
+  target: starfive-generic
+  profile: visionfive2-v1.2a
+targets:
+  main:
+    features:
+      - wan_port
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      - PDUDaemonDriver: {}
+      - TFTPProviderDriver: {}
+      - SerialDriver:
+          txdelay: 0.01
+      - UBootDriver:
+          prompt: "StarFive #"
+          init_commands:
+            - setenv autoload no
+            - dhcp
+            - run chipa_set_linux
+            - setenv bootargs earlycon=sbi console=ttyS0,115200
+            # The vendor env boots the FIT's dtb in place, which isn't 8-byte
+            # aligned. Have U-Boot relocate it, but below 0x46100000: without
+            # a limit it picks the top of RAM and overwrites itself
+            - setenv fdt_high 0x46100000
+          # Load the FIT above its kernel load address (0x40200000)
+          boot_command: tftpboot 0x60000000 $bootfile; bootm 0x60000000
+      - ShellDriver:
+          prompt: 'root@[\w()]+:[^ ]+ '
+          login_prompt: Please press Enter to activate this console.
+          await_login_timeout: 15
+          login_timeout: 120
+          post_login_settle_time: 5
+          username: root
+      - UBootTFTPStrategy: {}
+      - SSHDriver:
+          connection_timeout: 120.0
+          explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/tftpstrategy.py
