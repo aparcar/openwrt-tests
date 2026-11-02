@@ -1,0 +1,21 @@
+# ansible/files/exporter/labgrid-maurerle/exporter.yaml
+
+labgrid-maurerle-aruba_ap-32x:
+  location: maurerlelab
+  USBSerialPort:
+    match:
+      ID_SERIAL_SHORT: FT7IKKCH
+    speed: 115200
+  PDUDaemonPort:
+    host: localhost:16421
+    pdu: nachtlucht
+    index: 1
+  # TODO before merge — flashing path (required by targets/aruba_ap-32x.yaml:
+  # SmallUBootDriver/tftpboot + SSHDriver/TFTPProviderDriver):
+  # connect AP LAN port to a dedicated host NIC / bridge, run dnsmasq+TFTP.
+  # TFTPProvider:
+  #   internal: "/srv/tftp/aruba_ap-32x"
+  #   external: "tftp://10.133.0.1/aruba_ap-32x"
+  # NetworkService:
+  #   address: "192.168.99.1%labbr0"
+  #   username: "root"
