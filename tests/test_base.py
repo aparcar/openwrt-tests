@@ -62,7 +62,8 @@ def test_ubus_system_board(ssh_command, results_bag):
 
 
 def test_free_memory(ssh_command, results_bag):
-    used_memory = int(ssh_command.run_check("free -m")[1].split()[2])
+    # plain `free` reports KiB; busybox builds may ignore -m, so don't rely on it
+    used_memory = int(ssh_command.run_check("free")[1].split()[2]) // 1024
 
     results_bag["used_memory"] = used_memory
     assert used_memory < 100, f"Used memory is {used_memory} MiB, more than 100 MiB"
