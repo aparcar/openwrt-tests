@@ -21,7 +21,6 @@ class TestApk:
         changes = ssh_command.run_check("apk audit")
         expected_changes = [
             "A etc/urandom.seed",
-            "A etc/board.json",
             "A etc/apk/arch",
             "A etc/apk/repositories.d/customfeeds.list",
             "A etc/apk/repositories.d/distfeeds.list",
