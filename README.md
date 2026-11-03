@@ -158,6 +158,11 @@ uv run labgrid-client unlock
 
 ## Lab Setup
 
+![A lab on a cork board: a Raspberry Pi 4 as controller, USB-to-serial adapters, a switch and six single-board computers under test.](docs/labs/wigyorilab.jpg)
+
+*[wigyorilab](docs/labs/wigyorilab.md): a Raspberry Pi 4 controlling six
+single-board computers.*
+
 Setting up a new lab involves several steps and is a fun and curious process,
 however some precise and forward thinking is required to ensure a successful
 setup. This section describes a low-cost setup usable for network communities
