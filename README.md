@@ -7,14 +7,21 @@ real. Using [`labgrid`](https://labgrid.readthedocs.io/en/latest/) to control
 the devices, the framework offers a simple way to write tests and run them on
 different hardware.
 
-## Requirements
+## Testing
+
+This section provides information on how to run tests using OpenWrt Testing,
+either on real or emulated devices. If you want to deploy real devices for
+testing, please see the [Lab Setup](#lab-setup) section.
+
+### Requirements
+
+There are multiple ways to run tests, on real or emulated devices.
 
 - An OpenWrt firmware image
 - Python and [`uv`](https://docs.astral.sh/uv/)
-- QEMU
+- QEMU (for emulated devices)
 
-
-## Setup
+### Setup
 
 For maximum convenience, clone the repository inside the `openwrt.git`
 repository as `tests/`:
@@ -50,8 +57,6 @@ You can run tests via the Makefile or directly using `pytest`.
 ### Using the Makefile
 
 You can start runtime and shell tests via the Makefile.
-
-#### Runtime tests
 
 ```shell
 cd /path/to/openwrt.git
@@ -92,13 +97,13 @@ def test_uname(shell_command):
 With *labgrid*, you can remotely access devices. Key capabilities include
 **power control**, **console**, and **SSH access**.
 
-To enable remote access, you need SSH access with forwarding enabled on the host
-exporting the device. For example, to reach the device `openwrt-one` located in
-the lab `labgrid-aparcar`, you must have access to both the `labgrid-aparcar`
-host and use the `global-coordinator` as a jump host:
+To enable remote access, you need SSH access with forwarding enabled on the lab
+host, which runs the lab's coordinator and exports its devices. For example, to
+reach the device `openwrt-one` located in the lab `labgrid-aparcar`, you need
+access to the `labgrid-aparcar` host:
 
 ```shell
-global-coordinator -> labgrid-aparcar -> openwrt-one
+labgrid-aparcar -> openwrt-one
 ```
 
 You can request access to existing labs or contribute your own. To do this,
@@ -150,3 +155,116 @@ Lastly, unlock your device when you're done:
 ```shell
 uv run labgrid-client unlock
 ```
+
+## Lab Setup
+
+Setting up a new lab involves several steps and is a fun and curious process,
+however some precise and forward thinking is required to ensure a successful
+setup. This section describes a low-cost setup usable for network communities
+and individuals. Larger setups will be added in the future.
+
+### Concept
+
+Labs are independent: each runs its own labgrid coordinator and exporter for
+its devices. Automated testing goes through OpenWrt CI, a self-hosted
+[KernelCI](https://kernelci.org/) instance. It picks up new releases and
+snapshots, mirrors the firmware and creates test jobs. Each lab runs a
+[`labgrid-agent`](https://github.com/aparcar/kernelci-labgrid) that polls for
+jobs of its devices, runs these tests against them and reports the results,
+which end up in KCIDB and the KernelCI dashboard.
+
+```mermaid
+flowchart TB
+    downloads["downloads.openwrt.org<br/>releases and snapshots"]
+
+    subgraph ci["OpenWrt CI (KernelCI)"]
+        scheduler["Scheduler"]
+        api["Maestro API<br/>jobs and results"]
+        storage["kernelci-storage<br/>firmware and logs"]
+        dashboard["KCIDB and dashboard"]
+    end
+
+    subgraph lab["Lab"]
+        agent["labgrid-agent"]
+        coordinator["labgrid-coordinator"]
+        exporter["labgrid-exporter"]
+        duts["DUTs"]
+    end
+
+    otherlabs["More labs<br/>same setup"]
+    developer["OpenWrt developer"]
+
+    downloads --> scheduler
+    scheduler -->|"mirror firmware"| storage
+    scheduler -->|"create jobs"| api
+    api -->|"results"| dashboard
+
+    agent -->|"poll and claim jobs,<br/>report results"| api
+    agent -->|"download firmware,<br/>upload logs"| storage
+    otherlabs -->|"poll and claim jobs,<br/>report results"| api
+    agent -->|"reserve and lock place,<br/>run pytest"| coordinator
+    coordinator --> exporter
+    exporter --> duts
+
+    developer -->|"SSH (LG_PROXY)"| coordinator
+```
+
+Labs only need outbound HTTPS to OpenWrt CI. The agent checks the health of
+each device with a known-good image and only takes jobs for healthy devices.
+If several labs have the same device, the first one to claim a job runs it.
+Developers can still lock a device and use it directly, see
+[Remote Access](#remote-access); the agent skips places that are locked or
+tagged `maintenance=<reason>`.
+
+### Requirements
+
+* Controller (e.g. **Raspberry Pi 5**)
+* PoE switch (e.g. **Linksys LGS328MPC v2**)
+* PoE splitter for each DUT (12 V, 5 V, etc.)
+* USB-to-serial adapter for each DUT
+* Devices-Under-Test (DUTs)
+* Some cables
+* An uplink to the internet, e.g. a guest Wi-Fi
+
+### Setup
+
+For a minimal setup, a single device runs the coordinator, exporter and agent,
+from now on called controller. The controller is connected to a PoE switch,
+which powers the DUTs and puts each one in its own VLAN. The exporter switches
+PoE ports via `pdudaemon` to power cycle a DUT, serves firmware via TFTP and
+reaches each DUT's console via a USB-to-serial adapter.
+
+> [!NOTE]
+> Larger setups may run multiple exporters, each connected to a separate PoE
+> switch.
+
+```mermaid
+flowchart LR
+    subgraph controller["Controller"]
+        agent["labgrid-agent"]
+        coordinator["labgrid-coordinator"]
+        exporter["labgrid-exporter<br/>pdudaemon, TFTP"]
+    end
+
+    switch["PoE switch<br/>one VLAN per DUT"]
+    dut1["DUT 1"]
+    dut2["DUT 2"]
+    dut3["DUT 3"]
+
+    agent --> coordinator --> exporter
+    exporter -->|"control PoE,<br/>VLAN trunk"| switch
+    switch ==>|"power and data"| dut1
+    switch ==> dut2
+    switch ==> dut3
+    exporter -.->|"serial console"| dut1
+    exporter -.-> dut2
+    exporter -.-> dut3
+```
+
+### Controller
+
+The controller is set up via Ansible (`ansible/lab.yml`), which installs
+`labgrid`, `pdudaemon`, `dnsmasq` and the per-lab exporter configuration from
+`ansible/files/exporter/<lab>/`. The `labgrid-agent` and the lab's OpenWrt CI
+credentials are deployed by OpenWrt CI's own Ansible, see the
+[`labgrid-agent` documentation](https://github.com/aparcar/kernelci-labgrid).
