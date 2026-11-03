@@ -1,0 +1,42 @@
+openwrt:
+  name: RIPE Atlas v5
+  target: mvebu-cortexa53
+  profile: ripe_atlas-v5
+  # The initramfs is a FIT (kernel + DTB) only since the upstream change;
+  # releases up to 25.12.6 ship a raw Image that this boot_command can't boot.
+  snapshots_only: true
+targets:
+  main:
+    # Single 1GbE port (eth0 = lan), no Wi-Fi.
+    features: []
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      - PDUDaemonDriver: {}
+      - TFTPProviderDriver: {}
+      - SerialDriver:
+          txdelay: 0.01
+      - UBootDriver:
+          prompt: "=> "
+          init_commands:
+            - setenv autoload no
+            - dhcp
+            - setenv bootargs earlycon=ar3700_uart,0xd0012000 console=ttyMV0,115200
+            - tftpboot $kernel_addr_r $bootfile
+          boot_command: bootm $kernel_addr_r
+      - ShellDriver:
+          prompt: 'root@[\w()]+:[^ ]+ '
+          login_prompt: Please press Enter to activate this console.
+          await_login_timeout: 15
+          login_timeout: 120
+          post_login_settle_time: 5
+          username: root
+      - UBootTFTPStrategy: {}
+      - SSHDriver:
+          connection_timeout: 120.0
+          explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/tftpstrategy.py
