@@ -1,0 +1,18 @@
+# labgrid-probe firewall: the config port (lan, eth1) and the lab
+# management network (mgmt, eth0) may reach the probe (SSH, ubus via SSH).
+# The probe routes nothing, so forwarding stays off. The DUT VLANs live in
+# their own network namespaces, which this firewall doesn't cover.
+
+config defaults
+	option synflood_protect '1'
+	option input 'REJECT'
+	option output 'ACCEPT'
+	option forward 'REJECT'
+
+config zone
+	option name 'lan'
+	list network 'lan'
+	list network 'mgmt'
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'REJECT'

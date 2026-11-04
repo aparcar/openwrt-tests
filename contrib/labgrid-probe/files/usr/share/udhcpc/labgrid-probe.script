@@ -1,0 +1,60 @@
+#!/usr/bin/ucode
+// udhcpc hook for labgrid-probe. OpenWrt's default.script hands the lease to
+// netifd, which doesn't manage interfaces inside our namespaces, so configure
+// the interface directly and record the lease as JSON for labgrid_probe's dhcp().
+//
+// udhcpc runs this inside the LAN namespace with the action in ARGV[0] and
+// the lease in environment variables.
+
+'use strict';
+
+import { writefile, unlink, mkdir } from 'fs';
+
+const RUN_DIR = getenv('LABGRID_PROBE_RUN_DIR') ?? '/var/run/labgrid-probe';
+
+function words(name) {
+	return filter(split(trim(getenv(name) ?? ''), /[[:space:]]+/), x => length(x));
+}
+
+const action = ARGV[0];
+const ifname = getenv('interface');
+if (action == null || ifname == null)
+	exit(1);
+
+// pbl<vlan> -> <RUN_DIR>/<vlan>/lease.json
+const m = match(ifname, /^pbl([0-9]+)$/);
+if (m == null)
+	exit(1);
+const dir = `${RUN_DIR}/${m[1]}`;
+const lease_file = `${dir}/lease.json`;
+
+if (action == 'deconfig') {
+	system(['ip', '-4', 'addr', 'flush', 'dev', ifname]);
+	system(['ip', 'link', 'set', ifname, 'up']);
+	unlink(lease_file);
+}
+else if (action == 'bound' || action == 'renew') {
+	const ip = getenv('ip');
+	const mask = getenv('mask') ?? '24';
+	const routers = words('router');
+
+	system(['ip', '-4', 'addr', 'flush', 'dev', ifname]);
+	system(['ip', 'addr', 'add', `${ip}/${mask}`, 'dev', ifname]);
+	if (length(routers))
+		system(['ip', 'route', 'replace', 'default', 'via', routers[0], 'dev', ifname]);
+
+	mkdir(RUN_DIR);
+	mkdir(dir);
+	writefile(lease_file, sprintf('%J\n', {
+		interface: ifname,
+		ip,
+		mask: int(mask),
+		router: routers,
+		dns: words('dns'),
+		domain: getenv('domain'),
+		serverid: getenv('serverid'),
+		lease: int(getenv('lease') ?? 0),
+	}));
+}
+
+exit(0);

@@ -1,0 +1,31 @@
+# GL.iNet GL-MT2500(A) as labgrid-probe.
+#
+# eth0 (2.5G, "WAN" label): the only cable to the lab. Its switch port carries
+#      the lab's management network untagged (interface "mgmt") and every DUT
+#      LAN/WAN VLAN tagged. labgrid-probe (via rpcd) adds VLAN devices on top of
+#      eth0 and moves them into their own namespaces, so the DUT subnets never
+#      appear here.
+# eth1 (1G, "LAN" label): config/rescue port, unchanged from the factory
+#      setup: 192.168.1.1 with DHCP. Plug a laptop in to deploy or recover.
+#      It doesn't clash with the DUTs' 192.168.1.0/24, which only exists
+#      inside the namespaces.
+
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	option ipaddr '127.0.0.1'
+	option netmask '255.0.0.0'
+
+config interface 'lan'
+	option device 'eth1'
+	option proto 'static'
+	option ipaddr '192.168.1.1'
+	option netmask '255.255.255.0'
+
+config interface 'mgmt'
+	option device 'eth0'
+	option proto 'static'
+	option ipaddr '192.168.128.3'
+	option netmask '255.255.255.0'
+	option gateway '192.168.128.1'
+	list dns '192.168.128.1'
