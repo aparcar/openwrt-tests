@@ -1,0 +1,22 @@
+#!/bin/sh
+# Sourced by /etc/init.d/boot, so this has to stay shell.
+
+# Earlier versions disabled dnsmasq/odhcpd. They're needed again for DHCP on
+# the config port (lan, eth1). They only run in the root namespace, so they
+# never see the DUT VLANs, and /etc/config/dhcp has no section for mgmt, so
+# they don't serve the lab's management network either.
+for svc in dnsmasq odhcpd; do
+	[ -x "/etc/init.d/$svc" ] || continue
+	"/etc/init.d/$svc" enable
+	"/etc/init.d/$svc" start 2>/dev/null
+done
+
+# Never serve DHCP on the management network, even if a section exists.
+if uci -q get dhcp.mgmt >/dev/null; then
+	uci set dhcp.mgmt.ignore='1'
+	uci commit dhcp
+fi
+
+chmod 0755 /usr/share/udhcpc/labgrid-probe.script
+
+exit 0

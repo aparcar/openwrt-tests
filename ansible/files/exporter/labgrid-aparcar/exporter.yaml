@@ -1,4 +1,7 @@
 labgrid-aparcar-openwrt_one:
+  wan:
+    cls: NetworkInterface
+    ifname: vlan101
   NetworkService:
     address: 192.168.1.1%vlan102
     username: root
@@ -14,6 +17,9 @@ labgrid-aparcar-openwrt_one:
       ID_PATH: platform-xhci-hcd.0-usb-0:1.1.1:1.0
 
 labgrid-aparcar-bananapi_bpi-r4-lite:
+  wan:
+    cls: NetworkInterface
+    ifname: vlan103
   NetworkService:
     address: 192.168.1.1%vlan104
     username: root
@@ -29,6 +35,9 @@ labgrid-aparcar-bananapi_bpi-r4-lite:
       ID_PATH: platform-xhci-hcd.0-usb-0:1.1.2:1.0
 
 labgrid-aparcar-genexis_pulse-ex400:
+  wan:
+    cls: NetworkInterface
+    ifname: vlan106
   NetworkService:
     address: 192.168.1.1%vlan105
     username: root
@@ -44,6 +53,9 @@ labgrid-aparcar-genexis_pulse-ex400:
       ID_PATH: platform-xhci-hcd.1-usb-0:1.1.3:1.0
 
 labgrid-aparcar-tplink_tl-wdr3600-v1:
+  wan:
+    cls: NetworkInterface
+    ifname: vlan108
   NetworkService:
     address: 192.168.1.1%vlan107
     username: root
@@ -59,6 +71,9 @@ labgrid-aparcar-tplink_tl-wdr3600-v1:
       ID_PATH: platform-xhci-hcd.1-usb-0:1.1.1:1.0
 
 labgrid-aparcar-bananapi_bpi-r4:
+  wan:
+    cls: NetworkInterface
+    ifname: vlan110
   NetworkService:
     address: 192.168.1.1%vlan109
     username: root
@@ -151,7 +166,25 @@ labgrid-aparcar-pine64_rock64:
       ID_PATH: platform-xhci-hcd.1-usb-0:2.1.3:1.0
     speed: 1500000
 
+labgrid-aparcar-raspberry-pi-3b:
+  NetworkService:
+    address: 192.168.1.1%vlan118
+    username: root
+  PDUDaemonPort:
+    host: localhost:16421
+    index: 18
+    pdu: 192.168.128.2
+  USBSDMuxDevice:
+    match:
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.4.1
+  USBSerialPort:
+    match:
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.3:1.0
+
 labgrid-aparcar-starfive_visionfive2-v1.2a:
+  wan:
+    cls: NetworkInterface
+    ifname: vlan120
   NetworkService:
     address: 192.168.1.1%vlan119
     username: root
@@ -180,3 +213,12 @@ labgrid-aparcar-ripe_atlas-v5:
   USBSerialPort:
     match:
       ID_PATH: platform-xhci-hcd.0-usb-0:1.2:1.0
+
+## labgrid-probe (contrib/labgrid-probe): its own place, tagged role=probe.
+## Tests reserve and lock it for the modules that use it and control it over
+## HTTP (uhttpd /ubus on port 80), not SSH.
+labgrid-aparcar-probe:
+  NetworkService:
+    address: 192.168.128.3
+    port: 80
+    username: root
