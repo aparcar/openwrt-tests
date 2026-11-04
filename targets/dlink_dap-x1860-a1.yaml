@@ -17,13 +17,15 @@ targets:
       - SerialDriver:
           txdelay: 0.01
       - UBootDriver:
-          boot_expression: "Hit any key to stop autoboot:"
+          # "stop autoboot" appears twice (U-Boot countdown, then the boot
+          # menu); only interrupt the menu, where "0" selects the U-Boot
+          # console. A second "0" would be left on the "=>" command line.
+          autoboot: "U-Boot Boot Menu"
           interrupt: "0"
           prompt: "=>"
           init_commands:
-            - setenv ipaddr "192.168.1.2"
-            - setenv serverip "$address"
-          boot_command: tftpboot
+            - tftpboot
+          boot_command: bootm $loadaddr
       - ShellDriver:
           prompt: 'root@[\w()]+:[^ ]+ '
           login_prompt: Please press Enter to activate this console.
