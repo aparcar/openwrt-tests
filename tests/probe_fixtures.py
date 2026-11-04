@@ -23,6 +23,7 @@ from pathlib import Path
 
 import grpc
 import pytest
+
 from labgrid.factory import target_factory
 from labgrid.remote.common import Reservation, ReservationState
 from labgrid.remote.generated import labgrid_coordinator_pb2 as pb2

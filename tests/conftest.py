@@ -22,6 +22,9 @@ import pytest
 
 logger = logging.getLogger(__name__)
 
+# The lab's labgrid-probe (contrib/labgrid-probe), for tests that need it
+from probe_fixtures import probe  # noqa: F401
+
 
 def _resolve_target_from_place():
     lg_env = getenv("LG_ENV")
