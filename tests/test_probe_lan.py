@@ -20,6 +20,7 @@ import re
 import time
 
 import pytest
+
 from labgrid.exceptions import NoResourceFoundError
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ DUT_LAN_IP = "192.168.1.1"
 DUT_LAN = ipaddress.ip_network("192.168.1.0/24")
 
 IPERF_SECONDS = 10
-# Only catches a broken forwarding path; the measured numbers go to results_bag.
+# Only catches a broken forwarding path; the measured numbers go to record_property.
 MIN_MBPS = 20
 
 
@@ -161,10 +162,10 @@ def lease(strategy, slot):
 # --- tests --------------------------------------------------------------------
 
 
-def test_lan_dhcp_lease(lease, results_bag):
+def test_lan_dhcp_lease(lease, record_property):
     """The DUT hands a LAN client a lease with itself as router and DNS."""
     ip = ipaddress.ip_address(lease["ip"])
-    results_bag["probe_lan_ip"] = str(ip)
+    record_property("probe_lan_ip", str(ip))
 
     assert ip in DUT_LAN, f"lease {ip} not in {DUT_LAN}: {lease}"
     assert str(ip) != DUT_LAN_IP
@@ -199,7 +200,7 @@ def test_lan_dns_dhcp_hostname(slot, lease):
     )
 
 
-def test_lan_ipv6_slaac(slot, lease, results_bag):
+def test_lan_ipv6_slaac(slot, lease, record_property):
     """The DUT's router advertisements give the client a (ULA) address."""
     addresses = []
     deadline = time.monotonic() + 30
@@ -212,7 +213,7 @@ def test_lan_ipv6_slaac(slot, lease, results_bag):
         if not addresses:
             time.sleep(3)
 
-    results_bag["probe_lan_ipv6"] = addresses
+    record_property("probe_lan_ipv6", json.dumps(addresses))
     assert addresses, f"no global IPv6 address on {slot.info['lan_dev']} after 30s"
 
 
@@ -229,7 +230,7 @@ def test_wan_reachable(wan_slot, lease):
 
 @pytest.mark.lg_feature("wan_port")
 @pytest.mark.parametrize("direction", ["upload", "download"])
-def test_speedtest(wan_slot, lease, direction, results_bag, record_property):
+def test_speedtest(wan_slot, lease, direction, record_property):
     """TCP throughput LAN→WAN (upload) and WAN→LAN (download) through the DUT."""
     wan_slot.call(
         "speedtest_start", duration=IPERF_SECONDS, reverse=direction == "download"
@@ -249,8 +250,7 @@ def test_speedtest(wan_slot, lease, direction, results_bag, record_property):
         mbps,
         result.get("retransmits"),
     )
-    results_bag[f"probe_{direction}_mbps"] = round(mbps, 1)
-    results_bag[f"probe_{direction}_retransmits"] = result.get("retransmits")
     record_property(f"probe_{direction}_mbps", round(mbps, 1))
+    record_property(f"probe_{direction}_retransmits", result.get("retransmits"))
 
     assert mbps >= MIN_MBPS, f"{direction}: {mbps:.1f} Mbit/s < {MIN_MBPS}"

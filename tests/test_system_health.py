@@ -4,7 +4,7 @@
 class TestSystemHealth:
     """Tests for monitoring system health and resource usage."""
 
-    def test_memory_usage(self, ssh_command, results_bag):
+    def test_memory_usage(self, ssh_command, record_property):
         """Test memory usage and check for memory leaks."""
         # Parse memory information
         mem_output = ssh_command.run_check("free -m")
@@ -18,13 +18,11 @@ class TestSystemHealth:
         # Calculate percentage
         mem_percent = (used_mem / total_mem) * 100
 
-        results_bag["memory_usage"] = {
-            "total_mb": total_mem,
-            "used_mb": used_mem,
-            "free_mb": free_mem,
-            "available_mb": available_mem,
-            "percent_used": round(mem_percent, 2),
-        }
+        record_property("memory_total_mb", total_mem)
+        record_property("memory_used_mb", used_mem)
+        record_property("memory_free_mb", free_mem)
+        record_property("memory_available_mb", available_mem)
+        record_property("memory_used_percent", round(mem_percent, 2))
 
         # Memory usage should be less than 90%
         assert mem_percent < 90, f"Memory usage {mem_percent:.1f}% is too high"
@@ -32,7 +30,7 @@ class TestSystemHealth:
         # Should have at least 10MB available
         assert available_mem > 10, f"Only {available_mem}MB available memory"
 
-    def test_filesystem_usage(self, ssh_command, results_bag):
+    def test_filesystem_usage(self, ssh_command, record_property):
         """Test filesystem usage on critical mount points."""
         # Check key filesystems
         filesystems = ["/", "/tmp", "/overlay"]
@@ -55,7 +53,10 @@ class TestSystemHealth:
                     "percent_used": int(parts[4].rstrip("%")),
                 }
 
-        results_bag["filesystem_usage"] = fs_usage
+        for fs, usage in fs_usage.items():
+            name = fs.strip("/") or "root"
+            for key, value in usage.items():
+                record_property(f"fs_{name}_{key}", value)
 
         # Check critical filesystems aren't full
         for fs, usage in fs_usage.items():
@@ -63,14 +64,14 @@ class TestSystemHealth:
                 f"Filesystem {fs} is {usage['percent_used']}% full"
             )
 
-    def test_system_uptime(self, ssh_command, results_bag):
+    def test_system_uptime(self, ssh_command):
         """Test and record system uptime."""
         uptime_output = ssh_command.run_check("cat /proc/uptime")
         uptime_seconds = float(uptime_output[0].split()[0])
 
         assert uptime_seconds < 3600, "System uptime is over 1 hour"
 
-    def test_temperature_sensors(self, ssh_command, results_bag):
+    def test_temperature_sensors(self, ssh_command, record_property):
         """Test temperature sensors if available."""
         # Check if thermal zones exist
         thermal_zones = ssh_command.run(
@@ -86,17 +87,18 @@ class TestSystemHealth:
                     zone_name = zone.split("/")[-2]
                     temperatures[zone_name] = temp_celsius
 
-            results_bag["temperatures"] = temperatures
+            for zone, temp in temperatures.items():
+                record_property(f"temperature_{zone}_c", temp)
 
             # Check if any temperature is critically high (>85°C)
             for zone, temp in temperatures.items():
                 assert temp < 85, f"Temperature in {zone} is critically high: {temp}°C"
 
-    def test_process_count(self, ssh_command, results_bag):
+    def test_process_count(self, ssh_command, record_property):
         """Test number of running processes is reasonable."""
         proc_count = int(ssh_command.run_check("ps | wc -l")[0])
 
-        results_bag["process_count"] = proc_count
+        record_property("process_count", proc_count)
 
         # Alert if too many processes (possible fork bomb or resource leak)
         assert proc_count < 300, f"Too many processes running: {proc_count}"
@@ -113,7 +115,7 @@ class TestSystemHealth:
         # Should have at least 256 bits of entropy
         assert entropy >= 256, f"Insufficient entropy available: {entropy} bits"
 
-    def test_open_file_descriptors(self, ssh_command, results_bag):
+    def test_open_file_descriptors(self, ssh_command, record_property):
         """Test system-wide open file descriptors."""
         # Get current and max file descriptors
         fd_info = ssh_command.run_check("cat /proc/sys/fs/file-nr")[0].split()
@@ -123,11 +125,9 @@ class TestSystemHealth:
 
         fd_percent = (allocated_fds / max_fds) * 100
 
-        results_bag["file_descriptors"] = {
-            "allocated": allocated_fds,
-            "maximum": max_fds,
-            "percent_used": round(fd_percent, 2),
-        }
+        record_property("fd_allocated", allocated_fds)
+        record_property("fd_maximum", max_fds)
+        record_property("fd_used_percent", round(fd_percent, 2))
 
         # Should not be close to the limit
         assert fd_percent < 80, f"Too many file descriptors in use: {fd_percent:.1f}%"

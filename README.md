@@ -77,8 +77,8 @@ uv run pytest tests/ \
 ```
 
 `--log-cli-level=CONSOLE` shows the serial console live. `--lg-log` writes it
-to files. `--results-json results.json` saves every test's status and
-measured values (see below).
+to files. `--junit-xml results.xml` saves every test's result and measured
+values (see below).
 
 ## Writing tests
 
@@ -99,9 +99,11 @@ More conventions:
 - **Device-specific tests:** mark them with `@pytest.mark.lg_feature("wan_port")`
   (or `wifi-2g`, `wifi-5g`, `wifi-6g`, `rootfs`, …). They're skipped on targets
   that don't list the feature under `features:` in `targets/<device>.yaml`.
-- **Measurements:** store them in the `results_bag` fixture, e.g.
-  `results_bag["used_memory"] = …`. `--results-json PATH` writes all of them,
-  with each test's status, to one JSON file.
+- **Measurements:** record them with pytest's `record_property` fixture, e.g.
+  `record_property("used_memory", used_memory)`. They become the test's
+  properties in the JUnit XML (`--junit-xml`). Values are written with
+  `str()`, so record scalars (`memory_used_mb`, not a `memory` dict) and
+  `json.dumps()` real lists.
 - **Tests that need the [labgrid-probe](contrib/labgrid-probe/README.md):**
   take the `probe` fixture. It reserves and locks the lab's probe for the test
   module and skips in labs without one (`tests/test_probe_lan.py`).
@@ -173,7 +175,7 @@ uv run labgrid-client --state shell console
 You can also run local tests directly on the remote device:
 
 ```shell
-uv run pytest tests/ --log-cli-level=CONSOLE --results-json results.json
+uv run pytest tests/ --log-cli-level=CONSOLE --junit-xml results.xml
 ```
 
 Lastly, unlock your device when you're done:

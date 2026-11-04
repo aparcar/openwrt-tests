@@ -9,11 +9,14 @@ dependencies = [
     "labgrid>=25.0",
     "pytest>=8.4.1",
     "pytest-check>=2.5.3",
-    "pytest-harvest>=1.10.5",
 ]
 
 [dependency-groups]
 dev = ["isort>=6.0.1", "ruff==0.17.3"]
+
+[tool.pytest.ini_options]
+# xunit2 has no per-test <properties>: record_property warns on every call
+junit_family = "xunit1"
 
 [tool.uv.sources]
 labgrid = { git = "https://github.com/aparcar/labgrid.git", branch = "staging" }

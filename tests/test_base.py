@@ -49,23 +49,23 @@ def test_uname(ssh_command):
     assert "GNU/Linux" in output
 
 
-def test_ubus_system_board(ssh_command, results_bag):
+def test_ubus_system_board(ssh_command, record_property):
     output = ubus_call(ssh_command, "system", "board", {})
     assert output["release"]["distribution"] == "OpenWrt"
 
-    results_bag["board_name"] = output["board_name"]
-    results_bag["kernel"] = output["kernel"]
-    results_bag["revision"] = output["release"]["revision"]
-    results_bag["rootfs_type"] = output["rootfs_type"]
-    results_bag["target"] = output["release"]["target"]
-    results_bag["version"] = output["release"]["version"]
+    record_property("board_name", output["board_name"])
+    record_property("kernel", output["kernel"])
+    record_property("revision", output["release"]["revision"])
+    record_property("rootfs_type", output["rootfs_type"])
+    record_property("target", output["release"]["target"])
+    record_property("version", output["release"]["version"])
 
 
-def test_free_memory(ssh_command, results_bag):
+def test_free_memory(ssh_command, record_property):
     # plain `free` reports KiB; busybox builds may ignore -m, so don't rely on it
     used_memory = int(ssh_command.run_check("free")[1].split()[2]) // 1024
 
-    results_bag["used_memory"] = used_memory
+    record_property("used_memory", used_memory)
     assert used_memory < 100, f"Used memory is {used_memory} MiB, more than 100 MiB"
 
 

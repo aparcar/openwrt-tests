@@ -1,9 +1,10 @@
+import json
 import re
 import subprocess
 from collections import defaultdict
 
 
-def test_ssh_supported_algorithms(env, ssh_command, results_bag):
+def test_ssh_supported_algorithms(env, ssh_command, record_property):
     with ssh_command.forward_local_port(22) as localport:
         output = subprocess.check_output(
             f"nmap --script ssh2-enum-algos -sV -p {localport} 127.0.0.1",
@@ -29,7 +30,8 @@ def test_ssh_supported_algorithms(env, ssh_command, results_bag):
                 algorithms[current_category].append(match.group("algorithm").strip())
 
         algorithms = dict(algorithms)
-        results_bag["algorithms"] = algorithms
+        for category, names in algorithms.items():
+            record_property(f"ssh_{category}", json.dumps(names))
 
         assert "curve25519-sha256" in algorithms["kex_algorithms"]
         assert "curve25519-sha256@libssh.org" in algorithms["kex_algorithms"]
