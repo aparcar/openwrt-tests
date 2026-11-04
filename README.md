@@ -69,13 +69,16 @@ If you don't plan to clone this repository inside the `openwrt.git` repository,
 you can still run the tests. Use this command to run tests on `malta/be` image:
 
 ```shell
-pytest tests/ \
-    --lg-env targets/qemu-malta-be.yaml \
+uv run pytest tests/ \
+    --lg-env targets/qemu_malta-be.yaml \
     --lg-log \
     --log-cli-level=CONSOLE \
-    --lg-colored-steps \
     --firmware ../../openwrt/bin/targets/malta/be/openwrt-malta-be-vmlinux-initramfs.elf
 ```
+
+`--log-cli-level=CONSOLE` shows the serial console live. `--lg-log` writes it
+to files. `--results-json results.json` saves every test's status and
+measured values (see below).
 
 ## Writing tests
 
@@ -92,13 +95,26 @@ def test_uname(shell_command):
     assert "GNU/Linux" in shell_command.run("uname -a")[0][0]
 ```
 
+More conventions:
+- **Device-specific tests:** mark them with `@pytest.mark.lg_feature("wan_port")`
+  (or `wifi-2g`, `wifi-5g`, `wifi-6g`, `rootfs`, …). They're skipped on targets
+  that don't list the feature under `features:` in `targets/<device>.yaml`.
+- **Measurements:** store them in the `results_bag` fixture, e.g.
+  `results_bag["used_memory"] = …`. `--results-json PATH` writes all of them,
+  with each test's status, to one JSON file.
+- **Tests that need the [labgrid-probe](contrib/labgrid-probe/README.md):**
+  take the `probe` fixture. It reserves and locks the lab's probe for the test
+  module and skips in labs without one (`tests/test_probe_lan.py`).
+
 ## Remote Access
 
 With *labgrid*, you can remotely access devices. Key capabilities include
 **power control**, **console**, and **SSH access**.
 
 To enable remote access, you need SSH access with forwarding enabled on the lab
-host, which runs the lab's coordinator and exports its devices. For example, to
+host, which runs the lab's coordinator and exports its devices. Developers log
+in as the shared `labgrid-dev` account; the lab's admin adds your key. For
+example, to
 reach the device `openwrt-one` located in the lab `labgrid-aparcar`, you need
 access to the `labgrid-aparcar` host:
 
@@ -107,7 +123,8 @@ labgrid-aparcar -> openwrt-one
 ```
 
 You can request access to existing labs or contribute your own. To do this,
-submit a pull request modifying the `labnet.yaml` file. If you have multiple
+submit a pull request modifying the `labnet.yaml` file. To add a device, see
+[docs/adding-a-device.md](docs/adding-a-device.md). If you have multiple
 devices of the same model, see [docs/sharing-target-files.md](docs/sharing-target-files.md)
 for how to avoid duplicate target files. For repository-specific metadata under
 `openwrt:`, see [docs/openwrt-target-attributes.md](docs/openwrt-target-attributes.md)
@@ -119,10 +136,19 @@ Notably, `LG_PROXY` sets the proxy host (always the lab name):
 export LG_IMAGE=~/firmware/openwrt-ath79-generic-tplink_tl-wdr3600-v1-initramfs-kernel.bin # Firmware to boot
 export LG_PLACE=aparcar-tplink_tl-wdr3600-v1 # Target device, formatted as <lab>-<device>
 export LG_PROXY=labgrid-aparcar # Proxy to use, typically the lab name
-export LG_ENV=targets/tplink_tl-wdr3600-v1.yaml # Environment definition (optional when using device_instances)
+export LG_ENV=targets/tplink_tl-wdr3600-v1.yaml # Environment definition
 ```
 
-**Note**: `LG_ENV` is optional when using `device_instances`. If not set, pytest automatically resolves the target file from `LG_PLACE`. Explicitly setting `LG_ENV` takes precedence over automatic resolution. See [docs/sharing-target-files.md](docs/sharing-target-files.md) for details.
+**Notes:**
+- Always set `LG_ENV`. `conftest.py` is meant to resolve it from `LG_PLACE`
+  via `labnet.yaml`, but that lookup doesn't work with the current
+  `labnet.yaml` layout. See
+  [docs/sharing-target-files.md](docs/sharing-target-files.md) for target files
+  shared by several devices.
+- `LG_PLACE` may be the short `<lab>-<device>`. labgrid matches it against the
+  full place name `labgrid-<lab>-<device>`.
+- On macOS, `export TMPDIR=/tmp`. labgrid's SSH control sockets otherwise
+  exceed the socket path length limit under the long default `$TMPDIR`.
 
 To avoid interference from CI or other developers, lock the device before use:
 
@@ -147,7 +173,7 @@ uv run labgrid-client --state shell console
 You can also run local tests directly on the remote device:
 
 ```shell
-pytest tests/ --log-cli-level=CONSOLE
+uv run pytest tests/ --log-cli-level=CONSOLE --results-json results.json
 ```
 
 Lastly, unlock your device when you're done:
@@ -230,6 +256,9 @@ tagged `maintenance=<reason>`.
 * Devices-Under-Test (DUTs)
 * Some cables
 * An uplink to the internet, e.g. a guest Wi-Fi
+* Optional: a [labgrid-probe](contrib/labgrid-probe/README.md) (an OpenWrt
+  device such as a GL.iNet GL-MT2500) for LAN/WAN tests (DHCP, DNS, SLAAC,
+  throughput through the DUT)
 
 ### Setup
 
@@ -238,6 +267,16 @@ from now on called controller. The controller is connected to a PoE switch,
 which powers the DUTs and puts each one in its own VLAN. The exporter switches
 PoE ports via `pdudaemon` to power cycle a DUT, serves firmware via TFTP and
 reaches each DUT's console via a USB-to-serial adapter.
+
+**VLANs:** each DUT has a LAN VLAN, and a WAN VLAN if its WAN port is cabled.
+- **LAN VLAN:** the controller has static addresses there (`192.168.<VLAN>.1`
+  for TFTP). U-Boot loads firmware with static addresses (`tftpboot`, never
+  `dhcp`), and the controller serves **no DHCP**, so the booted DUT is the
+  only DHCP server on its LAN.
+- **WAN VLAN:** the controller is the DUT's upstream (IP forwarding). It's
+  declared per place as a `wan` interface in `exporter.yaml`; see
+  [docs/adding-a-device.md](docs/adding-a-device.md) and
+  [docs/labs/aparcar.md](docs/labs/aparcar.md).
 
 > [!NOTE]
 > Larger setups may run multiple exporters, each connected to a separate PoE
@@ -268,8 +307,14 @@ flowchart LR
 
 ### Controller
 
-The controller is set up via Ansible (`ansible/lab.yml`), which installs
-`labgrid`, `pdudaemon`, `dnsmasq` and the per-lab exporter configuration from
-`ansible/files/exporter/<lab>/`. The `labgrid-agent` and the lab's OpenWrt CI
-credentials are deployed by OpenWrt CI's own Ansible, see the
-[`labgrid-agent` documentation](https://github.com/aparcar/kernelci-labgrid).
+The controller is set up via Ansible, see [ansible/README.md](ansible/README.md):
+- **`ansible/lab.yml` (role `labgrid_lab`):** installs `labgrid` (the same
+  pinned version the tests use), `pdudaemon`, a TFTP-only `dnsmasq`, the DUT
+  VLANs, the per-lab exporter configuration from
+  `ansible/files/exporter/<lab>/`, and the shared developer account
+  `labgrid-dev`.
+- **Role `labgrid_agent`** (also in this repository): sets up the
+  [`labgrid-agent`](https://github.com/aparcar/kernelci-labgrid). OpenWrt CI's
+  Ansible applies it, because it holds the lab's credentials. The agent runs
+  as its own `labgrid-agent` account, and developers can't read its
+  credentials.
