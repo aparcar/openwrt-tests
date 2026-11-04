@@ -3,9 +3,6 @@ import os
 import pytest
 
 
-@pytest.mark.skipif(
-    os.getenv("LG_FEATURE_APK") is None, reason="LG_FEATURE_APK not defined"
-)
 class TestApk:
     def test_apk_procd_installed(self, ssh_command):
         assert "procd" in "\n".join(ssh_command.run_check("apk list"))
@@ -24,7 +21,6 @@ class TestApk:
         changes = ssh_command.run_check("apk audit")
         expected_changes = [
             "A etc/urandom.seed",
-            "A etc/board.json",
             "A etc/apk/arch",
             "A etc/apk/repositories.d/customfeeds.list",
             "A etc/apk/repositories.d/distfeeds.list",

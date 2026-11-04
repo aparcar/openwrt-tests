@@ -1,39 +1,39 @@
-openwrt:                                                                                                                                                                 │·············
-  name: Gemtek W1700K UBI / CenturyLink W1700K UBI                                                                                                                       │·············
-  target: airoha-an7581                                                                                                                                                  │·············
-  profile: gemtek_w1700k-ubi                                                                                                                                             │·············
-targets:                                                                                                                                                                 │·············
-  main:                                                                                                                                                                  │·············
-    features:                                                                                                                                                            │·············
-      - wan_port                                                                                                                                                         │·············
-      - lan_port                                                                                                                                                         │·············
-    resources:                                                                                                                                                           │·············
-      RemotePlace:                                                                                                                                                       │·············
-        name: !template "$LG_PLACE"                                                                                                                                      │·············
-    drivers:                                                                                                                                                             │·············
-      - PDUDaemonDriver: {}                                                                                                                                              │·············
-      - TFTPProviderDriver: {}                                                                                                                                           │·············
-      - SerialDriver:                                                                                                                                                    │·············
-          txdelay: 0.01                                                                                                                                                  │·············
-      - UBootDriver:                                                                                                                                                     │·············
-          autoboot: "ENTER"                                                                                                                                              │·············
-          interrupt: "0"                                                                                                                                                 │·············
-          prompt: "U-Boot>"                                                                                                                                              │·············
-          init_commands:                                                                                                                                                 │·············
-            - tftpboot 0x89000000                                                                                                                                        │·············
-          boot_command: bootm 0x89000000                                                                                                                                 │·············
-      - ShellDriver:                                                                                                                                                     │·············
-          prompt: 'root@[\w()]+:[^ ]+ '                                                                                                                                  │·············
-          login_prompt: Please press Enter to activate this console.                                                                                                     │·············
-          await_login_timeout: 15                                                                                                                                        │·············
-          login_timeout: 120                                                                                                                                             │·············
-          post_login_settle_time: 5                                                                                                                                      │·············
-          username: root                                                                                                                                                 │·············
-      - UBootTFTPStrategy: {}                                                                                                                                            │·············
-      - SSHDriver:                                                                                                                                                       │·············
-          connection_timeout: 120.0                                                                                                                                      │·············
-          explicit_scp_mode: True                                                                                                                                        │·············
-images:                                                                                                                                                                  │·············
-  root: !template $LG_IMAGE                                                                                                                                              │·············
-imports:                                                                                                                                                                 │·············
+openwrt:                                                                                                                                           
+  name: Gemtek W1700K UBI / CenturyLink W1700K UBI                                                                                
+  target: airoha-an7581                                                                                                                                                   
+  profile: gemtek_w1700k-ubi                                                                                                                                              
+targets:                                                                                                                                                                  
+  main:                                                                                                                                                                   
+    features:                                                                                                                                                             
+      - wan_port                                                                                                                                                          
+      - lan_port                                                                                                                                                          
+    resources:                                                                                                                                                            
+      RemotePlace:                                                                                                                                                        
+        name: !template "$LG_PLACE"                                                                                                                                       
+    drivers:                                                                                                                                                              
+      - PDUDaemonDriver: {}                                                                                                                                               
+      - TFTPProviderDriver: {}                                                                                                                                            
+      - SerialDriver:                                                                                                                                                     
+          txdelay: 0.01                                                                                                                                                   
+      - UBootDriver:                                                                                                                                                      
+          autoboot: "ENTER"                                                                                                                                               
+          interrupt: "0"                                                                                                                                                  
+          prompt: "U-Boot>"                                                                                                                                               
+          init_commands:                                                                                                                                                  
+            - tftpboot 0x89000000                                                                                                                                         
+          boot_command: bootm 0x89000000                                                                                                                                  
+      - ShellDriver:                                                                                                                                                      
+          prompt: 'root@[\w()]+:[^ ]+ '                                                                                                                                   
+          login_prompt: Please press Enter to activate this console.                                                                                                      
+          await_login_timeout: 15                                                                                                                                         
+          login_timeout: 120                                                                                                                                              
+          post_login_settle_time: 5                                                                                                                                       
+          username: root                                                                                                                                                  
+      - UBootTFTPStrategy: {}                                                                                                                                             
+      - SSHDriver:                                                                                                                                                        
+          connection_timeout: 120.0                                                                                                                                       
+          explicit_scp_mode: True                                                                                                                                         
+images:                                                                                                                                                                   
+  root: !template $LG_IMAGE                                                                                                                                               
+imports:                                                                                                                                                                  
   - ../strategies/tftpstrategy.py

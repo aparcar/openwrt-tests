@@ -3,7 +3,7 @@ import subprocess
 from collections import defaultdict
 
 
-def test_ssh_supported_algorithms(ssh_command, results_bag):
+def test_ssh_supported_algorithms(env, ssh_command, results_bag):
     with ssh_command.forward_local_port(22) as localport:
         output = subprocess.check_output(
             f"nmap --script ssh2-enum-algos -sV -p {localport} 127.0.0.1",
@@ -37,7 +37,9 @@ def test_ssh_supported_algorithms(ssh_command, results_bag):
         assert "kexguess2@matt.ucc.asn.au" in algorithms["kex_algorithms"]
         assert "kex-strict-s-v00@openssh.com" in algorithms["kex_algorithms"]
 
-        assert "ssh-ed25519" in algorithms["server_host_key_algorithms"]
+        # small_flash targets build dropbear without Ed25519 by default
+        if "small_flash" not in env.get_target_features():
+            assert "ssh-ed25519" in algorithms["server_host_key_algorithms"]
         assert "rsa-sha2-256" in algorithms["server_host_key_algorithms"]
 
         assert "chacha20-poly1305@openssh.com" in algorithms["encryption_algorithms"]
