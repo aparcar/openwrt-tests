@@ -5,6 +5,7 @@ from typing import ClassVar
 from urllib.parse import urlparse
 
 import attr
+
 from labgrid.driver import TFTPProviderDriver
 from labgrid.factory import target_factory
 from labgrid.strategy.common import Strategy, StrategyError
@@ -91,9 +92,13 @@ class UBootTFTPStrategy(Strategy):
 
             if tftp_server_ip:
                 tftp_dut_ip = ipaddress.ip_address(tftp_server_ip) + 1
+                # Aruba APBoot's tftpboot falls back to DHCP unless ipaddr,
+                # netmask and gatewayip are all set; harmless for U-Boot.
                 self.uboot.init_commands = (
                     f"setenv serverip {tftp_server_ip}",
                     f"setenv ipaddr {tftp_dut_ip}",
+                    "setenv netmask 255.255.255.0",
+                    f"setenv gatewayip {tftp_server_ip}",
                 ) + self.uboot.init_commands
 
             self.target.activate(self.uboot)
