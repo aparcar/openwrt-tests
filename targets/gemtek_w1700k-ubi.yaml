@@ -7,6 +7,9 @@ targets:
     features:
       - wan_port
       - lan_port
+      - wifi-2g
+      - wifi-5g
+      - wifi-6g
     resources:
       RemotePlace:
         name: !template "$LG_PLACE"
@@ -20,8 +23,6 @@ targets:
           interrupt: "\n"
           prompt: "ECNT>"
           init_commands:
-            - setenv ipaddr "192.168.$vlan107.2"
-            - setenv serverip "$address"
             - tftpboot
           boot_command: bootm $loadaddr
       - ShellDriver:

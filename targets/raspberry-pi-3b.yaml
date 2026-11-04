@@ -2,17 +2,16 @@ openwrt:
   name: Raspberry Pi 3A+/3B/3B+/CM3/Zero2/Zero2W/CM0 (64bit)
   target: bcm27xx-bcm2710
   profile: rpi-3
+  image:
+    type: factory
+    filesystem: squashfs
 targets:
   main:
     resources:
       RemotePlace:
         name: !template "$LG_PLACE"
-      NetworkService:
-        address: "192.168.1.1"
-        port: 22
-        username: root
     drivers:
-      NetworkPowerDriver: {}
+      PDUDaemonDriver: {}
       SerialDriver:
         txdelay: 0.05
       ShellDriver:
@@ -23,9 +22,12 @@ targets:
         post_login_settle_time: 5
         username: root
       USBSDMuxDriver: {}
-      USBStorageDriver:
-        image: "firmware"
-      ShellStrategy: {}
+      USBStorageDriver: {}
+      SDMuxStrategy: {}
       SSHDriver:
         connection_timeout: 120.0
         explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/sdmuxstrategy.py
