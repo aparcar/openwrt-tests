@@ -1,0 +1,38 @@
+openwrt:
+  name: tplink_re650-v1
+  target: ramips-mt7621
+  profile: tplink_re650-v1
+targets:
+  main:
+    features:
+      - wifi
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      TFTPProviderDriver: {}
+      PDUDaemonDriver: {}
+      SerialDriver:
+        txdelay: 0.05
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 120
+        post_login_settle_time: 5
+        username: root
+      SmallUBootDriver:
+        boot_expression: "Please choose the operation:"
+        boot_secret: "4"
+        boot_secret_nolf: true
+        prompt: "MT7621 #"
+        init_commands:
+          - tftp 0x84000000
+      UBootTFTPStrategy: {}
+      SSHDriver:
+        connection_timeout: 120.0
+        explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/tftpstrategy.py
