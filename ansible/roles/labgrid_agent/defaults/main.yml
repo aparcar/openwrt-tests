@@ -1,0 +1,56 @@
+# labgrid_agent: kernelci-labgrid's labgrid-agent on a lab host, polling an
+# OpenWrt CI (KernelCI) server for jobs and running them with openwrt-tests.
+# Deployed by openwrtci (ansible/lab.yml), which issues the lab's tokens.
+
+# --- Required inputs (set by the caller) -------------------------------------
+
+# Lab name on the CI server
+# labgrid_agent_lab_name: aparcar-lab
+# File on the Ansible controller with the lab's tokens (KEY=value lines)
+# labgrid_agent_env_file: /path/to/secrets/<server>/labs/<lab>.env
+# Shared runtime the lab claims jobs from
+# labgrid_agent_pool: openwrt-labs
+
+# --- Optional inputs --------------------------------------------------------
+
+# Platforms the lab runs. Only qemu_* ones are passed to the agent; hardware
+# platforms are discovered from the lab's labgrid-coordinator (device= tags).
+labgrid_agent_platforms: []
+# true, false, or a mapping of [health_checks] settings (plain keys for all
+# platforms, sub-mappings per device)
+labgrid_agent_health_checks: true
+# At most this many jobs at once (0: one per platform)
+labgrid_agent_max_jobs: 0
+
+# --- Accounts and paths -----------------------------------------------------
+
+labgrid_agent_user: labgrid-agent
+# Shared with the developers (labgrid_lab role): TFTP tree, staging cache,
+# labgrid-bound-connect; plus device access for SD-mux and USB tooling
+labgrid_agent_groups: [labgrid, dialout, plugdev]
+labgrid_agent_dir: /opt/openwrtci-lab
+labgrid_agent_state_dir: /var/lib/labgrid-agent
+labgrid_agent_config_dir: /etc/labgrid-agent
+# The exporter's hostname (labgrid-exporter --hostname): labgrid reaches the
+# exporter's resources over SSH, also on this host
+labgrid_agent_exporter_host: "{{ inventory_hostname }}"
+
+# --- Sources ----------------------------------------------------------------
+
+labgrid_agent_tests_repo: https://github.com/aparcar/openwrt-tests.git
+labgrid_agent_tests_version: main
+labgrid_agent_repo: https://github.com/aparcar/kernelci-labgrid.git
+labgrid_agent_version: main
+
+# --- Behaviour --------------------------------------------------------------
+
+# Seconds between polls (systemd timer, measured from the end of a run)
+labgrid_agent_poll_interval: 60
+# Delete artifacts (firmware, job outputs) older than this (tmpfiles.d age)
+labgrid_agent_artifacts_max_age: 7d
+
+labgrid_agent_packages: [git, curl, ca-certificates, acl, python3]
+# Only on labs with qemu_* platforms
+labgrid_agent_qemu_packages: [qemu-system-arm, qemu-system-x86, qemu-system-mips]
+
+uv_install_dir: /usr/local/bin

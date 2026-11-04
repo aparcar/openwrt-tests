@@ -1,0 +1,8 @@
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Stop the agent's old journal
+  ansible.builtin.command: systemctl stop systemd-journald@labgrid-agent.service systemd-journald@labgrid-agent.socket systemd-journald-varlink@labgrid-agent.socket
+  changed_when: true
+  failed_when: false

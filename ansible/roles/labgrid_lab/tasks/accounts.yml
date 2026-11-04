@@ -1,0 +1,123 @@
+# Account model (see ansible/README.md):
+#   labgrid-dev          shared developer login: devices + labgrid, nothing else
+#   labgrid-agent        kernelci agent (labgrid_agent role), its own login
+#   labgrid-exporter     runs the exporter (system account, no login)
+#   labgrid-coordinator  runs the coordinator (system account, no login)
+# Developers and the agent share only the group `labgrid` (TFTP tree, staging
+# cache, labgrid-bound-connect) and the device groups.
+
+- name: Create the shared labgrid group
+  ansible.builtin.group:
+    name: "{{ labgrid_group }}"
+    system: true
+
+- name: Create the developer account
+  ansible.builtin.user:
+    name: "{{ labgrid_dev_user }}"
+    shell: /bin/bash
+    create_home: true
+    # exactly these groups: drops anything granted by hand (sudo, adm,
+    # systemd-journal, the agent's group, ...)
+    groups: "{{ [labgrid_group] + labgrid_device_groups }}"
+    append: false
+
+- name: Keep the developer's home private
+  ansible.builtin.file:
+    path: "~{{ labgrid_dev_user }}"
+    state: directory
+    mode: "0750"
+
+- name: Create the exporter's system account
+  ansible.builtin.user:
+    name: "{{ labgrid_exporter_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    home: /nonexistent
+    groups: "{{ labgrid_device_groups }}"
+    append: false
+
+- name: Create the coordinator's system account
+  ansible.builtin.user:
+    name: "{{ labgrid_coordinator_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    home: "{{ labgrid_coordinator_dir }}"
+
+# --- Shared directories -----------------------------------------------------
+# root:labgrid, setgid, group-writable, no sticky bit: labgrid's TFTP staging
+# replaces symlinks (ln -sfn) that another member may have created.
+
+- name: Create the TFTP root
+  ansible.builtin.file:
+    path: "{{ labgrid_tftp_root }}"
+    state: directory
+    owner: root
+    group: "{{ labgrid_group }}"
+    mode: "2775"
+
+- name: Create one TFTP directory per device instance
+  ansible.builtin.file:
+    path: "{{ labgrid_tftp_root }}/{{ item }}"
+    state: directory
+    owner: root
+    group: "{{ labgrid_group }}"
+    mode: "2775"
+  loop: "{{ _instances | flatten | unique }}"
+  vars:
+    _lab: "{{ labnet.labs[inventory_hostname] }}"
+    _instances: >-
+      [{% for device in _lab.devices %}{{ _lab.get('device_instances', {}).get(device, [device]) | to_json }},{% endfor %}]
+  tags: export
+
+- name: Create labgrid's staging cache
+  ansible.builtin.file:
+    path: "{{ labgrid_cache_dir }}"
+    state: directory
+    owner: root
+    group: "{{ labgrid_group }}"
+    mode: "2775"
+
+# Replaces the old per-user cron job; systemd-tmpfiles-clean runs daily
+- name: Expire old staged files
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/labgrid-cache.conf
+    content: |
+      # Managed by Ansible (openwrt-tests): labgrid staging older than {{ labgrid_cache_max_age_days }}d
+      e {{ labgrid_cache_dir }} - - - {{ labgrid_cache_max_age_days }}d
+    mode: "0644"
+
+- name: Remove the old cache cleanup cron job
+  ansible.builtin.cron:
+    name: "Clean labgrid cache files older than 7 days"
+    user: "{{ labgrid_dev_user }}"
+    state: absent
+
+# --- labgrid-bound-connect (SSH to %vlanNNN NetworkService addresses) ------
+
+- name: Install labgrid-bound-connect
+  ansible.builtin.copy:
+    src: labgrid-bound-connect
+    dest: /usr/local/sbin/labgrid-bound-connect
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Let the labgrid group run labgrid-bound-connect as root
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/labgrid-bound-connect
+    content: |
+      # Managed by Ansible (openwrt-tests)
+      %{{ labgrid_group }} ALL = (root) NOPASSWD: /usr/local/sbin/labgrid-bound-connect
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s
+
+- name: Remove the old everyone-may-run line from /etc/sudoers
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers
+    line: "ALL ALL = NOPASSWD: /usr/local/sbin/labgrid-bound-connect"
+    state: absent
+    validate: visudo -cf %s

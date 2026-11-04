@@ -1,0 +1,60 @@
+# labgrid_lab: a lab host (labgrid exporter, coordinator, pdudaemon, TFTP,
+# DUT VLANs). See ansible/README.md for the account model.
+
+# --- Accounts -----------------------------------------------------------------
+
+# Shared developer login: device access and labgrid, nothing else. Its SSH
+# keys are set up by the lab's admin; this role never touches them.
+labgrid_dev_user: labgrid-dev
+# Group shared by everyone who runs labgrid on this host (developers and the
+# kernelci agent): owns the TFTP tree and labgrid's staging cache.
+labgrid_group: labgrid
+# Device groups the labgrid users need: labgrid runs usbsdmux, dd/bmaptool,
+# uhubctl, ... over SSH as the logged-in user.
+labgrid_device_groups: [dialout, plugdev]
+# System accounts running the daemons (no login, no shell)
+labgrid_exporter_user: labgrid-exporter
+labgrid_coordinator_user: labgrid-coordinator
+
+# --- labgrid --------------------------------------------------------------
+
+# CLI tools, installed with `uv tool install` (name: source spec). labgrid is
+# the same commit the tests use (pyproject.toml / uv.lock), so client and
+# exporter/coordinator don't drift apart: bump both together. A spec equal to
+# the name installs the latest release.
+labgrid_uv_tools:
+  labgrid: git+https://github.com/aparcar/labgrid.git@475a767ba42ae453a6d6a82c6c485783f846d50f
+  usbsdmux: usbsdmux
+  pdudaemon: git+https://github.com/maurerle/pdudaemon.git@tasmota-single-outlet
+
+# uv itself, its tool venvs, their entry points, and Python builds uv
+# downloads (outside root's home, so the service accounts can use them)
+uv_install_dir: /usr/local/bin
+uv_tool_dir: /opt/uv/tools
+uv_tool_bin_dir: /usr/local/bin
+uv_python_dir: /opt/uv/python
+
+labgrid_config_dir: /etc/labgrid
+labgrid_coordinator_dir: /var/lib/labgrid-coordinator
+labgrid_tftp_root: /srv/tftp
+# labgrid stages files below <cache>/<local user>/ on the exporter
+labgrid_cache_dir: /var/cache/labgrid
+labgrid_cache_max_age_days: 7
+
+# Per-lab data (exporter.yaml, dnsmasq.conf, pdudaemon.conf) lives next to the
+# playbook in files/exporter/<inventory_hostname>/ (podman/config-sync.sh reads
+# the same paths).
+labgrid_lab_data_dir: "{{ playbook_dir }}/files/exporter"
+
+# --- Lab network ------------------------------------------------------------
+
+# Interface the DUT VLANs are tagged on. It must be defined in the host's own
+# netplan file (the admin's); the role only writes the VLANs.
+vlan_interface: eth0
+# Netplan file holding only the DUT VLANs (files/exporter/netplan.yaml)
+labgrid_netplan_file: /etc/netplan/labnet.yaml
+# Optional extra PDU device groups for pdudaemon (e.g. [gpio, i2c])
+# pdudaemon_groups: []
+
+# CH348 octal serial adapters (ch9344 out-of-tree driver)
+ch348_module_enabled: false

@@ -1,0 +1,18 @@
+# Managed by Ansible (openwrt-tests, role labgrid_agent): settings of lab {{ labgrid_agent_lab_name }} that don't
+# fit on the command line (see labgrid-agent.service). Tokens are in env.
+{% if labgrid_agent_health_checks is mapping %}
+
+# health_checks of lab {{ labgrid_agent_lab_name }}: plain keys for all platforms (also the
+# ones discovered from the coordinator), sub-tables per device
+[health_checks]
+{% for key, value in labgrid_agent_health_checks.items() if value is not mapping %}
+{{ key }} = {{ value | to_json }}
+{% endfor %}
+{% for device, settings in labgrid_agent_health_checks.items() if settings is mapping %}
+
+[health_checks.{{ device }}]
+{% for key, value in settings.items() %}
+{{ key }} = {{ value | to_json }}
+{% endfor %}
+{% endfor %}
+{% endif %}

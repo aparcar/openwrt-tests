@@ -1,0 +1,20 @@
+# Managed by Ansible (openwrt-tests, role labgrid_lab)
+[Unit]
+Description=Control and Queueing daemon for PDUs
+
+[Service]
+ExecStart={{ uv_tool_bin_dir }}/pdudaemon --journal --conf=/etc/pdudaemon/pdudaemon.conf
+Type=simple
+DynamicUser=yes
+StateDirectory=pdudaemon
+# writable cwd: lgpio (clusterctrl) creates its notify pipes there
+WorkingDirectory=/var/lib/pdudaemon
+{% if pdudaemon_groups is defined %}
+# device access for local PDU commands (the groups must exist on the host)
+SupplementaryGroups={{ pdudaemon_groups | join(' ') }}
+{% endif %}
+ProtectHome=true
+Restart=on-abnormal
+
+[Install]
+WantedBy=multi-user.target

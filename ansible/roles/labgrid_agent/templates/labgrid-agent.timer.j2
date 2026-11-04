@@ -1,0 +1,12 @@
+# Managed by Ansible (openwrt-tests, role labgrid_agent). Measured from the end of the previous run,
+# so runs never overlap.
+[Unit]
+Description=OpenWrt CI labgrid-agent poll timer ({{ labgrid_agent_lab_name }})
+
+[Timer]
+OnBootSec=60
+OnUnitInactiveSec={{ labgrid_agent_poll_interval }}
+AccuracySec=5
+
+[Install]
+WantedBy=timers.target

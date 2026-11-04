@@ -1,4 +1,8 @@
-{{ netplan_custom  | to_yaml(indent=2) }}
+# DUT VLANs only (role labgrid_lab writes this to /etc/netplan/labnet.yaml).
+# The host's own network (management port, Wi-Fi, ...) belongs in its own
+# netplan file, set up by the lab's admin; it must define {{ vlan_interface }}.
+network:
+  version: 2
   vlans:
 {% for vlan in range(0, 24) %}
     vlan{{ vlan + 101 }}:

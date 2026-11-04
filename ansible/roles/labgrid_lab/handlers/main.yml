@@ -1,0 +1,35 @@
+- name: Restart labgrid-exporter
+  ansible.builtin.systemd_service:
+    name: labgrid-exporter
+    state: restarted
+    daemon_reload: true
+
+- name: Restart labgrid-coordinator
+  ansible.builtin.systemd_service:
+    name: labgrid-coordinator
+    state: restarted
+    daemon_reload: true
+
+- name: Restart pdudaemon
+  ansible.builtin.systemd_service:
+    name: pdudaemon
+    state: restarted
+    daemon_reload: true
+
+- name: Restart dnsmasq
+  ansible.builtin.systemd_service:
+    name: dnsmasq
+    state: restarted
+
+- name: Reload sshd
+  ansible.builtin.systemd_service:
+    name: ssh
+    state: reloaded
+
+- name: Reload udev rules
+  ansible.builtin.command: udevadm control --reload-rules
+  changed_when: true
+
+- name: Apply netplan
+  ansible.builtin.command: netplan apply
+  changed_when: true
