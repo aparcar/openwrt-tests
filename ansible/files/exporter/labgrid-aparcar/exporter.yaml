@@ -7,7 +7,7 @@ labgrid-aparcar-openwrt_one:
     index: 1
     pdu: 192.168.128.2
   TFTPProvider:
-    external: openwrt_one/
+    external: tftp://192.168.102.1/openwrt_one/
     internal: /srv/tftp/openwrt_one/
   USBSerialPort:
     match:
@@ -22,7 +22,7 @@ labgrid-aparcar-bananapi_bpi-r4-lite:
     index: 3
     pdu: 192.168.128.2
   TFTPProvider:
-    external: bananapi_bpi-r4-lite/
+    external: tftp://192.168.104.1/bananapi_bpi-r4-lite/
     internal: /srv/tftp/bananapi_bpi-r4-lite/
   USBSerialPort:
     match:
@@ -37,7 +37,7 @@ labgrid-aparcar-genexis_pulse-ex400:
     index: 5
     pdu: 192.168.128.2
   TFTPProvider:
-    external: genexis_pulse-ex400/
+    external: tftp://192.168.105.1/genexis_pulse-ex400/
     internal: /srv/tftp/genexis_pulse-ex400/
   USBSerialPort:
     match:
@@ -67,7 +67,7 @@ labgrid-aparcar-bananapi_bpi-r4:
     index: 9
     pdu: 192.168.128.2
   TFTPProvider:
-    external: bananapi_bpi-r4/
+    external: tftp://192.168.109.1/bananapi_bpi-r4/
     internal: /srv/tftp/bananapi_bpi-r4/
   USBSerialPort:
     match:
@@ -160,8 +160,23 @@ labgrid-aparcar-starfive_visionfive2-v1.2a:
     index: 19
     pdu: 192.168.128.2
   TFTPProvider:
-    external: starfive_visionfive2-v1.2a/
+    external: tftp://192.168.119.1/starfive_visionfive2-v1.2a/
     internal: /srv/tftp/starfive_visionfive2-v1.2a/
   USBSerialPort:
     match:
       ID_PATH: platform-xhci-hcd.1-usb-0:2.1.2:1.0
+
+labgrid-aparcar-ripe_atlas-v5:
+  NetworkService:
+    address: 192.168.1.1%vlan121
+    username: root
+  PDUDaemonPort:
+    host: localhost:16421
+    index: 21
+    pdu: 192.168.128.2
+  TFTPProvider:
+    external: tftp://192.168.121.1/ripe_atlas-v5/
+    internal: /srv/tftp/ripe_atlas-v5/
+  USBSerialPort:
+    match:
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.2:1.0

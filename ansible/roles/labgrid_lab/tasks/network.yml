@@ -1,0 +1,68 @@
+# The role only manages the DUT VLANs, in their own netplan file. The host's
+# regular network (management port, Wi-Fi, ...) is the lab admin's, in the
+# host's own netplan file: this role never touches it.
+
+- name: Read the current VLAN netplan file
+  ansible.builtin.slurp:
+    src: "{{ labgrid_netplan_file }}"
+  register: _labnet_netplan
+  failed_when: false
+
+# Earlier versions also wrote the host's own network (host_vars'
+# netplan_custom) into this file. Overwriting it would drop that config on the
+# next `netplan apply`, so stop and let the admin move it out first.
+- name: Make sure the VLAN file holds nothing but VLANs
+  ansible.builtin.assert:
+    that: _other_keys | length == 0
+    fail_msg: >-
+      {{ labgrid_netplan_file }} also configures {{ _other_keys | join(', ') }}.
+      Move that to the host's own netplan file (e.g. /etc/netplan/01-host.yaml),
+      then run again: this role only manages the DUT VLANs in {{ labgrid_netplan_file }}.
+    quiet: true
+  vars:
+    _current: "{{ (_labnet_netplan.content | b64decode | from_yaml).network | default({}) }}"
+    _other_keys: "{{ _current.keys() | list | difference(['version', 'vlans']) }}"
+  when: _labnet_netplan.content is defined
+
+- name: Configure the DUT VLANs (netplan)
+  ansible.builtin.template:
+    src: "{{ labgrid_lab_data_dir }}/netplan.yaml"
+    dest: "{{ labgrid_netplan_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  register: _labnet_netplan_file
+  notify: Apply netplan
+
+# Fails if vlan_interface isn't defined in the host's own netplan file, before
+# `netplan apply` (handler) could leave the host half-configured
+- name: Check the combined netplan configuration
+  ansible.builtin.command: netplan generate
+  when: _labnet_netplan_file is changed
+  changed_when: false
+
+- name: Configure dnsmasq (lab-specific config if there is one)
+  ansible.builtin.template:
+    src: "{{ lookup('ansible.builtin.first_found', _candidates) }}"
+    dest: /etc/dnsmasq.conf
+    mode: "0644"
+  vars:
+    _candidates:
+      - "{{ labgrid_lab_data_dir }}/{{ inventory_hostname }}/dnsmasq.conf"
+      - "{{ labgrid_lab_data_dir }}/dnsmasq.conf"
+  notify: Restart dnsmasq
+
+- name: Start and enable dnsmasq
+  ansible.builtin.systemd_service:
+    name: dnsmasq
+    state: started
+    enabled: true
+
+# The lab host is the upstream of the DUTs' WAN ports
+- name: Enable IP forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_file: /etc/sysctl.d/99-ip-forward.conf
+    state: present
+    reload: true

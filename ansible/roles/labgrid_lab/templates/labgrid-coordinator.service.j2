@@ -1,0 +1,21 @@
+# Managed by Ansible (openwrt-tests, role labgrid_lab)
+[Unit]
+Description=Labgrid Coordinator
+After=network.target
+
+[Service]
+# Own system account; places.yaml lives in its working directory
+User={{ labgrid_coordinator_user }}
+Group={{ labgrid_coordinator_user }}
+Environment="PYTHONUNBUFFERED=1"
+ExecStart={{ uv_tool_bin_dir }}/labgrid-coordinator
+WorkingDirectory={{ labgrid_coordinator_dir }}
+Restart=on-failure
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths={{ labgrid_coordinator_dir }}
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

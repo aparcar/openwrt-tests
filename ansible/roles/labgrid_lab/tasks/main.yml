@@ -1,0 +1,28 @@
+- name: Check this host is a lab in labnet.yaml
+  ansible.builtin.assert:
+    that: inventory_hostname in labnet.labs
+    fail_msg: "{{ inventory_hostname }} is not a lab in labnet.yaml"
+    quiet: true
+  tags: always
+
+- name: Base system
+  ansible.builtin.import_tasks: base.yml
+
+- name: Accounts and shared directories
+  ansible.builtin.import_tasks: accounts.yml
+  tags: accounts
+
+- name: Install labgrid and pdudaemon
+  ansible.builtin.import_tasks: labgrid.yml
+
+- name: Coordinator
+  ansible.builtin.import_tasks: coordinator.yml
+
+- name: Exporter
+  ansible.builtin.import_tasks: exporter.yml
+
+- name: Lab network (netplan, dnsmasq, forwarding)
+  ansible.builtin.import_tasks: network.yml
+
+- name: Devices (udev, serial drivers)
+  ansible.builtin.import_tasks: devices.yml

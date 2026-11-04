@@ -1,0 +1,41 @@
+# The exporter runs as its own system account with device access. Its config
+# is root-owned and only readable: nobody else can change what it exports.
+
+- name: Create the labgrid config directory
+  ansible.builtin.file:
+    path: "{{ labgrid_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the exporter configuration
+  ansible.builtin.template:
+    src: "{{ labgrid_lab_data_dir }}/{{ inventory_hostname }}/exporter.yaml"
+    dest: "{{ labgrid_config_dir }}/exporter.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart labgrid-exporter
+  tags: export
+
+# The exporter starts ser2net per acquired serial port itself
+- name: Disable the system ser2net service
+  ansible.builtin.systemd_service:
+    name: ser2net
+    state: stopped
+    enabled: false
+
+- name: Install the exporter unit
+  ansible.builtin.template:
+    src: labgrid-exporter.service.j2
+    dest: /etc/systemd/system/labgrid-exporter.service
+    mode: "0644"
+  notify: Restart labgrid-exporter
+
+- name: Start and enable the exporter
+  ansible.builtin.systemd_service:
+    name: labgrid-exporter
+    state: started
+    enabled: true
+    daemon_reload: true

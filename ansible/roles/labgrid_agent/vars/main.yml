@@ -1,0 +1,10 @@
+# Computed when used (not set_fact), so tag-limited runs have them too.
+
+# The lab runs QEMU platforms: QEMU packages, kvm group
+_agent_qemu: "{{ labgrid_agent_platforms | select('match', '^qemu_') | list | length > 0 }}"
+
+# The lab has real hardware behind a labgrid-coordinator (anything but qemu_*
+# platforms, or none listed): the agent discovers those platforms from the
+# coordinator's places. Otherwise QEMU only, without a coordinator.
+_agent_hardware: "{{ labgrid_agent_platforms | reject('match', '^qemu_') | list | length > 0
+                     or labgrid_agent_platforms | length == 0 }}"

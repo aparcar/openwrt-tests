@@ -1,0 +1,244 @@
+# labgrid-agent on a lab host, run by a systemd timer (one poll per run).
+#
+# Separation from the developers (labgrid_lab's labgrid-dev): the agent has
+# its own account and SSH key and logs in to the exporter as itself. Its
+# home, config (tokens), checkouts and state are closed to other users; it
+# shares only the `labgrid` group (TFTP tree, staging cache) and the device
+# groups with the developers.
+
+- name: Check the required inputs
+  ansible.builtin.assert:
+    that:
+      - labgrid_agent_lab_name is defined
+      - labgrid_agent_env_file is defined
+      - labgrid_agent_pool is defined
+    fail_msg: "Set labgrid_agent_lab_name, labgrid_agent_env_file and labgrid_agent_pool (openwrtci's lab.yml does)"
+    quiet: true
+
+- name: Check the lab's token file exists on the controller
+  ansible.builtin.stat:
+    path: "{{ labgrid_agent_env_file }}"
+  register: _agent_env_stat
+  delegate_to: localhost
+  become: false
+  failed_when: not _agent_env_stat.stat.exists
+
+- name: Install packages
+  ansible.builtin.apt:
+    name: "{{ labgrid_agent_packages + (labgrid_agent_qemu_packages if _agent_qemu else []) }}"
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install uv
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    curl -LsSf https://astral.sh/uv/install.sh
+    | env UV_INSTALL_DIR={{ uv_install_dir }} UV_NO_MODIFY_PATH=1 sh
+  args:
+    creates: "{{ uv_install_dir }}/uv"
+    executable: /bin/bash
+
+# Also created by labgrid_lab; QEMU-only labs don't run that role
+- name: Create the groups the agent joins
+  ansible.builtin.group:
+    name: "{{ item }}"
+    system: true
+  loop: "{{ labgrid_agent_groups }}"
+
+- name: Create the agent account
+  ansible.builtin.user:
+    name: "{{ labgrid_agent_user }}"
+    system: true
+    shell: /bin/bash
+    create_home: true
+    # exactly these groups (anything granted by hand is dropped)
+    groups: "{{ labgrid_agent_groups + (['kvm'] if _agent_qemu else []) }}"
+    append: false
+
+- name: Keep the agent's home private
+  ansible.builtin.file:
+    path: "~{{ labgrid_agent_user }}"
+    state: directory
+    owner: "{{ labgrid_agent_user }}"
+    group: "{{ labgrid_agent_user }}"
+    mode: "0700"
+
+# labgrid reaches the exporter's resources (TFTP staging, SD mux, %vlanNNN
+# NetworkService via labgrid-bound-connect) over SSH, even on this host. The
+# agent logs in as itself with its own key; labgrid connects with
+# StrictHostKeyChecking=yes, so the host keys are pinned below.
+- name: Set up SSH to the exporter
+  when: _agent_hardware
+  block:
+    - name: Create the agent's .ssh directory
+      ansible.builtin.file:
+        path: "~{{ labgrid_agent_user }}/.ssh"
+        state: directory
+        owner: "{{ labgrid_agent_user }}"
+        group: "{{ labgrid_agent_user }}"
+        mode: "0700"
+
+    - name: Create the agent's SSH key
+      community.crypto.openssh_keypair:
+        path: "~{{ labgrid_agent_user }}/.ssh/id_ed25519"
+        type: ed25519
+        comment: "{{ labgrid_agent_user }}@{{ inventory_hostname }}"
+      become: true
+      become_user: "{{ labgrid_agent_user }}"
+      register: _agent_key
+
+    - name: Let the agent log in to this host as itself
+      ansible.posix.authorized_key:
+        user: "{{ labgrid_agent_user }}"
+        key: "{{ _agent_key.public_key }}"
+        comment: "{{ labgrid_agent_user }} (kernelci agent)"
+
+    - name: Read this host's SSH host keys
+      ansible.builtin.slurp:
+        src: "{{ item }}"
+      loop: [/etc/ssh/ssh_host_ed25519_key.pub, /etc/ssh/ssh_host_ecdsa_key.pub, /etc/ssh/ssh_host_rsa_key.pub]
+      register: _host_keys
+      failed_when: false
+
+    - name: Trust this host's SSH host keys
+      ansible.builtin.copy:
+        dest: "~{{ labgrid_agent_user }}/.ssh/known_hosts"
+        content: |
+          {% for key in _host_keys.results if key.content is defined %}
+          {{ labgrid_agent_exporter_host }},localhost {{ (key.content | b64decode).split()[:2] | join(' ') }}
+          {% endfor %}
+        owner: "{{ labgrid_agent_user }}"
+        group: "{{ labgrid_agent_user }}"
+        mode: "0644"
+
+    - name: Remove the old SSH config (it logged in as labgrid-dev)
+      ansible.builtin.file:
+        path: "~{{ labgrid_agent_user }}/.ssh/config"
+        state: absent
+
+# Only the credentials are private: config and tokens (/etc/labgrid-agent)
+# and the home with the SSH key. The state directory holds firmware, logs and
+# results, nothing secret, and must stay readable: labgrid stages firmware
+# that is already on this host by symlinking it from /srv/tftp straight into
+# artifacts/firmware, and the TFTP server (user dnsmasq) follows that link.
+- name: Create the agent's directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(labgrid_agent_user) }}"
+    group: "{{ labgrid_agent_user }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: "{{ labgrid_agent_dir }}", mode: "0750"}
+    - {path: "{{ labgrid_agent_state_dir }}", mode: "0755"}
+    - {path: "{{ labgrid_agent_config_dir }}", owner: root, mode: "0750"}
+
+# Runs by hand as root or another user (debugging a device) leave files in
+# the agent's state the agent can't overwrite (firmware cache, artifacts,
+# health state); hand everything back. Ownership only: modes stay as they are.
+- name: Give the agent's state back to the agent
+  ansible.builtin.file:
+    path: "{{ labgrid_agent_state_dir }}"
+    state: directory
+    owner: "{{ labgrid_agent_user }}"
+    group: "{{ labgrid_agent_user }}"
+    recurse: true
+
+# The TFTP server must read staged firmware (see above). Also repairs files
+# written while the agent ran with a stricter umask.
+- name: Keep the artifacts directory traversable for the TFTP server
+  ansible.builtin.file:
+    path: "{{ labgrid_agent_state_dir }}/artifacts"
+    state: directory
+    owner: "{{ labgrid_agent_user }}"
+    group: "{{ labgrid_agent_user }}"
+    mode: "0755"
+
+- name: Look for the firmware cache
+  ansible.builtin.stat:
+    path: "{{ labgrid_agent_state_dir }}/artifacts/firmware"
+  register: _agent_firmware_dir
+
+- name: Keep the firmware cache readable for the TFTP server
+  ansible.builtin.file:
+    path: "{{ labgrid_agent_state_dir }}/artifacts/firmware"
+    state: directory
+    mode: "o+rX"
+    recurse: true
+  when: _agent_firmware_dir.stat.isdir | default(false)
+
+- name: Clean up old artifacts
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/labgrid-agent.conf
+    content: |
+      # Managed by Ansible (openwrt-tests, role labgrid_agent): artifacts older than {{ labgrid_agent_artifacts_max_age }}
+      e {{ labgrid_agent_state_dir }}/artifacts - - - {{ labgrid_agent_artifacts_max_age }}
+    mode: "0644"
+
+# The agent logs to the regular system journal (journalctl -u
+# labgrid-agent). Earlier versions used their own journal namespace; remove
+# its config and stop its journald instance.
+- name: Remove the old journal namespace config
+  ansible.builtin.file:
+    path: /etc/systemd/journald@labgrid-agent.conf
+    state: absent
+  notify: Stop the agent's old journal
+
+- name: Check out openwrt-tests and the agent
+  ansible.builtin.git:
+    repo: "{{ item.repo }}"
+    dest: "{{ labgrid_agent_dir }}/{{ item.name }}"
+    version: "{{ item.version }}"
+  loop:
+    - {name: openwrt-tests, repo: "{{ labgrid_agent_tests_repo }}", version: "{{ labgrid_agent_tests_version }}"}
+    - {name: kernelci-labgrid, repo: "{{ labgrid_agent_repo }}", version: "{{ labgrid_agent_version }}"}
+  become: true
+  become_user: "{{ labgrid_agent_user }}"
+  register: _checkouts
+
+- name: Install their Python environments
+  ansible.builtin.command: "{{ uv_install_dir }}/uv sync --project {{ labgrid_agent_dir }}/{{ item }}"
+  loop: [openwrt-tests, kernelci-labgrid]
+  become: true
+  become_user: "{{ labgrid_agent_user }}"
+  when: _checkouts is changed
+  changed_when: true
+
+- name: Install the lab's tokens
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.file', labgrid_agent_env_file) }}\n"
+    dest: "{{ labgrid_agent_config_dir }}/env"
+    owner: root
+    group: "{{ labgrid_agent_user }}"
+    mode: "0640"
+  no_log: true
+
+- name: Install the agent's config file
+  ansible.builtin.template:
+    src: labgrid-agent.toml.j2
+    dest: "{{ labgrid_agent_config_dir }}/config.toml"
+    owner: root
+    group: "{{ labgrid_agent_user }}"
+    mode: "0640"
+
+- name: Remove the old per-device health check settings
+  ansible.builtin.file:
+    path: "{{ labgrid_agent_config_dir }}/health_checks"
+    state: absent
+
+- name: Install the systemd service and timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: /etc/systemd/system/{{ item }}
+    mode: "0644"
+  loop: [labgrid-agent.service, labgrid-agent.timer]
+  notify: Reload systemd
+
+- name: Apply systemd changes now
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable the timer
+  ansible.builtin.systemd_service:
+    name: labgrid-agent.timer
+    enabled: true
+    state: started

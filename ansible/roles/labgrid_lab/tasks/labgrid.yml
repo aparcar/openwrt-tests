@@ -1,0 +1,94 @@
+# CLI tools (labgrid, usbsdmux, pdudaemon) as uv tools: one venv each below
+# uv_tool_dir, entry points in uv_tool_bin_dir. Each tool's source spec is
+# recorded next to it; a changed spec reinstalls that tool (and restarts the
+# daemons using it), an unchanged one is left alone.
+
+- name: Install uv
+  ansible.builtin.shell: >-
+    set -o pipefail &&
+    curl -LsSf https://astral.sh/uv/install.sh
+    | env UV_INSTALL_DIR={{ uv_install_dir }} UV_NO_MODIFY_PATH=1 sh
+  args:
+    creates: "{{ uv_install_dir }}/uv"
+    executable: /bin/bash
+
+- name: Create the uv tool and Python directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ uv_tool_dir }}"
+    - "{{ uv_python_dir }}"
+
+- name: Record the tool sources
+  ansible.builtin.copy:
+    content: "{{ item.value }}\n"
+    dest: "{{ uv_tool_dir }}/.{{ item.key }}.source"
+    mode: "0644"
+  loop: "{{ labgrid_uv_tools | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: _uv_tool_sources
+
+- name: Install the changed tools
+  ansible.builtin.command:
+    argv:
+      - "{{ uv_install_dir }}/uv"
+      - tool
+      - install
+      - --force
+      - "{{ item.item.key if item.item.value == item.item.key else item.item.key ~ ' @ ' ~ item.item.value }}"
+  environment:
+    UV_TOOL_DIR: "{{ uv_tool_dir }}"
+    UV_TOOL_BIN_DIR: "{{ uv_tool_bin_dir }}"
+    UV_PYTHON_INSTALL_DIR: "{{ uv_python_dir }}"
+  loop: "{{ _uv_tool_sources.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: item is changed
+  changed_when: true
+  notify:
+    - Restart labgrid-exporter
+    - Restart labgrid-coordinator
+    - Restart pdudaemon
+
+# Earlier versions installed the tools with pipx; the uv entry points above
+# replaced its /usr/local/bin links (--force), so its venvs are unused now.
+- name: Remove the old pipx installation
+  ansible.builtin.file:
+    path: /opt/pipx
+    state: absent
+
+- name: Create the pdudaemon config directory
+  ansible.builtin.file:
+    path: /etc/pdudaemon
+    state: directory
+    mode: "0755"
+
+- name: Install the pdudaemon unit
+  ansible.builtin.template:
+    src: pdudaemon.service.j2
+    dest: /etc/systemd/system/pdudaemon.service
+    mode: "0644"
+  notify: Restart pdudaemon
+
+- name: Configure pdudaemon (lab-specific config if there is one)
+  ansible.builtin.template:
+    src: "{{ lookup('ansible.builtin.first_found', _candidates) }}"
+    dest: /etc/pdudaemon/pdudaemon.conf
+    mode: "0644"
+  vars:
+    _candidates:
+      - "{{ labgrid_lab_data_dir }}/{{ inventory_hostname }}/pdudaemon.conf"
+      - "{{ labgrid_lab_data_dir }}/pdudaemon.conf"
+  notify: Restart pdudaemon
+
+- name: Start and enable pdudaemon
+  ansible.builtin.systemd_service:
+    name: pdudaemon
+    state: started
+    enabled: true
+    daemon_reload: true

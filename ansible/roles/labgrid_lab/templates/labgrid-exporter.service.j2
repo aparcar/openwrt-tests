@@ -1,0 +1,22 @@
+# Managed by Ansible (openwrt-tests, role labgrid_lab)
+[Unit]
+Description=Labgrid Exporter
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+# Own system account with device access (it starts ser2net for serial
+# ports); developers and the agent can't change what it exports.
+User={{ labgrid_exporter_user }}
+Group={{ labgrid_exporter_user }}
+Environment="PYTHONUNBUFFERED=1"
+ExecStart={{ uv_tool_bin_dir }}/labgrid-exporter --hostname "{{ inventory_hostname }}" {{ labgrid_config_dir }}/exporter.yaml
+Restart=always
+RestartSec=30
+ProtectHome=true
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

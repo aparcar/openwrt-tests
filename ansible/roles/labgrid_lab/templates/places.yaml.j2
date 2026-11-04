@@ -19,3 +19,21 @@
     device: {{ device }}
 {% endfor %}
 {% endfor %}
+{% if labnet["labs"][inventory_hostname].get("probe") %}
+{{ inventory_hostname }}-probe:
+  acquired: null
+  acquired_resources: []
+  aliases: []
+  allowed: []
+  changed: {{ ansible_date_time.epoch }}
+  comment: 'labgrid-probe (contrib/labgrid-probe)'
+  created: {{ ansible_date_time.epoch }}
+  matches:
+  - cls: '*'
+    exporter: '*'
+    group: {{ inventory_hostname }}-probe
+    name: null
+    rename: null
+  tags:
+    role: probe
+{% endif %}
