@@ -14,17 +14,17 @@ labgrid-bryan-glinet_gl-mt6000:
     speed: 115200
   PDUDaemonPort:
     host: localhost:16421
-    pdu: tasmota
+    pdu: bryan-gpio
     index: 1
   TFTPProvider:
     internal: "/srv/tftp/glinet_gl-mt6000"
-    external: "glinet_gl-mt6000"
+    external: "tftp://192.168.101.1/glinet_gl-mt6000"
   NetworkService:
-    address: "192.168.1.1%vlan101"
+    address: "192.168.1.1%vlan102"
     username: "root"
 
 labgrid-bryan-bananapi_bpi-r4:
-  location: hsn-desk
+  location: labgrid-bryan
   USBSerialPort:
     match:
       "@ID_PATH": "platform-xhci-hcd.0-usb-0:2"
@@ -32,16 +32,34 @@ labgrid-bryan-bananapi_bpi-r4:
     speed: 115200
   PDUDaemonPort:
     host: localhost:16421
-    pdu: tasmota
+    pdu: bryan-gpio
     index: 2
   TFTPProvider:
     internal: "/srv/tftp/bananapi_bpi-r4"
-    external: "bananapi_bpi-r4/"
+    external: "tftp://192.168.103.1/bananapi_bpi-r4/"
   NetworkService:
-    address: "192.168.1.1%vlan103"
+    address: "192.168.1.1%vlan104"
     username: "root"
 
 labgrid-bryan-teltonika_rut976:
+  location: labgrid-bryan
+  USBSerialPort:
+    match:
+      "@ID_PATH": "platform-xhci-hcd.0-usb-0:2"
+      DEVNAME: "/dev/ttyCH9344USB2"
+    speed: 115200
+  PDUDaemonPort:
+    host: localhost:16421
+    pdu: bryan-gpio
+    index: 3
+  TFTPProvider:
+    internal: "/srv/tftp/teltonika_rut976"
+    external: "tftp://192.168.105.1/teltonika_rut976/"
+  NetworkService:
+    address: "192.168.1.1%vlan106"
+    username: "root"
+
+labgrid-bryan-gemtek_w1700k-ubi:
   location: labgrid-bryan
   USBSerialPort:
     match:
@@ -50,16 +68,16 @@ labgrid-bryan-teltonika_rut976:
     speed: 115200
   PDUDaemonPort:
     host: localhost:16421
-    pdu: tasmota
-    index: 3
+    pdu: bryan-gpio
+    index: 4
   TFTPProvider:
-    internal: "/srv/tftp/teltonika_rut976"
-    external: "teltonika_rut976/"
+    internal: "/srv/tftp/gemtek_w1700k-ubi"
+    external: "tftp://192.168.108.1/gemtek_w1700k-ubi/"
   NetworkService:
-    address: "192.168.1.1%vlan105"
+    address: "192.168.1.1%vlan108"
     username: "root"
 
-labgrid-bryan-gemtek_w1700k-ubi:
+labgrid-bryan-dlink_dap-x1860-a1:
   location: labgrid-bryan
   USBSerialPort:
     match:
@@ -68,29 +86,65 @@ labgrid-bryan-gemtek_w1700k-ubi:
     speed: 115200
   PDUDaemonPort:
     host: localhost:16421
-    pdu: tasmota
-    index: 4
-  TFTPProvider:
-    internal: "/srv/tftp/gemtek_w1700k-ubi"
-    external: "tftp://192.168.107.1/gemtek_w1700k-ubi/"
-  NetworkService:
-    address: "192.168.1.1%vlan107"
-    username: "root"
-
-labgrid-bryan-dlink_dap-x1860-a1:
-  location: labgrid-bryan
-  USBSerialPort:
-    match:
-      "@ID_PATH": "platform-xhci-hcd.0-usb-0:2"
-      DEVNAME: "/dev/ttyCH9344USB5"
-    speed: 115200
-  PDUDaemonPort:
-    host: localhost:16421
-    pdu: tasmota
+    pdu: bryan-gpio
     index: 5
   TFTPProvider:
     internal: "/srv/tftp/dlink_dap-x1860-a1"
     external: "tftp://192.168.109.1/dlink_dap-x1860-a1/"
   NetworkService:
     address: "192.168.1.1%vlan109"
+    username: "root"
+
+labgrid-bryan-aruba_ap-32x:
+  location: labgrid-bryan
+  USBSerialPort:
+    match:
+      "@ID_PATH": "platform-xhci-hcd.1-usb-0:2.2.2:1.0"
+      DEVNAME: "/dev/ttyUSB1"
+    speed: 115200
+  PDUDaemonPort:
+    host: localhost:16421
+    pdu: 192.168.128.3
+    index: 2
+  TFTPProvider:
+    internal: "/srv/tftp/aruba_ap-32x"
+    external: "tftp://192.168.110.1/aruba_ap-32x/"
+  NetworkService:
+    address: "192.168.1.1%vlan110"
+    username: "root"
+
+labgrid-bryan-enterasys_ws-ap3710i:
+  location: labgrid-bryan
+  USBSerialPort:
+    match:
+      "@ID_PATH": "platform-xhci-hcd.1-usb-0:2.2.3:1.0"
+      DEVNAME: "/dev/ttyUSB4"
+    speed: 115200
+  PDUDaemonPort:
+    host: localhost:16421
+    pdu: 192.168.128.3
+    index: 3
+  TFTPProvider:
+    internal: "/srv/tftp/enterasys_ws-ap3710i"
+    external: "tftp://192.168.111.1/enterasys_ws-ap3710i/"
+  NetworkService:
+    address: "192.168.1.1%vlan111"
+    username: "root"
+
+labgrid-bryan-tplink_re650-v1:
+  location: labgrid-bryan
+  USBSerialPort:
+    match:
+      "@ID_PATH": "platform-xhci-hcd.0-usb-0:2"
+      DEVNAME: "/dev/ttyCH9344USB6"
+    speed: 115200
+  PDUDaemonPort:
+    host: localhost:16421
+    pdu: bryan-gpio
+    index: 6
+  TFTPProvider:
+    internal: "/srv/tftp/tplink_re650-v1"
+    external: "tftp://192.168.113.1/tplink_re650-v1/"
+  NetworkService:
+    address: "192.168.1.1%vlan113"
     username: "root"
