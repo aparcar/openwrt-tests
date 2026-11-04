@@ -44,12 +44,12 @@
 | ----- | ----------- | ---------------------------------------- | ------------- | --------- | -------- |
 | 1     | ⬜ Inactive | D-Link DAP-X1860 A1 WAN (Raspberry GPIO) | ttyCH9344USB4 | Pin 9     | Vlan 109 |
 | 2     | 🟩 Active   | Aruba AP_325 WAN (PoE)                   | ttyUSB1       |           | Vlan 110 |
-| 3     | 🟩 Active   | Enterasys WS-AP3710i WAN (PoE)           | ttyUSB4       |           | Vlan 112 |
-| 4     | 🟩 Active   | Unifi U7-Pro-XGS WAN (PoE)               | ttyCH9344USB5 |           | Vlan 113 |
-| 5     | ⬜ Inactive | TP-Link RE650 v1 WAN (Raspberry GPIO)    | ttyCH9344USB6 | Pin 24    | Vlan 114 |
-| 6     | ⬜ Inactive |                                          |               |           | Vlan 115 |
-| 7     | ⬜ Inactive |                                          |               |           | Vlan 116 |
-| 8     | ⬜ Inactive |                                          |               |           | Vlan 117 |
+| 3     | 🟩 Active   | Enterasys WS-AP3710i WAN (PoE)           | ttyUSB4       |           | Vlan 111 |
+| 4     | 🟩 Active   | Unifi U7-Pro-XGS WAN (PoE)               | ttyCH9344USB5 |           | Vlan 112 |
+| 5     | ⬜ Inactive | TP-Link RE650 v1 WAN (Raspberry GPIO)    | ttyCH9344USB6 | Pin 23    | Vlan 113 |
+| 6     | ⬜ Inactive |                                          |               |           | Vlan 114 |
+| 7     | ⬜ Inactive |                                          |               |           | Vlan 115 |
+| 8     | ⬜ Inactive |                                          |               |           | Vlan 116 |
 | 9     | ⬜ Inactive |                                          |               |           | Vlan 1   |
 | 10    | ⬜ Inactive | Rasmberry Pi 5                           |               |           | Vlan 1   |
 
@@ -62,13 +62,13 @@
 
 | Port  | PoE         | Device                                   | Serial port   | GPIO Pwr  | Vlan #   |
 | ----- | ----------- | ---------------------------------------- | ------------- | --------- | -------- |
-| 1     | 🟩 Active   | TpLink TL-WR1043nd-v4 (PoE TP-Link)      | ttyCH9344USB8 |           | Vlan 118 |
-| 2     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 119 |
-| 3     | 🟩 Active   | Genexis pulse-ex400 WAN (PoE TP-Link)    | ttyCH9344USB9 |           | Vlan 120 |
-| 4     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 121 |
-| 5     | 🟩 Active   | Linksys EA8450 (PoE TP-Link)             | ttyCH9344USB10|           | Vlan 122 |
-| 6     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 123 |
-| 7     | 🟩 Active   | Bananapi bpi-r64 WAN (PoE direct)        | ttyCH9344USB11|           | Vlan 124 |
-| 8     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 125 |
+| 1     | 🟩 Active   | TpLink TL-WR1043nd-v4 (PoE TP-Link)      | ttyCH9344USB8 |           | Vlan 117 |
+| 2     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 118 |
+| 3     | 🟩 Active   | Genexis pulse-ex400 WAN (PoE TP-Link)    | ttyCH9344USB9 |           | Vlan 119 |
+| 4     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 120 |
+| 5     | 🟩 Active   | Linksys EA8450 (PoE TP-Link)             | ttyCH9344USB10|           | Vlan 121 |
+| 6     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 122 |
+| 7     | 🟩 Active   | Bananapi bpi-r64 WAN (PoE direct)        | ttyCH9344USB11|           | Vlan 123 |
+| 8     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 124 |
 | 9-25  | ⬜ Inactive | ...                                      |               |           | Vlan ... |
 | 26.   | ⬜ Inactive | Raspberry pi 5                           |               |           | Vlan 1   |

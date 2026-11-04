@@ -5,7 +5,6 @@ openwrt:
 targets:
   main:
     features:
-      - wan_port
     resources:
       RemotePlace:
         name: !template "$LG_PLACE"
@@ -15,12 +14,11 @@ targets:
       - SerialDriver:
           txdelay: 0.01
       - UBootDriver:
-          boot_expression: "Hit any key to stop autoboot:"
+          autoboot: "ENTER"
           interrupt: "0"
           prompt: "=>"
           init_commands:
-            - setenv ipaddr "192.168.1.2"
-            - setenv serverip "$address"
+            - tftpboot
           boot_command: tftpboot
       - ShellDriver:
           prompt: 'root@[\w()]+:[^ ]+ '
