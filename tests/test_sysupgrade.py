@@ -196,14 +196,20 @@ def _markers(ssh):
 
 
 @pytest.mark.lg_feature("sysupgrade")
-def test_sysupgrade_rejects_invalid_image(ssh_command):
+def test_sysupgrade_rejects_invalid_image(env, ssh_command):
     """sysupgrade -T must refuse a file that is not an image."""
     try:
         ssh_command.run_check(f"head -c 65536 /dev/urandom > {REMOTE_IMAGE}")
         _, _, rc = ssh_command.run(f"sysupgrade -T {REMOTE_IMAGE}")
-        assert rc != 0, "sysupgrade accepted random data as an image"
     finally:
         ssh_command.run(f"rm -f {REMOTE_IMAGE}")
+    target = (env.config.data.get("openwrt") or {}).get("target", "")
+    if rc == 0 and target.startswith("armsr"):
+        # armsr's platform_check_image (target/linux/armsr/base-files/lib/
+        # upgrade/platform.sh) only compares partition tables: when they
+        # differ it logs "Full image will be written" and accepts the file
+        pytest.xfail("armsr's platform_check_image accepts any file (upstream)")
+    assert rc != 0, "sysupgrade accepted random data as an image"
 
 
 @pytest.mark.lg_feature("sysupgrade")
