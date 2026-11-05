@@ -130,13 +130,13 @@ def test_wifi_scan(ssh_command, band):
 
 
 @pytest.mark.lg_feature("hwsim")
-def test_wifi_hwsim_sae_mixed(ssh_command):
+def test_wifi_hwsim_sae_mixed(hwsim, ssh_command):
     """
     Test wifi configuration.
 
     This test creates one AP and one station and checks if they can connect to each other.
     It sets up the wireless configuration using the `ssh_command` fixture and relies on the
-    "hwsim" driver to create the virtual radios.
+    "hwsim" driver to create the virtual radios (installed by the `hwsim` fixture).
     """
     ssh_command.run("uci set wireless.radio0.channel=11")
     ssh_command.run("uci set wireless.radio0.band=2g")

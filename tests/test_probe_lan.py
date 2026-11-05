@@ -20,7 +20,6 @@ import re
 import time
 
 import pytest
-
 from labgrid.exceptions import NoResourceFoundError
 
 logger = logging.getLogger(__name__)

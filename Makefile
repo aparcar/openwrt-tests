@@ -60,6 +60,74 @@ $(curdir)/x86-64:
 		--lg-env $(TESTSDIR)/targets/qemu_x86-64.yaml \
 		--firmware $(FIRMWARE:.gz=)
 
+# EFI disk boot. conftest.py finds the UEFI firmware (edk2/OVMF) in the usual
+# QEMU and Debian paths; pass BIOS=/path/to/code.fd to override it.
+efi_bios = $(if $(BIOS),--bios $(BIOS),)
+
+$(curdir)/x86-64-efi: QEMU_BIN ?= qemu-system-x86_64
+$(curdir)/x86-64-efi: FIRMWARE ?= $(TOPDIR)/bin/targets/x86/64/openwrt-x86-64-generic-squashfs-combined-efi.img.gz
+$(curdir)/x86-64-efi:
+	[ -f $(FIRMWARE) ]
+
+	gzip \
+		--force \
+		--keep \
+		--decompress \
+		$(FIRMWARE) || true
+
+	LG_QEMU_BIN=$(QEMU_BIN) \
+		$(run) \
+		--lg-env $(TESTSDIR)/targets/qemu_x86-64-efi.yaml \
+		--firmware $(FIRMWARE:.gz=) $(efi_bios)
+
+$(curdir)/x86-generic-efi: QEMU_BIN ?= qemu-system-i386
+$(curdir)/x86-generic-efi: FIRMWARE ?= $(TOPDIR)/bin/targets/x86/generic/openwrt-x86-generic-generic-squashfs-combined-efi.img.gz
+$(curdir)/x86-generic-efi:
+	[ -f $(FIRMWARE) ]
+
+	gzip \
+		--force \
+		--keep \
+		--decompress \
+		$(FIRMWARE) || true
+
+	LG_QEMU_BIN=$(QEMU_BIN) \
+		$(run) \
+		--lg-env $(TESTSDIR)/targets/qemu_x86-generic-efi.yaml \
+		--firmware $(FIRMWARE:.gz=) $(efi_bios)
+
+$(curdir)/armsr-armv7-efi: QEMU_BIN ?= qemu-system-arm
+$(curdir)/armsr-armv7-efi: FIRMWARE ?= $(TOPDIR)/bin/targets/armsr/armv7/openwrt-armsr-armv7-generic-squashfs-combined-efi.img.gz
+$(curdir)/armsr-armv7-efi:
+	[ -f $(FIRMWARE) ]
+
+	gzip \
+		--force \
+		--keep \
+		--decompress \
+		$(FIRMWARE) || true
+
+	LG_QEMU_BIN=$(QEMU_BIN) \
+		$(run) \
+		--lg-env $(TESTSDIR)/targets/qemu_armsr-armv7-efi.yaml \
+		--firmware $(FIRMWARE:.gz=) $(efi_bios)
+
+$(curdir)/armsr-armv8-efi: QEMU_BIN ?= qemu-system-aarch64
+$(curdir)/armsr-armv8-efi: FIRMWARE ?= $(TOPDIR)/bin/targets/armsr/armv8/openwrt-armsr-armv8-generic-squashfs-combined-efi.img.gz
+$(curdir)/armsr-armv8-efi:
+	[ -f $(FIRMWARE) ]
+
+	gzip \
+		--force \
+		--keep \
+		--decompress \
+		$(FIRMWARE) || true
+
+	LG_QEMU_BIN=$(QEMU_BIN) \
+		$(run) \
+		--lg-env $(TESTSDIR)/targets/qemu_armsr-armv8-efi.yaml \
+		--firmware $(FIRMWARE:.gz=) $(efi_bios)
+
 $(curdir)/armsr-armv8: QEMU_BIN ?= qemu-system-aarch64
 $(curdir)/armsr-armv8: FIRMWARE ?= $(TOPDIR)/bin/targets/armsr/armv8/openwrt-armsr-armv8-generic-initramfs-kernel.bin
 $(curdir)/armsr-armv8:

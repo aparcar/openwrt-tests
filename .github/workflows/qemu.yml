@@ -1,0 +1,151 @@
+# Run the test suite on the QEMU targets with official OpenWrt images, by
+# calling pytest with labgrid directly. Real devices are tested through
+# KernelCI (openwrtci), not here.
+#
+# The image comes from the current stable release; targets that only have
+# snapshot images (malta) use the snapshot, and those jobs may fail without
+# failing the run.
+name: QEMU
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PYTEST_ADDOPTS: "--color=yes"
+  # As in .python-version. uv.toml asks for the system Python only, which the
+  # container doesn't have; environment variables override it.
+  UV_PYTHON: "3.14"
+  UV_PYTHON_PREFERENCE: managed
+  UPSTREAM: https://mirror-03.infra.openwrt.org
+
+jobs:
+  test-qemu:
+    name: QEMU ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    # Debian trixie ships QEMU 10, which has the gt64120 endianness fix
+    # malta-be needs; ubuntu-24.04 still has QEMU 8.2.
+    container: debian:trixie-slim
+    timeout-minutes: 60
+    continue-on-error: ${{ matrix.snapshots_only || false }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86-64
+            packages: qemu-system-x86
+          - target: x86-generic
+            packages: qemu-system-x86
+          - target: armsr-armv7
+            packages: qemu-system-arm
+          - target: armsr-armv8
+            packages: qemu-system-aarch64
+          # EFI disk boot (combined-efi): the UEFI firmware package, found by
+          # conftest.py in its Debian path
+          - target: x86-64-efi
+            packages: qemu-system-x86 ovmf
+          - target: x86-generic-efi
+            packages: qemu-system-x86 ovmf-ia32
+          - target: armsr-armv7-efi
+            packages: qemu-system-arm qemu-efi-arm
+          - target: armsr-armv8-efi
+            packages: qemu-system-aarch64 qemu-efi-aarch64
+          - target: malta-be
+            packages: qemu-system-mips
+            snapshots_only: true
+          - target: malta-le
+            packages: qemu-system-mips
+            snapshots_only: true
+    env:
+      LG_ENV: targets/qemu_${{ matrix.target }}.yaml
+      SNAPSHOTS_ONLY: ${{ matrix.snapshots_only || false }}
+
+    steps:
+      - name: Install QEMU and tools
+        env:
+          PACKAGES: ${{ matrix.packages }}
+        run: |
+          apt-get update
+          apt-get -y install --no-install-recommends \
+            ca-certificates curl jq yq git gzip openssh-client nmap \
+            ipxe-qemu seabios $PACKAGES
+
+      - name: Check out repository code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Download firmware
+        # The image the target's `openwrt:` block names, picked from
+        # profiles.json like scripts/healthcheck.sh does
+        run: |
+          if [ "$SNAPSHOTS_ONLY" = "true" ]; then
+            base="$UPSTREAM/snapshots/targets"
+          else
+            release=$(curl -sf https://downloads.openwrt.org/.versions.json | jq -r '.stable_version')
+            base="$UPSTREAM/releases/$release/targets"
+          fi
+          target=$(yq -r '.openwrt.target' "$LG_ENV")
+          profile=$(yq -r '.openwrt.profile' "$LG_ENV")
+          image_type=$(yq -r '.openwrt.image.type // "kernel"' "$LG_ENV")
+          image_fs=$(yq -r '.openwrt.image.filesystem // ""' "$LG_ENV")
+          url="$base/${target/-/\/}"
+
+          profiles=$(curl -sf "$url/profiles.json")
+          name=$(echo "$profiles" | jq -r --arg p "$profile" --arg t "$image_type" --arg fs "$image_fs" \
+            '.profiles[$p].images[] | select(.type == $t and ($fs == "" or .filesystem == $fs)) | .name' | head -n1)
+          sha256=$(echo "$profiles" | jq -r --arg n "$name" \
+            '.profiles[].images[] | select(.name == $n) | .sha256' | head -n1)
+          if [ -z "$name" ]; then
+            echo "::error::no $image_type $image_fs image for $profile in $url/profiles.json"
+            exit 1
+          fi
+
+          mkdir -p firmware
+          curl -sfL -o "firmware/$name" "$url/$name"
+          echo "$sha256  firmware/$name" | sha256sum -c -
+          # OpenWrt's .gz images carry a trailing signature, which gzip warns about
+          if [[ "$name" == *.gz ]]; then
+            gzip -dkf "firmware/$name" || true
+            name="${name%.gz}"
+          fi
+
+          echo "FIRMWARE=$GITHUB_WORKSPACE/firmware/$name" >> "$GITHUB_ENV"
+          # test_firmware_version checks the booted image against it
+          echo "FIRMWARE_VERSION=$(echo "$profiles" | jq -r '.version_code')" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        # The hwsim Wi-Fi tests (qemu_x86-64, installed with apk on demand)
+        # are left out of CI for now
+        run: |
+          mkdir -p results
+          uv run pytest tests/ -v -k "not hwsim" \
+            --lg-env "$LG_ENV" \
+            --firmware "$FIRMWARE" \
+            --lg-log results/ \
+            --lg-colored-steps \
+            --log-cli-level=CONSOLE \
+            --junit-xml results/junit.xml
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: results-${{ matrix.target }}
+          path: results/
+          if-no-files-found: warn
