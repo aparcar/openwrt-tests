@@ -61,14 +61,6 @@ def test_ubus_system_board(ssh_command, record_property):
     record_property("version", output["release"]["version"])
 
 
-def test_free_memory(ssh_command, record_property):
-    # plain `free` reports KiB; busybox builds may ignore -m, so don't rely on it
-    used_memory = int(ssh_command.run_check("free")[1].split()[2]) // 1024
-
-    record_property("used_memory", used_memory)
-    assert used_memory < 100, f"Used memory is {used_memory} MiB, more than 100 MiB"
-
-
 @pytest.mark.lg_feature("rootfs")
 def test_sysupgrade_backup(ssh_command):
     try:

@@ -5,17 +5,21 @@ class TestSystemHealth:
     """Tests for monitoring system health and resource usage."""
 
     def test_memory_usage(self, ssh_command, record_property):
-        """Test memory usage and check for memory leaks."""
-        # Parse memory information
-        mem_output = ssh_command.run_check("free -m")
-        mem_lines = mem_output[1].split()
+        """At most 80% of RAM is in use right after boot.
 
-        total_mem = int(mem_lines[1])
-        used_mem = int(mem_lines[2])
-        free_mem = int(mem_lines[3])
-        available_mem = int(mem_lines[6]) if len(mem_lines) > 6 else free_mem
+        Reads /proc/meminfo instead of `free`: busybox ignores `-m` and its
+        "used" leaves out tmpfs. Used is MemTotal - MemAvailable, so only
+        reclaimable memory doesn't count.
+        """
+        meminfo = {}
+        for line in ssh_command.run_check("cat /proc/meminfo"):
+            key, value = line.split(":", 1)
+            meminfo[key] = int(value.split()[0]) // 1024  # KiB -> MiB
 
-        # Calculate percentage
+        total_mem = meminfo["MemTotal"]
+        free_mem = meminfo["MemFree"]
+        available_mem = meminfo["MemAvailable"]
+        used_mem = total_mem - available_mem
         mem_percent = (used_mem / total_mem) * 100
 
         record_property("memory_total_mb", total_mem)
@@ -24,8 +28,8 @@ class TestSystemHealth:
         record_property("memory_available_mb", available_mem)
         record_property("memory_used_percent", round(mem_percent, 2))
 
-        # Memory usage should be less than 90%
-        assert mem_percent < 90, f"Memory usage {mem_percent:.1f}% is too high"
+        # Memory usage should be at most 80%
+        assert mem_percent <= 80, f"Memory usage {mem_percent:.1f}% is too high"
 
         # Should have at least 10MB available
         assert available_mem > 10, f"Only {available_mem}MB available memory"
