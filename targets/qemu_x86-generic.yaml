@@ -10,6 +10,8 @@ targets:
   main:
     features:
       - wan_port
+      - rootfs
+      - sysupgrade
 
     resources:
       - NetworkService:
@@ -27,6 +29,9 @@ targets:
           extra_args: "-device virtio-rng-pci -netdev user,id=wan -device virtio-net-pci,netdev=wan"
           nic: user,model=virtio-net-pci,net=192.168.1.0/24,id=lan
           disk: firmware
+          # Writes (overlay, sysupgrade) go to a temporary overlay that lives
+          # as long as QEMU, not into the firmware file
+          disk_opts: snapshot=on
       - ShellDriver:
           login_prompt: Please press Enter to activate this console.
           prompt: 'root@[\w()]+:[^ ]+ '

@@ -1,10 +1,10 @@
 import os
-import re
 import tarfile
 import time
 
 import pytest
 from conftest import ubus_call
+from kernel_log import kernel_errors
 
 
 def test_shell(shell_command):
@@ -94,31 +94,8 @@ def test_sysupgrade_backup_u(ssh_command):
 
 
 def test_kernel_errors(ssh_command):
-    dmesg_output = "\n".join(ssh_command.run_check("dmesg"))
-
-    error_patterns = [
-        r" Oops:",  # don't trigger on "ramoops"
-        r"(PC is at |pc : )([^+\[ ]+).*",
-        r"\bBUG:",  # don't trigger on "DEBUG:"
-        r"corruption",
-        r"do_page_fault\(\): sending",
-        r"EIP: \[<.*>\] ([^+ ]+).*",
-        r"epc\s+:\s+\S+\s+([^+ ]+).*",
-        r"error.*in",
-        r"hung task",
-        r"Kernel panic",
-        r"Out of memory",
-        r"segfault",
-        r"stack overflow",
-        r"traps:.*general protection",
-        r"Unable to handle kernel",
-    ]
-
-    errors_found = []
-    for pattern in error_patterns:
-        matches = re.findall(f".*{pattern}.*", dmesg_output)
-        if matches:
-            errors_found.extend(matches)
+    """Patterns live in kernel_log.py, shared with test_sysupgrade."""
+    errors_found = kernel_errors(ssh_command.run_check("dmesg"))
 
     assert not errors_found, (
         f"Critical errors found in kernel log: {errors_found[:5]}"

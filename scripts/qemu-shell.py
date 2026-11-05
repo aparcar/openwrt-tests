@@ -21,7 +21,6 @@ import termios
 import tty
 
 import labgrid.logging
-
 from labgrid import Environment
 
 ESCAPE = b"\x1d"  # Ctrl-]

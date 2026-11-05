@@ -5,7 +5,6 @@ from typing import ClassVar
 from urllib.parse import urlparse
 
 import attr
-
 from labgrid.driver import TFTPProviderDriver
 from labgrid.factory import target_factory
 from labgrid.strategy.common import Strategy, StrategyError
