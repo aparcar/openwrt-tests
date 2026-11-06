@@ -23,6 +23,14 @@ from pathlib import Path
 
 import pytest
 
+# The labgrid client holds a gRPC channel to the coordinator, so every ssh/scp
+# the SSHDriver forks runs gRPC's pthread_atfork handler, which logs
+# "FD from fork parent still in poll list" into ssh's stderr (surfacing as
+# SSHDriver warnings) and can race the child before exec. The children exec
+# immediately and never reuse the channel, so fork support isn't needed.
+# See https://github.com/grpc/grpc/blob/master/doc/fork_support.md
+os.environ.setdefault("GRPC_ENABLE_FORK_SUPPORT", "0")
+
 logger = logging.getLogger(__name__)
 
 # Fixtures shared by several modules:
