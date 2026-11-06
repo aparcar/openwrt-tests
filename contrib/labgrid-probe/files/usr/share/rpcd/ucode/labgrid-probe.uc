@@ -73,8 +73,9 @@ return {
 			}),
 		},
 		speedtest_start: {
-			args: { lan_vlan: 32, duration: 32, reverse: true, streams: 32 },
-			call: with_slot((d, a) => probe.speedtest_start(d, a.duration, a.reverse, a.streams)),
+			args: { lan_vlan: 32, duration: 32, reverse: true, streams: 32, udp: true, bitrate: '' },
+			call: with_slot((d, a) => probe.speedtest_start(d, a.duration, a.reverse, a.streams,
+			                                                a.udp, a.bitrate)),
 		},
 		speedtest_result: {
 			args: VLAN,

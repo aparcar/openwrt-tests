@@ -30,6 +30,9 @@ DUT_LAN = ipaddress.ip_network("192.168.1.0/24")
 IPERF_SECONDS = 10
 # Only catches a broken forwarding path; the measured numbers go to record_property.
 MIN_MBPS = 20
+# UDP through the DUT's NAT at a fixed rate
+UDP_BITRATE = "50M"
+UDP_MAX_LOSS_PERCENT = 5.0
 
 
 # --- DUT side -----------------------------------------------------------------
@@ -158,6 +161,18 @@ def lease(strategy, slot):
     return lease
 
 
+def speedtest(slot, duration=IPERF_SECONDS, **params):
+    """Run iperf3 on the probe and wait for its result."""
+    slot.call("speedtest_start", duration=duration, **params)
+    deadline = time.monotonic() + duration + 60
+    result = {"running": True}
+    while result.get("running") and time.monotonic() < deadline:
+        time.sleep(2)
+        result = slot.call("speedtest_result")
+    assert not result.get("running"), "speedtest did not finish"
+    return result
+
+
 # --- tests --------------------------------------------------------------------
 
 
@@ -231,15 +246,7 @@ def test_wan_reachable(wan_slot, lease):
 @pytest.mark.parametrize("direction", ["upload", "download"])
 def test_speedtest(wan_slot, lease, direction, record_property):
     """TCP throughput LAN→WAN (upload) and WAN→LAN (download) through the DUT."""
-    wan_slot.call(
-        "speedtest_start", duration=IPERF_SECONDS, reverse=direction == "download"
-    )
-    deadline = time.monotonic() + IPERF_SECONDS + 60
-    result = {"running": True}
-    while result.get("running") and time.monotonic() < deadline:
-        time.sleep(2)
-        result = wan_slot.call("speedtest_result")
-    assert not result.get("running"), "speedtest did not finish"
+    result = speedtest(wan_slot, reverse=direction == "download")
     assert result["rc"] == 0, result
 
     mbps = result["received_bps"] / 1e6
@@ -253,3 +260,26 @@ def test_speedtest(wan_slot, lease, direction, record_property):
     record_property(f"probe_{direction}_retransmits", result.get("retransmits"))
 
     assert mbps >= MIN_MBPS, f"{direction}: {mbps:.1f} Mbit/s < {MIN_MBPS}"
+
+
+@pytest.mark.lg_feature("wan_port")
+@pytest.mark.parametrize("direction", ["upload", "download"])
+def test_speedtest_udp(wan_slot, lease, direction, record_property):
+    """UDP at a fixed bitrate through the DUT's NAT: loss and jitter."""
+    result = speedtest(
+        wan_slot, reverse=direction == "download", udp=True, bitrate=UDP_BITRATE
+    )
+    assert result["rc"] == 0, result
+    assert result["udp"], result
+
+    loss = result.get("lost_percent")
+    record_property(
+        f"probe_udp_{direction}_mbps", round(result["received_bps"] / 1e6, 1)
+    )
+    record_property(f"probe_udp_{direction}_lost_percent", loss)
+    record_property(f"probe_udp_{direction}_jitter_ms", result.get("jitter_ms"))
+
+    assert result.get("packets"), f"no UDP packets counted: {result}"
+    assert loss is not None and loss <= UDP_MAX_LOSS_PERCENT, (
+        f"{direction}: {loss}% of UDP packets lost at {UDP_BITRATE}bit/s: {result}"
+    )

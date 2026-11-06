@@ -7,8 +7,8 @@ as the server in front of it.
 - In openwrt-tests: a labgrid driver (`drivers/labgridprobedriver.py`) calls
   that object as JSON-RPC over HTTP (uhttpd `/ubus`). Tests use it through the
   `probe` fixture (`tests/probe_fixtures.py`).
-- First user: `tests/test_probe_lan.py` (DHCP, DNS, SLAAC, LAN→WAN
-  throughput). Wi-Fi comes later.
+- First user: `tests/test_probe_lan.py` (DHCP, DNS, SLAAC, TCP and UDP
+  throughput through the DUT). Wi-Fi comes later.
 
 ```
 lab host ──HTTP /ubus (port forward)──┐
@@ -109,8 +109,8 @@ Failures come back as a reply with an `error` string; `not_up: true` means
 | `addresses` | | `{ ipv4: [...], ipv6: [{ address, prefixlen, scope }] }` |
 | `ping` | `host` (default `192.168.1.1`), `count` | `{ rc, transmitted, received, out }` |
 | `resolve` | `name`, `server` (default `192.168.1.1`) | `{ rc, addresses[], out }` |
-| `speedtest_start` | `duration` (s), `reverse` (WAN→LAN), `streams` | `{ started: true, … }` |
-| `speedtest_result` | | `{ running: true }` or `{ rc, sent_bps, received_bps, retransmits, cpu }` |
+| `speedtest_start` | `duration` (s), `reverse` (WAN→LAN), `streams`, `udp`, `bitrate` (iperf3 `-b`, `"100M"`) | `{ started: true, … }` |
+| `speedtest_result` | | `{ running: true }` or `{ rc, sent_bps, received_bps, cpu, reverse, udp }` plus `retransmits` (TCP) or `jitter_ms, lost_packets, packets, lost_percent` (UDP) |
 
 On the probe: `ubus call labgrid-probe info '{"lan_vlan":102}'`. From the lab
 host, the same call over HTTP:

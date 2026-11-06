@@ -365,8 +365,10 @@ function resolve(d, name, server) {
 }
 
 // iperf3 LAN -> WAN (WAN -> LAN with reverse) in the background; poll with
-// speedtest_result(). Callers serialise via the probe's labgrid place lock.
-function speedtest_start(d, duration, reverse, streams) {
+// speedtest_result(). udp: UDP instead of TCP; bitrate: iperf3 -b ("100M";
+// TCP default unlimited, UDP default 1M). Callers serialise via the probe's
+// labgrid place lock.
+function speedtest_start(d, duration, reverse, streams, udp, bitrate) {
 	let e = need_lan(d);
 	if (e) return e;
 	if (d.wan_ip == null || !ns_exists(d.wan_ns))
@@ -376,6 +378,8 @@ function speedtest_start(d, duration, reverse, streams) {
 	streams = is_uint(streams) ? int(streams) : 1;
 	if (duration < 1 || duration > 300 || streams < 1 || streams > 16)
 		return { error: 'duration must be 1..300 s and streams 1..16' };
+	if (bitrate != null && (type(bitrate) != 'string' || !match(bitrate, /^[0-9]+(\.[0-9]+)?[KMG]?$/)))
+		return { error: `bad bitrate '${bitrate}' (iperf3 -b, e.g. "100M")` };
 
 	let p = paths(d.lan_vlan);
 	if (access(p.speedtest_out) && !access(p.speedtest_rc))
@@ -388,9 +392,14 @@ function speedtest_start(d, duration, reverse, streams) {
 	let argv = ['ip', 'netns', 'exec', d.lan_ns, 'iperf3', '-c', d.wan_ip, '-t', duration, '-P', streams, '-J'];
 	if (reverse)
 		push(argv, '-R');
+	if (udp)
+		push(argv, '-u');
+	if (bitrate != null)
+		push(argv, '-b', bitrate);
 	let cmd = join(' ', map(argv, shq));
 	system(`( ${cmd} >${shq(p.speedtest_out)} 2>&1; echo $? >${shq(p.speedtest_rc)} ) </dev/null >/dev/null 2>&1 &`);
-	return { started: true, duration, reverse: !!reverse, streams, server: d.wan_ip };
+	return { started: true, duration, reverse: !!reverse, streams, udp: !!udp, bitrate,
+		server: d.wan_ip };
 }
 
 function speedtest_result(d) {
@@ -414,11 +423,25 @@ function speedtest_result(d) {
 		return res;
 	}
 	let end = report.end ?? {};
-	res.sent_bps = end.sum_sent?.bits_per_second;
-	res.received_bps = end.sum_received?.bits_per_second;
-	res.retransmits = end.sum_sent?.retransmits;
+	let test = report.start?.test_start ?? {};
+	res.reverse = test.reverse == 1;
+	res.udp = test.protocol == 'UDP';
 	res.cpu = end.cpu_utilization_percent;
-	res.reverse = report.start?.test_start?.reverse == 1;
+	if (res.udp) {
+		// iperf3 >= 3.11 has sum_sent/sum_received for UDP too, older only sum
+		let sent = end.sum_sent ?? end.sum ?? {}, received = end.sum_received ?? end.sum ?? {};
+		res.sent_bps = sent.bits_per_second;
+		res.received_bps = received.bits_per_second;
+		res.jitter_ms = received.jitter_ms ?? end.sum?.jitter_ms;
+		res.lost_packets = received.lost_packets ?? end.sum?.lost_packets;
+		res.packets = received.packets ?? end.sum?.packets;
+		res.lost_percent = received.lost_percent ?? end.sum?.lost_percent;
+	}
+	else {
+		res.sent_bps = end.sum_sent?.bits_per_second;
+		res.received_bps = end.sum_received?.bits_per_second;
+		res.retransmits = end.sum_sent?.retransmits;
+	}
 	return res;
 }
 
