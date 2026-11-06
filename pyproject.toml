@@ -17,6 +17,12 @@ dev = ["isort>=6.0.1", "ruff==0.17.3"]
 [tool.pytest.ini_options]
 # xunit2 has no per-test <properties>: record_property warns on every call
 junit_family = "xunit1"
+filterwarnings = [
+    # pyserial(-labgrid) 3.5 rfc2217 calls Thread.setDaemon()/setName();
+    # no newer release, drop once one fixes it
+    "ignore:setDaemon\\(\\) is deprecated:DeprecationWarning:serial.rfc2217",
+    "ignore:setName\\(\\) is deprecated:DeprecationWarning:serial.rfc2217",
+]
 
 [tool.uv.sources]
 labgrid = { git = "https://github.com/aparcar/labgrid.git", branch = "staging" }
