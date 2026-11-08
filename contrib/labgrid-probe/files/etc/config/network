@@ -28,4 +28,8 @@ config interface 'mgmt'
 	option ipaddr '192.168.128.3'
 	option netmask '255.255.255.0'
 	option gateway '192.168.128.1'
-	list dns '192.168.128.1'
+	# Static, so no DNS from DHCP, and the lab host (the gateway) serves none
+	# (dnsmasq port=0, ansible/files/exporter/dnsmasq.conf): public resolvers,
+	# reached through the lab host's NAT (deploy.sh -p, apk on the probe)
+	list dns '1.1.1.1'
+	list dns '9.9.9.9'

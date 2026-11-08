@@ -1,0 +1,60 @@
+# The probe on a lab host: its own uhttpd instance on loopback (the probe
+# place's NetworkService), and the DUTs' internet uplinks forwarded to the
+# host's uplink zone. The host's network config stays the lab admin's.
+
+- name: Create the probe's (empty) web root
+  ansible.builtin.file:
+    path: /usr/share/labgrid-probe/www
+    state: directory
+    mode: "0755"
+
+- name: Serve /ubus on loopback for the probe
+  ansible.builtin.shell: |
+    changed=""
+    s=uhttpd.labgrid_probe
+    set_opt() {
+      [ "$(uci -q get $s.$1)" = "$2" ] && return
+      uci set $s.$1="$2"
+      changed=1
+    }
+    [ "$(uci -q get $s)" = uhttpd ] || { uci set $s=uhttpd; changed=1; }
+    if [ "$(uci -q get $s.listen_http)" != "127.0.0.1:{{ labgrid_probe_http_port }}" ]; then
+      uci -q delete $s.listen_http
+      uci add_list $s.listen_http="127.0.0.1:{{ labgrid_probe_http_port }}"
+      changed=1
+    fi
+    set_opt home /usr/share/labgrid-probe/www
+    set_opt ubus_prefix /ubus
+    set_opt rfc1918_filter 0
+    [ -z "$changed" ] && exit 0
+    uci commit uhttpd
+    echo CHANGED
+  register: _probe_uhttpd
+  changed_when: "'CHANGED' in _probe_uhttpd.stdout"
+  notify: Restart uhttpd (labgrid-probe)
+
+- name: Forward the DUTs' internet uplinks to {{ labgrid_probe_uplink_zone }}
+  ansible.builtin.shell: |
+    changed=""
+    set_opt() {
+      [ "$(uci -q get firewall.$1.$2)" = "$3" ] && return
+      uci set firewall.$1.$2="$3"
+      changed=1
+    }
+    # The veths of the WAN namespaces (labgrid_probe.uc wan_up): DUT traffic
+    # may only pass through to the uplink, not reach the host itself
+    [ "$(uci -q get firewall.labgrid_probe)" = zone ] || { uci set firewall.labgrid_probe=zone; changed=1; }
+    set_opt labgrid_probe name lgp_uplink
+    set_opt labgrid_probe device 'pbx+'
+    set_opt labgrid_probe input REJECT
+    set_opt labgrid_probe output ACCEPT
+    set_opt labgrid_probe forward REJECT
+    [ "$(uci -q get firewall.labgrid_probe_fwd)" = forwarding ] || { uci set firewall.labgrid_probe_fwd=forwarding; changed=1; }
+    set_opt labgrid_probe_fwd src lgp_uplink
+    set_opt labgrid_probe_fwd dest {{ labgrid_probe_uplink_zone }}
+    [ -z "$changed" ] && exit 0
+    uci commit firewall
+    echo CHANGED
+  register: _probe_firewall
+  changed_when: "'CHANGED' in _probe_firewall.stdout"
+  notify: Reload the firewall (labgrid-probe)

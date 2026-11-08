@@ -3,7 +3,8 @@ LAN-side tests through the labgrid-probe (contrib/labgrid-probe).
 
 The probe puts one network namespace on the DUT's LAN VLAN (DHCP/DNS/SLAAC
 client, iperf3 client) and one on its WAN VLAN (iperf3 server, DHCP server
-for the DUT's WAN port), so all test traffic passes through the DUT.
+for the DUT's WAN port, NAT uplink to the internet), so all test traffic
+passes through the DUT.
 
 - The probe is its own labgrid place. The `probe` fixture (probe_fixtures.py)
   reserves and locks it for this module.
@@ -13,164 +14,35 @@ for the DUT's WAN port), so all test traffic passes through the DUT.
 Places without a VLAN (QEMU) and labs without a probe are skipped.
 """
 
+# ruff: noqa: F811 (tests take the imported probe fixtures as arguments)
+
 import ipaddress
 import json
 import logging
-import re
+import os
 import time
 
 import pytest
-from labgrid.exceptions import NoResourceFoundError
+from probe_fixtures import (
+    DUT_LAN,
+    DUT_LAN_IP,
+    lease,  # noqa: F401 (fixture)
+    online,  # noqa: F401 (fixture)
+    slot,  # noqa: F401 (fixture)
+    wan_slot,  # noqa: F401 (fixture)
+)
 
 logger = logging.getLogger(__name__)
-
-DUT_LAN_IP = "192.168.1.1"
-DUT_LAN = ipaddress.ip_network("192.168.1.0/24")
 
 IPERF_SECONDS = 10
 # Only catches a broken forwarding path; the measured numbers go to record_property.
 MIN_MBPS = 20
+# LAN soak against the DUT's own iperf3 server; longer runs: PROBE_SOAK_SECONDS
+SOAK_SECONDS = int(os.environ.get("PROBE_SOAK_SECONDS", "60"))
 # UDP through the DUT's NAT at a fixed rate
 UDP_BITRATE = "50M"
 UDP_MAX_LOSS_PERCENT = 5.0
-
-
-# --- DUT side -----------------------------------------------------------------
-
-
-def interface_status(shell, iface):
-    """`ubus call network.interface.<iface> status`, or None while it doesn't
-    exist yet (netifd still starting: "Command failed: Not found")."""
-    stdout, _, rc = shell.run(f"ubus call network.interface.{iface} status")
-    if rc != 0:
-        return None
-    try:
-        return json.loads("\n".join(stdout))
-    except json.JSONDecodeError:
-        return None
-
-
-def wait_for_interface(shell, iface, timeout=120, need_ipv4=False):
-    """Wait until a DUT interface is up (with an IPv4 address), return its
-    status. labgrid reaches `shell` once the console offers a login, which on
-    slow boards (ath79) is well before netifd has set up the network."""
-    deadline = time.monotonic() + timeout
-    status = None
-    while time.monotonic() < deadline:
-        status = interface_status(shell, iface)
-        if (
-            status
-            and status.get("up")
-            and (not need_ipv4 or status.get("ipv4-address"))
-        ):
-            return status
-        time.sleep(3)
-    pytest.fail(
-        f"DUT {iface} not up after {timeout}s: {status or 'interface not found'}"
-    )
-
-
-def wait_for_dhcp_server(shell, timeout=120):
-    """Wait until the DUT's LAN is up and its dnsmasq runs."""
-    wait_for_interface(shell, "lan", timeout)
-    deadline = time.monotonic() + timeout
-    while shell.run("pidof dnsmasq")[2] != 0:
-        if time.monotonic() > deadline:
-            pytest.fail(f"dnsmasq not running on the DUT after {timeout}s")
-        time.sleep(3)
-
-
-def lan_vlan(target):
-    """The DUT's LAN VLAN, from its NetworkService (192.168.1.1%vlan<N>)."""
-    address = target.get_resource("NetworkService").address
-    match = re.search(r"%vlan(\d+)$", address)
-    if not match:
-        pytest.skip(f"NetworkService {address} isn't on a lab VLAN")
-    return int(match.group(1))
-
-
-def wan_vlan(target):
-    """The DUT's WAN VLAN, from the place's "wan" NetworkInterface (arrives as
-    RemoteNetworkInterface through the RemotePlace)."""
-    try:
-        iface = target.get_resource("RemoteNetworkInterface", name="wan")
-    except NoResourceFoundError:
-        pytest.skip("place has no 'wan' NetworkInterface: WAN port not cabled")
-    match = re.fullmatch(r"vlan(\d+)", iface.ifname)
-    if not match:
-        pytest.fail(f"'wan' interface {iface.ifname} isn't a lab VLAN (vlan<N>)")
-    return int(match.group(1))
-
-
-# --- fixtures -----------------------------------------------------------------
-
-
-class Slot:
-    """This DUT's slot on the probe: probe calls with the DUT's LAN VLAN."""
-
-    def __init__(self, probe, vlan):
-        self.probe = probe
-        self.vlan = vlan
-        self.info = {}
-
-    def call(self, method, **params):
-        return self.probe.call(method, lan_vlan=self.vlan, **params)
-
-
-# The probe is shared by the whole lab, so it's reserved last: only once the
-# DUT is known to have the VLANs the tests need and has booted. The fixtures
-# fetch it with getfixturevalue() rather than as an argument, because pytest
-# would otherwise reserve it (possibly waiting in the queue) before these
-# checks can skip.
-
-
-@pytest.fixture(scope="module")
-def slot(request, strategy, target):
-    vlan = lan_vlan(target)
-    strategy.transition("shell")
-    probe = request.getfixturevalue("probe")
-    slot = Slot(probe, vlan)
-    slot.info = slot.call("up")
-    yield slot
-    probe.call_raw("down", lan_vlan=slot.vlan)
-
-
-@pytest.fixture(scope="module")
-def wan_slot(request, strategy, target):
-    """The slot with the WAN side up: iperf3 server and the DUT's WAN lease."""
-    vlan = wan_vlan(target)
-    slot = request.getfixturevalue("slot")
-    slot.info = slot.call("wan_up", wan_vlan=vlan)
-    wait_for_interface(strategy.shell, "wan", need_ipv4=True)
-    return slot
-
-
-@pytest.fixture(scope="module")
-def lease(strategy, slot):
-    wait_for_dhcp_server(strategy.shell)
-    lease = slot.call("dhcp")["lease"]
-    # Everything else depends on the lease coming from the DUT. The lab host
-    # serves no DHCP (ansible/files/exporter/dnsmasq.conf); another server here
-    # means a lab-specific dnsmasq.conf still serving the DUT LAN VLANs.
-    if lease.get("serverid") != DUT_LAN_IP:
-        pytest.fail(
-            f"DHCP lease {lease.get('ip')} came from {lease.get('serverid')}, "
-            f"not the DUT ({DUT_LAN_IP}). Is another DHCP server (the lab "
-            "host's dnsmasq?) serving the DUT's LAN VLAN?"
-        )
-    return lease
-
-
-def speedtest(slot, duration=IPERF_SECONDS, **params):
-    """Run iperf3 on the probe and wait for its result."""
-    slot.call("speedtest_start", duration=duration, **params)
-    deadline = time.monotonic() + duration + 60
-    result = {"running": True}
-    while result.get("running") and time.monotonic() < deadline:
-        time.sleep(2)
-        result = slot.call("speedtest_result")
-    assert not result.get("running"), "speedtest did not finish"
-    return result
+DUT_IPERF_PORT = 5201
 
 
 # --- tests --------------------------------------------------------------------
@@ -246,7 +118,7 @@ def test_wan_reachable(wan_slot, lease):
 @pytest.mark.parametrize("direction", ["upload", "download"])
 def test_speedtest(wan_slot, lease, direction, record_property):
     """TCP throughput LAN→WAN (upload) and WAN→LAN (download) through the DUT."""
-    result = speedtest(wan_slot, reverse=direction == "download")
+    result = wan_slot.speedtest(duration=IPERF_SECONDS, reverse=direction == "download")
     assert result["rc"] == 0, result
 
     mbps = result["received_bps"] / 1e6
@@ -266,8 +138,11 @@ def test_speedtest(wan_slot, lease, direction, record_property):
 @pytest.mark.parametrize("direction", ["upload", "download"])
 def test_speedtest_udp(wan_slot, lease, direction, record_property):
     """UDP at a fixed bitrate through the DUT's NAT: loss and jitter."""
-    result = speedtest(
-        wan_slot, reverse=direction == "download", udp=True, bitrate=UDP_BITRATE
+    result = wan_slot.speedtest(
+        duration=IPERF_SECONDS,
+        reverse=direction == "download",
+        udp=True,
+        bitrate=UDP_BITRATE,
     )
     assert result["rc"] == 0, result
     assert result["udp"], result
@@ -283,3 +158,55 @@ def test_speedtest_udp(wan_slot, lease, direction, record_property):
     assert loss is not None and loss <= UDP_MAX_LOSS_PERCENT, (
         f"{direction}: {loss}% of UDP packets lost at {UDP_BITRATE}bit/s: {result}"
     )
+
+
+@pytest.fixture
+def dut_iperf_server(request, shell_command):
+    """iperf3 -s on the DUT. If the image lacks it, it's installed over the
+    DUT's WAN (online fixture, so that needs a cabled WAN port)."""
+    if shell_command.run("command -v iperf3")[2] != 0:
+        request.getfixturevalue("online")
+        shell_command.run_check("apk update && apk add iperf3", timeout=300)
+    shell_command.run("killall iperf3")
+    shell_command.run_check(f"iperf3 -s -D -p {DUT_IPERF_PORT}")
+    time.sleep(1)
+    yield DUT_LAN_IP
+    shell_command.run("killall iperf3")
+
+
+def tx_timeouts(shell):
+    return [
+        line
+        for line in shell.run("dmesg")[0]
+        if "NETDEV WATCHDOG" in line or "transmit queue" in line
+    ]
+
+
+@pytest.mark.parametrize("direction", ["upload", "download"])
+def test_lan_soak_no_tx_timeout(
+    slot, lease, dut_iperf_server, shell_command, direction, record_property
+):
+    """Regression: openwrt/openwrt#20570
+
+    TCP between the probe's LAN client and the DUT's own iperf3 server (no
+    WAN port needed if the image has iperf3), then no NETDEV WATCHDOG tx
+    timeout in dmesg.
+    PROBE_SOAK_SECONDS sets the duration (default 60 s).
+    """
+    before = tx_timeouts(shell_command)
+    result = slot.speedtest(
+        duration=SOAK_SECONDS,
+        reverse=direction == "download",
+        server=dut_iperf_server,
+        port=DUT_IPERF_PORT,
+        streams=4,
+    )
+    assert result["rc"] == 0, result
+
+    mbps = result["received_bps"] / 1e6
+    record_property(f"probe_lan_dut_{direction}_mbps", round(mbps, 1))
+    record_property(f"probe_lan_dut_{direction}_retransmits", result.get("retransmits"))
+
+    new = [line for line in tx_timeouts(shell_command) if line not in before]
+    assert not new, "tx timeout during LAN traffic:\n" + "\n".join(new)
+    assert mbps >= MIN_MBPS, f"{direction}: {mbps:.1f} Mbit/s < {MIN_MBPS}"

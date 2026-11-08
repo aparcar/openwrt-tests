@@ -1,0 +1,20 @@
+# A probe of its own: its network (mgmt on eth0, config port on eth1),
+# firewall and hostname. The network config applies at the next reboot.
+
+- name: Install the probe's config
+  ansible.builtin.copy:
+    src: "{{ labgrid_probe_files }}/etc/"
+    dest: /etc/
+    owner: root
+    group: root
+    mode: preserve
+  register: _probe_config
+
+- name: Apply the probe's uci-defaults
+  ansible.builtin.shell: |
+    set -e
+    if [ -f /etc/uci-defaults/90-labgrid-probe ]; then
+      ( cd /etc/uci-defaults && . ./90-labgrid-probe ) && rm -f /etc/uci-defaults/90-labgrid-probe
+    fi
+  when: _probe_config is changed
+  notify: Reload the firewall (labgrid-probe)

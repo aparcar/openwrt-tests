@@ -2,6 +2,11 @@
 ## /etc/init.d/labgrid-lab hands the serial port and the GPIO to group labgrid.
 labgrid-ansuel-netgear_r7800:
   location: ansuel-lab
+  ## The DUT's WAN port, cabled straight to the host's eth0: the probe's WAN
+  ## namespace serves it (the host serves no DHCP or RAs there)
+  wan:
+    cls: NetworkInterface
+    ifname: eth0
   RawSerialPort:
     port: "/dev/ttyS1"
     speed: 115200
@@ -14,3 +19,12 @@ labgrid-ansuel-netgear_r7800:
   NetworkService:
     address: 192.168.1.1%eth1
     username: root
+
+## labgrid-probe on this host (role labgrid_probe, local mode): its own place,
+## tagged role=probe; tests control it over HTTP (the probe's uhttpd instance
+## on loopback). Its slots are macvlans on the DUT interfaces above.
+labgrid-ansuel-probe:
+  NetworkService:
+    address: 127.0.0.1
+    port: 8080
+    username: root  ## required by NetworkService, unused

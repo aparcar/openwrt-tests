@@ -1,0 +1,81 @@
+#!/usr/bin/ucode
+// labgrid-probe: capture IPv6 Router Advertisements on one interface and
+// print them as JSON. labgrid_probe.uc runs it inside the slot's LAN
+// namespace (ip netns exec), so the socket lives there.
+//
+//   ra-capture <dev> <timeout_ms> <solicit 0|1> <count>
+//
+// With solicit=1 it sends a Router Solicitation to ff02::2 first (hop limit
+// 255, else routers must drop it). It stops after <count> RAs or the
+// timeout and prints { ras: [...], solicited, timeout_ms } (or { error }).
+// Each RA is labgrid_probe_ra's parse_ra() plus `source` and `after_ms`.
+
+'use strict';
+
+import * as socket from 'socket';
+import { pack } from 'struct';
+import { parse_ra } from 'labgrid_probe_ra';
+
+const IPPROTO_ICMPV6 = 58;
+const ND_ROUTER_SOLICIT = 133;
+const ND_ROUTER_ADVERT = 134;
+
+function fail(msg) {
+	printf('%J\n', { error: msg });
+	exit(1);
+}
+
+function now_ms() {
+	let c = clock(true);
+	return c[0] * 1000 + c[1] / 1000000;
+}
+
+const dev = ARGV[0];
+const timeout_ms = int(ARGV[1] ?? '5000');
+const solicit = ARGV[2] != '0';
+const count = int(ARGV[3] ?? '1');
+
+if (dev == null || !match(dev, /^[A-Za-z0-9_.-]{1,15}$/) || !(timeout_ms > 0))
+	fail('usage: ra-capture <dev> <timeout_ms> <solicit 0|1> <count>');
+
+const s = socket.create(socket.AF_INET6, socket.SOCK_RAW, IPPROTO_ICMPV6);
+if (s == null)
+	fail(`socket: ${socket.error()}`);
+if (!s.setopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, dev))
+	fail(`bind to ${dev}: ${socket.error()}`);
+
+const start = now_ms();
+
+if (solicit) {
+	if (!s.setopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, 255))
+		fail(`IPV6_MULTICAST_HOPS: ${socket.error()}`);
+	// type, code, checksum (the kernel fills it in), reserved
+	let rs = pack('!BBHI', ND_ROUTER_SOLICIT, 0, 0, 0);
+	if (s.send(rs, 0, { family: socket.AF_INET6, address: 'ff02::2', interface: dev }) == null)
+		fail(`send router solicitation: ${socket.error()}`);
+}
+
+let ras = [];
+while (count < 1 || length(ras) < count) {
+	let left = start + timeout_ms - now_ms();
+	if (left <= 0)
+		break;
+	let ev = socket.poll(left, s);
+	if (ev == null)
+		fail(`poll: ${socket.error()}`);
+	if (!length(ev) || (ev[0][1] & socket.POLLIN) == 0)
+		continue;
+
+	let src = {};
+	let data = s.recv(65535, 0, src);
+	if (data == null || length(data) < 1 || ord(data, 0) != ND_ROUTER_ADVERT)
+		continue;
+	let ra = parse_ra(data);
+	if (ra == null)
+		continue;
+	ra.source = src.address;
+	ra.after_ms = now_ms() - start;
+	push(ras, ra);
+}
+
+printf('%J\n', { ras, solicited: solicit, timeout_ms });
