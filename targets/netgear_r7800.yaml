@@ -1,0 +1,45 @@
+openwrt:
+  name: NETGEAR Nighthawk X4S R7800
+  target: ipq806x-generic
+  profile: netgear_r7800
+targets:
+  main:
+    features:
+      - wifi-2g
+      - wifi-5g
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      TFTPProviderDriver: {}
+      SerialDriver:
+        txdelay: 0.01
+      power_driver:
+        cls: GpioDigitalOutputDriver
+        name: power_driver
+        bindings:
+          gpio: power
+      DigitalOutputPowerDriver:
+        bindings:
+          output: power_driver
+      UBootDriver:
+        interrupt: "\n"
+        prompt: '\(IPQ\) # '
+        init_commands:
+          - tftpboot 0x50000000
+        boot_command: bootm 0x50000000
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 120
+        post_login_settle_time: 5
+        username: root
+      UBootTFTPStrategy: {}
+      SSHDriver:
+        connection_timeout: 120.0
+        explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/tftpstrategy.py

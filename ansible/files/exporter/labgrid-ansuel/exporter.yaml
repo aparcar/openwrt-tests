@@ -1,0 +1,16 @@
+## OpenWrt lab host (role labgrid_lab_openwrt, docs/openwrt-lab-host.md).
+## /etc/init.d/labgrid-lab hands the serial port and the GPIO to group labgrid.
+labgrid-ansuel-netgear_r7800:
+  location: ansuel-lab
+  RawSerialPort:
+    port: "/dev/ttyS1"
+    speed: 115200
+  power:
+    cls: SysfsGPIO
+    index: 522 # gpio 10 (sysfs base 512)
+  TFTPProvider:
+    internal: "/srv/tftp/netgear_r7800/"
+    external: "tftp://192.168.102.1/netgear_r7800/"
+  NetworkService:
+    address: 192.168.1.1%eth1
+    username: root
