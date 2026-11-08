@@ -1,0 +1,37 @@
+- name: Check this host is a lab in labnet.yaml
+  ansible.builtin.assert:
+    that: inventory_hostname in labnet.labs
+    fail_msg: "{{ inventory_hostname }} is not a lab in labnet.yaml"
+    quiet: true
+  tags: always
+
+- name: Check this is a 64-bit host labgrid has wheels for
+  ansible.builtin.assert:
+    that: ansible_architecture in ['aarch64', 'x86_64']
+    fail_msg: >-
+      {{ ansible_architecture }}: labgrid needs grpcio, which has musl wheels
+      for aarch64 and x86_64 only
+    quiet: true
+
+- name: Packages
+  ansible.builtin.import_tasks: packages.yml
+
+- name: System (hostname, SSH, sudo)
+  ansible.builtin.import_tasks: system.yml
+
+- name: Accounts and shared directories
+  ansible.builtin.import_tasks: accounts.yml
+  tags: accounts
+
+- name: Install labgrid
+  ansible.builtin.import_tasks: labgrid.yml
+
+- name: Serial ports and GPIOs
+  ansible.builtin.import_tasks: devices.yml
+  tags: export
+
+- name: Coordinator and exporter
+  ansible.builtin.import_tasks: services.yml
+
+- name: TFTP
+  ansible.builtin.import_tasks: tftp.yml

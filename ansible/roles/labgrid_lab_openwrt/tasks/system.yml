@@ -1,0 +1,58 @@
+- name: Set the hostname
+  ansible.builtin.shell: |
+    [ "$(uci -q get system.@system[0].hostname)" = "{{ inventory_hostname }}" ] && exit 0
+    uci set system.@system[0].hostname='{{ inventory_hostname }}'
+    uci commit system
+    /etc/init.d/system reload
+    echo CHANGED
+  register: _openwrt_hostname
+  changed_when: "'CHANGED' in _openwrt_hostname.stdout"
+
+# The agent and labgrid reach the exporter's resources over SSH by this name,
+# also on this host
+- name: Resolve the hostname locally
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1\s+{{ inventory_hostname }}$'
+    line: "127.0.0.1 {{ inventory_hostname }}"
+
+- name: Read root's authorized keys
+  ansible.builtin.slurp:
+    src: /etc/dropbear/authorized_keys
+  register: _root_keys
+  failed_when: false
+  when: labgrid_openwrt_key_only
+
+# As labgrid_lab's sshd drop-in; only once root can log in with a key
+- name: Allow only key-based SSH logins
+  ansible.builtin.shell: |
+    changed=""
+    for opt in PasswordAuth RootPasswordAuth; do
+      [ "$(uci -q get dropbear.@dropbear[0].$opt)" = off ] && continue
+      uci set dropbear.@dropbear[0].$opt=off
+      changed=1
+    done
+    [ -z "$changed" ] && exit 0
+    uci commit dropbear
+    /etc/init.d/dropbear reload
+    echo CHANGED
+  register: _openwrt_dropbear
+  changed_when: "'CHANGED' in _openwrt_dropbear.stdout"
+  when:
+    - labgrid_openwrt_key_only
+    - (_root_keys.content | default('') | b64decode | trim) is match('(ssh-|ecdsa-)')
+
+- name: Create sudo's drop-in directory
+  ansible.builtin.file:
+    path: /etc/sudoers.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Let sudo read its drop-in directory
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers
+    regexp: '^[@#]includedir /etc/sudoers.d'
+    line: "@includedir /etc/sudoers.d"
+    validate: visudo -cf %s

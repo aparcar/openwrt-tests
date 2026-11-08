@@ -1,0 +1,93 @@
+# Account model as labgrid_lab (see ansible/README.md). Without udev there
+# are no dialout/plugdev rules: the group `labgrid` also owns the serial ports
+# and GPIOs (labgrid-lab init script, devices.yml).
+
+- name: Create the shared labgrid group
+  ansible.builtin.group:
+    name: "{{ labgrid_group }}"
+    system: true
+
+- name: Create the developer account
+  ansible.builtin.user:
+    name: "{{ labgrid_dev_user }}"
+    shell: /bin/ash
+    create_home: true
+    groups: ["{{ labgrid_group }}"]
+    append: false
+
+- name: Keep the developer's home private
+  ansible.builtin.file:
+    path: "~{{ labgrid_dev_user }}"
+    state: directory
+    mode: "0750"
+
+- name: Create the daemons' system accounts
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    system: true
+    shell: /bin/false
+    create_home: false
+    home: "{{ item.home }}"
+    groups: "{{ item.groups }}"
+    append: false
+  loop:
+    - {name: "{{ labgrid_exporter_user }}", home: /var/empty, groups: ["{{ labgrid_group }}"]}
+    - {name: "{{ labgrid_coordinator_user }}", home: "{{ labgrid_coordinator_dir }}", groups: []}
+  loop_control:
+    label: "{{ item.name }}"
+
+# root:labgrid, setgid, group-writable, no sticky bit (as labgrid_lab)
+- name: Create the TFTP root
+  ansible.builtin.file:
+    path: "{{ labgrid_tftp_root }}"
+    state: directory
+    owner: root
+    group: "{{ labgrid_group }}"
+    mode: "2775"
+
+- name: Create one TFTP directory per device instance
+  ansible.builtin.file:
+    path: "{{ labgrid_tftp_root }}/{{ item }}"
+    state: directory
+    owner: root
+    group: "{{ labgrid_group }}"
+    mode: "2775"
+  loop: "{{ _instances | flatten | unique }}"
+  vars:
+    _lab: "{{ labnet.labs[inventory_hostname] }}"
+    _instances: >-
+      [{% for device in _lab.devices %}{{ _lab.get('device_instances', {}).get(device, [device]) | to_json }},{% endfor %}]
+  tags: export
+
+# The staging cache is on the tmpfs (/var); the labgrid-lab init script
+# recreates it at boot
+- name: Expire old staged files
+  ansible.builtin.cron:
+    name: labgrid staging cache
+    special_time: daily
+    job: 'find {{ labgrid_cache_dir }} -mindepth 2 -maxdepth 2 -mtime +{{ labgrid_cache_max_age_days }} -exec rm -rf {} \;'
+
+- name: Create /usr/local/sbin
+  ansible.builtin.file:
+    path: /usr/local/sbin
+    state: directory
+    mode: "0755"
+
+- name: Install labgrid-bound-connect
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../labgrid_lab/files/labgrid-bound-connect"
+    dest: /usr/local/sbin/labgrid-bound-connect
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Let the labgrid group run labgrid-bound-connect as root
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/labgrid-bound-connect
+    content: |
+      # Managed by Ansible (openwrt-tests)
+      %{{ labgrid_group }} ALL = (root) NOPASSWD: /usr/local/sbin/labgrid-bound-connect
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s

@@ -1,0 +1,62 @@
+# Coordinator and exporter as procd services (output in logread).
+# As in labgrid_lab, each runs as its own system account, and the exporter's
+# config is root-owned.
+
+- name: Create the coordinator's state directory
+  ansible.builtin.file:
+    path: "{{ labgrid_coordinator_dir }}"
+    state: directory
+    owner: "{{ labgrid_coordinator_user }}"
+    group: "{{ labgrid_coordinator_user }}"
+    mode: "0750"
+
+- name: Generate places.yaml from labnet.yaml
+  ansible.builtin.template:
+    src: "{{ role_path }}/../labgrid_lab/templates/places.yaml.j2"
+    dest: "{{ labgrid_coordinator_dir }}/places.yaml"
+    owner: "{{ labgrid_coordinator_user }}"
+    group: "{{ labgrid_coordinator_user }}"
+    mode: "0640"
+  notify: Restart labgrid-coordinator (procd)
+  tags: export
+
+- name: Create the labgrid config directory
+  ansible.builtin.file:
+    path: "{{ labgrid_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the exporter configuration
+  ansible.builtin.template:
+    src: "{{ labgrid_lab_data_dir }}/{{ inventory_hostname }}/exporter.yaml"
+    dest: "{{ labgrid_config_dir }}/exporter.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart labgrid-exporter (procd)
+  tags: export
+
+# The exporter starts ser2net per acquired serial port itself
+- name: Disable the system ser2net service
+  community.general.openwrt_init:
+    name: ser2net
+    state: stopped
+    enabled: false
+  failed_when: false
+
+- name: Install the init scripts
+  ansible.builtin.template:
+    src: "{{ item }}.init.j2"
+    dest: /etc/init.d/{{ item }}
+    mode: "0755"
+  loop: [labgrid-coordinator, labgrid-exporter]
+  notify: "Restart {{ item }} (procd)"
+
+- name: Start and enable the coordinator and exporter
+  community.general.openwrt_init:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop: [labgrid-coordinator, labgrid-exporter]

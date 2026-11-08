@@ -1,0 +1,72 @@
+# labgrid_lab_openwrt: a lab host that runs OpenWrt itself (aarch64 or
+# x86_64): labgrid exporter and coordinator as procd services, TFTP from a
+# dnsmasq of its own (labgrid-tftp), device permissions at boot. Same account model as
+# labgrid_lab (see ansible/README.md and docs/openwrt-lab-host.md).
+#
+# Needs persistent storage for uv, Python and the tool venvs (a few hundred
+# MB): extroot, eMMC or NVMe. /var is a tmpfs on OpenWrt.
+
+# --- Accounts (as labgrid_lab) ------------------------------------------------
+
+labgrid_dev_user: labgrid-dev
+# Shared by developers, the agent and the exporter. Owns the TFTP tree and, on
+# OpenWrt (no udev), the serial ports and GPIOs the exporter exports.
+labgrid_group: labgrid
+labgrid_exporter_user: labgrid-exporter
+labgrid_coordinator_user: labgrid-coordinator
+
+# --- labgrid --------------------------------------------------------------
+
+# Same pins as labgrid_lab (bump both together). pdudaemon and usbsdmux are
+# left out: an OpenWrt lab host switches power through its own GPIOs.
+labgrid_uv_tools:
+  labgrid: git+https://github.com/aparcar/labgrid.git@475a767ba42ae453a6d6a82c6c485783f846d50f
+
+# dropbear's non-interactive PATH is /usr/sbin:/usr/bin:/sbin:/bin, and
+# labgrid runs labgrid-python3 and friends over SSH: entry points in /usr/bin
+# Python the tools run on (uv's own musl build, in uv_python_dir), as
+# labgrid_lab. Not the newest: there's no compiler on OpenWrt, so every
+# dependency needs a prebuilt musl wheel for it.
+labgrid_uv_python: "3.13"
+uv_install_dir: /usr/bin
+uv_tool_bin_dir: /usr/bin
+uv_tool_dir: /opt/uv/tools
+uv_python_dir: /opt/uv/python
+
+labgrid_config_dir: /etc/labgrid
+labgrid_coordinator_dir: /opt/labgrid-coordinator
+labgrid_tftp_root: /srv/tftp
+# labgrid stages files below /var/cache/labgrid/<user>/ (tmpfs on OpenWrt,
+# emptied on reboot); cron removes older ones
+labgrid_cache_dir: /var/cache/labgrid
+labgrid_cache_max_age_days: 1
+
+labgrid_lab_data_dir: "{{ playbook_dir }}/files/exporter"
+
+# --- System -----------------------------------------------------------------
+
+# Allow only key logins in dropbear (after checking root has a key)
+labgrid_openwrt_key_only: true
+
+labgrid_openwrt_packages:
+  - python3              # Ansible, labgrid-bound-connect
+  - sudo                 # Ansible become_user, labgrid-bound-connect
+  - curl
+  - ca-bundle
+  - git
+  - git-http
+  - ser2net              # started by the exporter per acquired serial port
+  - socat                # labgrid-bound-connect
+  - ip-full              # labgrid-bound-connect (ip neigh del ... dev)
+  - coreutils-stat       # labgrid's ManagedFile: stat --format
+  - rsync
+  - openssh-client       # labgrid's SSH (ControlMaster) to this host
+  - openssh-keygen       # the agent's key (community.crypto.openssh_keypair)
+  - openssh-sftp-server  # scp (SFTP protocol) into dropbear
+  - shadow-useradd       # ansible.builtin.user / group
+  - shadow-usermod
+  - shadow-groupadd
+  - shadow-groupmod      # ansible.builtin.group on an existing group
+  - nmap-full            # test_network_security (NSE scripts need the Lua build)
+  # No microcom: OpenWrt doesn't package it. labgrid-client console on this
+  # host falls back to telnet; developers run it from their own machine.

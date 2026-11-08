@@ -1,0 +1,16 @@
+# uv's musl build straight from its releases: astral's install.sh tells musl
+# from glibc with ldd, which OpenWrt doesn't have. uv then downloads its own
+# (musl) Python; OpenWrt's python3 is only for Ansible. Also used by
+# labgrid_agent.
+
+- name: Install uv
+  ansible.builtin.shell: |
+    set -e
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+    curl -LsSf -o "$tmp/uv.tar.gz" \
+      https://github.com/astral-sh/uv/releases/latest/download/uv-{{ ansible_architecture }}-unknown-linux-musl.tar.gz
+    tar -xzf "$tmp/uv.tar.gz" -C "$tmp"
+    cp "$tmp"/uv-*/uv "$tmp"/uv-*/uvx {{ uv_install_dir }}/
+  args:
+    creates: "{{ uv_install_dir }}/uv"

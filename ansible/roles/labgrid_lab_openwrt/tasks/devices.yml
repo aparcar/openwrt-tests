@@ -1,0 +1,24 @@
+# No udev on OpenWrt: the labgrid-lab init script hands the serial ports and
+# GPIOs named in exporter.yaml to the group `labgrid` at boot (exporting the
+# GPIOs, so labgrid finds them exported and leaves them alone), and recreates
+# the staging cache on the tmpfs.
+
+- name: Install the labgrid-lab init script
+  ansible.builtin.template:
+    src: labgrid-lab.init.j2
+    dest: /etc/init.d/labgrid-lab
+    mode: "0755"
+  vars:
+    _exporter: "{{ lookup('ansible.builtin.template', labgrid_lab_data_dir ~ '/' ~ inventory_hostname ~ '/exporter.yaml') | from_yaml }}"
+  register: _labgrid_lab_init
+
+- name: Enable the labgrid-lab init script
+  community.general.openwrt_init:
+    name: labgrid-lab
+    enabled: true
+
+# A oneshot: rerun it when it changed (it never toggles a GPIO's value)
+- name: Apply device permissions now
+  ansible.builtin.command: /etc/init.d/labgrid-lab start
+  when: _labgrid_lab_init is changed
+  changed_when: true

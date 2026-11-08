@@ -1,0 +1,21 @@
+# Run before gathering facts (gather_facts: false, become: false): Ansible
+# needs python3 on the host, and sudo for become/become_user. A no-op on
+# hosts that aren't OpenWrt. OpenWrt lab hosts are reached as root.
+#
+#   - ansible.builtin.import_role:
+#       name: labgrid_lab_openwrt
+#       tasks_from: bootstrap
+
+- name: Install python3 and sudo on OpenWrt hosts
+  ansible.builtin.raw: |
+    [ -f /etc/openwrt_release ] || exit 0
+    command -v python3 >/dev/null && command -v sudo >/dev/null && exit 0
+    if command -v apk >/dev/null; then
+      apk update && apk add python3 sudo
+    else
+      opkg update && opkg install python3 sudo
+    fi || exit 1
+    echo CHANGED
+  register: _openwrt_bootstrap
+  changed_when: "'CHANGED' in _openwrt_bootstrap.stdout"
+  become: false
