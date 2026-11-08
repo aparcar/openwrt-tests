@@ -6,8 +6,11 @@ from collections import defaultdict
 
 def test_ssh_supported_algorithms(env, ssh_command, record_property):
     with ssh_command.forward_local_port(22) as localport:
+        # "+" runs the script on the forwarded port without -sV (its port
+        # rule wants 22 or a detected ssh service). -sV sets up DTLS, which
+        # aborts nmap on hosts whose OpenSSL has none (OpenWrt lab hosts).
         output = subprocess.check_output(
-            f"nmap --script ssh2-enum-algos -sV -p {localport} 127.0.0.1",
+            f"nmap --script +ssh2-enum-algos -p {localport} 127.0.0.1",
             text=True,
             shell=True,
         )
