@@ -1,0 +1,108 @@
+#!/usr/bin/ucode
+// labgrid-probe: IPv4 multicast joiner and sender. labgrid_probe.uc runs it
+// in the background inside a slot namespace (ip netns exec) and reads the
+// status file it keeps up to date (JSON, rewritten after every packet).
+//
+//   mcast recv <group> <port> <dev> <status_file>
+//       join <group> on <dev> (the kernel sends the IGMP report) and count
+//       the datagrams to <group>:<port> until killed
+//   mcast send <group> <port> <dev> <status_file> <count> <interval_ms> <ttl>
+//       send <count> datagrams "lgp-mcast <seq>" out of <dev>, then exit
+
+'use strict';
+
+import * as socket from 'socket';
+import { readfile, writefile } from 'fs';
+
+function status(file, st) {
+	writefile(file, sprintf('%J\n', st));
+}
+
+function fail(file, st, msg) {
+	st.error = msg;
+	status(file, st);
+	exit(1);
+}
+
+const mode = ARGV[0], group = ARGV[1], port = int(ARGV[2] ?? '0'), dev = ARGV[3], file = ARGV[4];
+
+if (index(['recv', 'send'], mode) < 0 || group == null || !(port > 0) || dev == null || file == null) {
+	warn('usage: mcast recv|send <group> <port> <dev> <status_file> [<count> <interval_ms> <ttl>]\n');
+	exit(2);
+}
+
+// /sys is the namespace's own under ip netns exec
+const ifindex = int(trim(readfile(`/sys/class/net/${dev}/ifindex`) ?? ''));
+const st = { mode, group, port, dev };
+if (!(ifindex > 0))
+	fail(file, st, `no interface ${dev}`);
+
+const s = socket.create(socket.AF_INET, socket.SOCK_DGRAM);
+if (s == null)
+	fail(file, st, `socket: ${socket.error()}`);
+
+if (mode == 'recv') {
+	s.setopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, true);
+	// Bound to the group address: only that group's datagrams arrive here
+	if (!s.bind(`${group}:${port}`))
+		fail(file, st, `bind ${group}:${port}: ${socket.error()}`);
+	if (!s.setopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, { multiaddr: group, ifindex }))
+		fail(file, st, `join ${group} on ${dev}: ${socket.error()}`);
+
+	st.joined = true;
+	st.received = 0;
+	st.bytes = 0;
+	st.senders = {};
+	st.first_seq = null;
+	st.last_seq = null;
+	status(file, st);
+
+	while (true) {
+		let src = {};
+		let data = s.recv(2048, 0, src);
+		if (data == null) {
+			sleep(100);
+			continue;
+		}
+		st.received++;
+		st.bytes += length(data);
+		st.senders[src.address] = (st.senders[src.address] ?? 0) + 1;
+		let m = match(data, /^lgp-mcast ([0-9]+)/);
+		if (m) {
+			if (st.first_seq == null)
+				st.first_seq = int(m[1]);
+			st.last_seq = int(m[1]);
+		}
+		status(file, st);
+	}
+}
+
+const count = int(ARGV[5] ?? '10'), interval = int(ARGV[6] ?? '100'), ttl = int(ARGV[7] ?? '8');
+
+if (!s.setopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl))
+	fail(file, st, `IP_MULTICAST_TTL: ${socket.error()}`);
+if (!s.setopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, { ifindex }))
+	fail(file, st, `IP_MULTICAST_IF ${dev}: ${socket.error()}`);
+
+st.count = count;
+st.ttl = ttl;
+st.sent = 0;
+st.errors = 0;
+st.done = false;
+status(file, st);
+
+for (let seq = 0; seq < count; seq++) {
+	if (s.send(`lgp-mcast ${seq}\n`, 0, `${group}:${port}`) == null) {
+		st.errors++;
+		st.last_error = socket.error();
+	}
+	else {
+		st.sent++;
+	}
+	status(file, st);
+	if (seq + 1 < count)
+		sleep(interval);
+}
+
+st.done = true;
+status(file, st);

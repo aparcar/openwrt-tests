@@ -1,11 +1,31 @@
-# Lab hosts: labgrid exporter + coordinator, pdudaemon, TFTP, DUT VLANs and
-# the labgrid-dev developer account (role labgrid_lab).
+# Lab hosts: labgrid exporter + coordinator, pdudaemon, TFTP, DUT VLANs, the
+# labgrid-dev developer account and automatic upgrades (role labgrid_lab;
+# labgrid_lab_openwrt on lab hosts that run OpenWrt, see
+# docs/openwrt-lab-host.md), plus the kernelci agent (role labgrid_agent) on
+# hosts with labgrid_agent_lab_name.
 #
 #   uv run ansible-playbook lab.yml --limit labgrid-<lab>
 #   uv run ansible-playbook lab.yml --limit labgrid-<lab> --tags export   # exporter/places only
 #
-# The kernelci agent (role labgrid_agent) is deployed from openwrtci, which
-# holds the lab's tokens. See README.md.
+# The agent's tokens come from openwrtci (server.yml writes them to its
+# secrets directory, labgrid_agent_secrets_dir). See README.md.
+#
+# The labgrid-probe (contrib/labgrid-probe, role labgrid_probe): on OpenWrt
+# lab hosts with labgrid_probe_on_host: true, and on probes of their own in
+# group `probes`:
+#
+#   uv run ansible-playbook lab.yml --limit labgrid-<lab>-probe
+
+# OpenWrt lab hosts and probes need python3 (and sudo) before Ansible can
+# gather facts
+- name: Python for Ansible on OpenWrt lab hosts and probes
+  hosts: labs:probes
+  gather_facts: false
+  tasks:
+    - name: Bootstrap OpenWrt
+      ansible.builtin.import_role:
+        name: labgrid_lab_openwrt
+        tasks_from: bootstrap
 
 - name: Lab hosts
   hosts: labs
@@ -14,4 +34,21 @@
     labnet: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../labnet.yaml') | from_yaml }}"
   roles:
     - role: labgrid_lab
-    # - role: labgrid_agent
+      when: ansible_os_family != 'OpenWrt'
+    - role: labgrid_lab_openwrt
+      when: ansible_os_family == 'OpenWrt'
+    - role: labgrid_agent
+      when: labgrid_agent_lab_name is defined
+      tags: agent
+    # The probe on the lab host itself (OpenWrt only)
+    - role: labgrid_probe
+      when: labgrid_probe_on_host | default(false) | bool
+      vars:
+        labgrid_probe_mode: local
+      tags: probe
+
+- name: Probes of their own
+  hosts: probes
+  roles:
+    - role: labgrid_probe
+      tags: probe

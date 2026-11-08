@@ -100,6 +100,16 @@ def pytest_configure(config):
         os.environ["LG_ENV"] = resolved_env
 
 
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(items):
+    # Tests using the `online` fixture (probe_fixtures.py), directly or
+    # through another fixture, need the labgrid feature `online` (the DUT has
+    # a WAN uplink): add the mark before labgrid's hook skips on features
+    for item in items:
+        if "online" in getattr(item, "fixturenames", ()):
+            item.add_marker(pytest.mark.lg_feature("online"))
+
+
 device = getenv("LG_ENV", "Unknown").split("/")[-1].split(".")[0]
 
 

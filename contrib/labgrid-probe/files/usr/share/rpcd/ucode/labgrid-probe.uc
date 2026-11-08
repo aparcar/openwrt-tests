@@ -33,9 +33,10 @@ const VLAN = { lan_vlan: 32 };
 
 return {
 	'labgrid-probe': {
+		// lan_vlan may be left out on a lab host (local mode) with parent
 		up: {
-			args: { lan_vlan: 32, trunk: '' },
-			call: req => probe.up(need_vlan(req), req.args.trunk),
+			args: { lan_vlan: 32, trunk: '', parent: '' },
+			call: req => probe.up(req.args.lan_vlan, req.args.trunk, req.args.parent),
 		},
 		down: {
 			args: VLAN,
@@ -49,8 +50,8 @@ return {
 			},
 		},
 		wan_up: {
-			args: { lan_vlan: 32, wan_vlan: 32, wan_ip: '' },
-			call: with_slot((d, a) => probe.wan_up(d, a.wan_vlan, a.wan_ip)),
+			args: { lan_vlan: 32, wan_vlan: 32, wan_ip: '', wan_parent: '' },
+			call: with_slot((d, a) => probe.wan_up(d, a.wan_vlan, a.wan_ip, a.wan_parent)),
 		},
 		dhcp: {
 			args: VLAN,
@@ -72,14 +73,39 @@ return {
 				return probe.resolve(d, a.name, a.server ?? '192.168.1.1');
 			}),
 		},
+		wan_dhcp: {
+			args: { lan_vlan: 32, options: [], ntp: true },
+			call: with_slot((d, a) => probe.wan_dhcp(d, a.options, a.ntp)),
+		},
 		speedtest_start: {
-			args: { lan_vlan: 32, duration: 32, reverse: true, streams: 32, udp: true, bitrate: '' },
-			call: with_slot((d, a) => probe.speedtest_start(d, a.duration, a.reverse, a.streams,
-			                                                a.udp, a.bitrate)),
+			args: { lan_vlan: 32, duration: 32, reverse: true, streams: 32, udp: true,
+			        bitrate: '', server: '', port: 32 },
+			call: with_slot((d, a) => probe.speedtest_start(d, a)),
 		},
 		speedtest_result: {
 			args: VLAN,
 			call: with_slot(d => probe.speedtest_result(d)),
+		},
+		ra_capture: {
+			args: { lan_vlan: 32, timeout: 32, solicit: true, count: 32 },
+			call: with_slot((d, a) => probe.ra_capture(d, a.timeout, a.solicit, a.count)),
+		},
+		mcast_join: {
+			args: { lan_vlan: 32, group: '', port: 32, side: '', igmp_version: 32 },
+			call: with_slot((d, a) => probe.mcast_join(d, a.group, a.port, a.side, a.igmp_version)),
+		},
+		mcast_send: {
+			args: { lan_vlan: 32, group: '', port: 32, side: '', count: 32, interval: 32, ttl: 32 },
+			call: with_slot((d, a) => probe.mcast_send(d, a.group, a.port, a.side, a.count,
+			                                           a.interval, a.ttl)),
+		},
+		mcast_result: {
+			args: VLAN,
+			call: with_slot(d => probe.mcast_result(d)),
+		},
+		mcast_leave: {
+			args: VLAN,
+			call: with_slot(d => probe.mcast_leave(d)),
 		},
 	}
 };

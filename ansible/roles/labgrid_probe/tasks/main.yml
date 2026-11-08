@@ -1,0 +1,124 @@
+# Install and check the labgrid-probe; trunk or local mode (see defaults).
+
+- name: Check the probe can run here
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'OpenWrt'
+      - labgrid_probe_mode in ['trunk', 'local']
+      - labgrid_probe_mode == 'trunk' or _parents | length > 0
+      - not (labgrid_probe_mode == 'local' and labgrid_probe_config | bool)
+    fail_msg: >-
+      labgrid_probe needs OpenWrt and labgrid_probe_mode 'trunk' or 'local'
+      (local: DUT interfaces in {{ labgrid_probe_exporter }}, and never
+      labgrid_probe_config, which would replace the lab host's network config)
+    quiet: true
+
+- name: Install the probe's packages
+  ansible.builtin.shell: |
+    set -e
+    if command -v apk >/dev/null; then
+      missing=""
+      for p in {{ _probe_pkgs | join(' ') }}; do
+        apk info -e "$p" >/dev/null 2>&1 || missing="$missing $p"
+      done
+      [ -z "$missing" ] && exit 0
+      apk update
+      apk add $missing
+    else
+      missing=""
+      for p in {{ _probe_pkgs | join(' ') }}; do
+        opkg list-installed "$p" | grep -q . || missing="$missing $p"
+      done
+      [ -z "$missing" ] && exit 0
+      opkg update
+      opkg install $missing
+    fi
+    echo CHANGED
+  register: _probe_packages
+  changed_when: "'CHANGED' in _probe_packages.stdout"
+  notify: Restart rpcd (labgrid-probe)
+
+# Earlier name of the probe
+- name: Remove the lanclient files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/share/ucode/lanclient.uc
+    - /usr/share/rpcd/ucode/lanclient.uc
+    - /usr/share/rpcd/acl.d/lanclient.json
+    - /usr/bin/lanclient
+    - /usr/share/udhcpc/lanclient.script
+  notify: Restart rpcd (labgrid-probe)
+
+# Keeps the files' modes: 0755 scripts, 0644 plugin (rpcd skips
+# world-writable files)
+- name: Install the probe's code
+  ansible.builtin.copy:
+    src: "{{ labgrid_probe_files }}/usr/"
+    dest: /usr/
+    owner: root
+    group: root
+    mode: preserve
+  notify: Restart rpcd (labgrid-probe)
+
+- name: Install the probe's mode and DUT interfaces
+  ansible.builtin.template:
+    src: labgrid_probe.uci.j2
+    dest: /etc/config/labgrid_probe
+    mode: "0644"
+
+# rpcd silently skips plugins that don't compile (its stderr goes nowhere)
+- name: Compile-check the probe's code
+  ansible.builtin.shell: |
+    for f in /usr/share/rpcd/ucode/labgrid-probe.uc /usr/share/udhcpc/labgrid-probe.script \
+        /usr/libexec/labgrid-probe/ra-capture /usr/libexec/labgrid-probe/mcast; do
+      if ! out="$(ucode -c -o /dev/null "$f" 2>&1)" || [ -n "$out" ]; then
+        echo "ucode compile failed: $f"
+        echo "$out"
+        exit 1
+      fi
+    done
+  changed_when: false
+
+- name: Probe config (trunk mode)
+  ansible.builtin.import_tasks: config.yml
+  when: labgrid_probe_mode == 'trunk' and labgrid_probe_config | bool
+
+- name: Lab host integration (local mode)
+  ansible.builtin.import_tasks: local.yml
+  when: labgrid_probe_mode == 'local'
+
+- name: Restart rpcd and uhttpd now if needed
+  ansible.builtin.meta: flush_handlers
+
+- name: Check the probe answers
+  ansible.builtin.shell: |
+    ubus -S list labgrid-probe >/dev/null 2>&1 || {
+      echo "ubus object labgrid-probe missing; run rpcd in the foreground to see why:"
+      echo "  /etc/init.d/rpcd stop; rpcd; /etc/init.d/rpcd start"
+      exit 1
+    }
+    ubus call session access '{"ubus_rpc_session":"00000000000000000000000000000000","scope":"ubus","object":"labgrid-probe","function":"info"}' \
+      | grep -q '"access": true' || {
+      echo "the unauthenticated session may not call labgrid-probe: check /usr/share/rpcd/acl.d/labgrid-probe.json"
+      exit 1
+    }
+    pidof uhttpd >/dev/null || { echo "uhttpd is not running"; exit 1; }
+  changed_when: false
+
+- name: Check the probe answers over HTTP (local mode)
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ labgrid_probe_http_port }}/ubus"
+    method: POST
+    body_format: json
+    body:
+      jsonrpc: "2.0"
+      id: 1
+      method: call
+      params: ["00000000000000000000000000000000", labgrid-probe, info, {lan_vlan: 1}]
+  register: _probe_http
+  failed_when: >-
+    _probe_http.status != 200
+    or (_probe_http.json.result | default([1]))[0] != 0
+  when: labgrid_probe_mode == 'local'
