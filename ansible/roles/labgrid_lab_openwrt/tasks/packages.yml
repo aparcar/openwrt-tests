@@ -1,0 +1,26 @@
+# OpenWrt packages through apk (25.x) or opkg (24.10 and older). Prints
+# CHANGED when something was installed.
+
+- name: Install packages
+  ansible.builtin.shell: |
+    set -e
+    if command -v apk >/dev/null; then
+      missing=""
+      for p in {{ labgrid_openwrt_packages | join(' ') }}; do
+        apk info -e "$p" >/dev/null 2>&1 || missing="$missing $p"
+      done
+      [ -z "$missing" ] && exit 0
+      apk update
+      apk add $missing
+    else
+      missing=""
+      for p in {{ labgrid_openwrt_packages | join(' ') }}; do
+        opkg list-installed "$p" | grep -q . || missing="$missing $p"
+      done
+      [ -z "$missing" ] && exit 0
+      opkg update
+      opkg install $missing
+    fi
+    echo CHANGED
+  register: _openwrt_packages
+  changed_when: "'CHANGED' in _openwrt_packages.stdout"

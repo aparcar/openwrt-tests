@@ -1,0 +1,42 @@
+# TFTP from a dnsmasq of its own (/etc/init.d/labgrid-tftp): the system
+# dnsmasq's ujail only mounts its tftp_root, so labgrid's symlinks into its
+# staging cache and the agent's firmware cache dangle there. The interfaces
+# towards the DUTs (a port or VLAN per DUT, with the serverip from the
+# tftp:// URL in exporter.yaml) are the lab admin's, in /etc/config/network:
+# this role never touches them. See docs/openwrt-lab-host.md.
+
+# Also undoes earlier versions of this role, which served TFTP from it
+- name: No TFTP from the system dnsmasq
+  ansible.builtin.shell: |
+    changed=""
+    for opt in enable_tftp tftp_root; do
+      uci -q get dhcp.@dnsmasq[0].$opt >/dev/null || continue
+      uci delete dhcp.@dnsmasq[0].$opt
+      changed=1
+    done
+    [ -z "$changed" ] && exit 0
+    uci commit dhcp
+    echo CHANGED
+  register: _openwrt_tftp
+  changed_when: "'CHANGED' in _openwrt_tftp.stdout"
+  # Restarted (not only reloaded) before labgrid-tftp starts, so it frees port 69
+  notify: Restart dnsmasq (procd)
+
+- name: Apply it before starting labgrid-tftp
+  ansible.builtin.meta: flush_handlers
+
+- name: Install the labgrid-tftp init script
+  ansible.builtin.template:
+    src: labgrid-tftp.init.j2
+    dest: /etc/init.d/labgrid-tftp
+    mode: "0755"
+  vars:
+    _exporter: "{{ lookup('ansible.builtin.template', labgrid_lab_data_dir ~ '/' ~ inventory_hostname ~ '/exporter.yaml') | from_yaml }}"
+  notify: Restart labgrid-tftp (procd)
+  tags: export
+
+- name: Start and enable labgrid-tftp
+  community.general.openwrt_init:
+    name: labgrid-tftp
+    state: started
+    enabled: true

@@ -1,0 +1,61 @@
+# labgrid as a uv tool, as in labgrid_lab. uv brings its own (musl) Python;
+# OpenWrt's python3 is only for Ansible.
+
+- name: Install uv
+  ansible.builtin.import_tasks: uv.yml
+
+- name: Create the uv tool and Python directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ uv_tool_dir }}"
+    - "{{ uv_python_dir }}"
+
+# With the Python version, so a new pin reinstalls them too
+- name: Record the tool sources
+  ansible.builtin.copy:
+    content: "{{ item.value }} python={{ labgrid_uv_python }}\n"
+    dest: "{{ uv_tool_dir }}/.{{ item.key }}.source"
+    mode: "0644"
+  loop: "{{ labgrid_uv_tools | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: _uv_tool_sources
+
+- name: Install the changed tools
+  ansible.builtin.command:
+    argv:
+      - "{{ uv_install_dir }}/uv"
+      - tool
+      - install
+      - --force
+      - --python
+      - "{{ labgrid_uv_python }}"
+      - "{{ item.item.key if item.item.value == item.item.key else item.item.key ~ ' @ ' ~ item.item.value }}"
+  environment:
+    UV_TOOL_DIR: "{{ uv_tool_dir }}"
+    UV_TOOL_BIN_DIR: "{{ uv_tool_bin_dir }}"
+    UV_PYTHON_INSTALL_DIR: "{{ uv_python_dir }}"
+    UV_PYTHON_PREFERENCE: only-managed
+  loop: "{{ _uv_tool_sources.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: item is changed
+  changed_when: true
+  notify:
+    - Restart labgrid-exporter (procd)
+    - Restart labgrid-coordinator (procd)
+
+# labgrid's agent (GPIO, USB helpers) runs `labgrid-python3` on the exporter
+# host over SSH if there is one, else the system python3 without labgrid's
+# modules
+- name: Provide labgrid-python3
+  ansible.builtin.file:
+    src: "{{ uv_tool_dir }}/labgrid/bin/python3"
+    dest: /usr/bin/labgrid-python3
+    state: link
+    force: true

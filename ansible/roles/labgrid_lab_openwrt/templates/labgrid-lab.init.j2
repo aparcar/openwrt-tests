@@ -1,0 +1,43 @@
+#!/bin/sh /etc/rc.common
+# Managed by Ansible (openwrt-tests, role labgrid_lab_openwrt). Device
+# permissions for labgrid, from {{ inventory_hostname }}'s exporter.yaml (no
+# udev on OpenWrt), and labgrid's staging cache on the tmpfs.
+
+START=90
+
+{% set ports = [] %}
+{% set gpios = [] %}
+{% for group in _exporter.values() if group is mapping %}
+{% for name, res in group.items() if res is mapping %}
+{% set cls = res.cls | default(name) %}
+{% if cls == 'RawSerialPort' and res.port is defined %}
+{% set _ = ports.append(res.port) %}
+{% elif cls == 'SysfsGPIO' and res.index is defined %}
+{% set _ = gpios.append(res.index) %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+PORTS="{{ ports | unique | join(' ') }}"
+GPIOS="{{ gpios | unique | join(' ') }}"
+
+start() {
+	mkdir -p {{ labgrid_cache_dir }}
+	chown root:{{ labgrid_group }} {{ labgrid_cache_dir }}
+	chmod 2775 {{ labgrid_cache_dir }}
+
+	for port in $PORTS; do
+		[ -e "$port" ] || { logger -t labgrid-lab "missing serial port $port"; continue; }
+		chgrp {{ labgrid_group }} "$port"
+		chmod 0660 "$port"
+	done
+
+	for gpio in $GPIOS; do
+		dir=/sys/class/gpio/gpio$gpio
+		[ -d "$dir" ] || echo "$gpio" > /sys/class/gpio/export
+		[ -d "$dir" ] || { logger -t labgrid-lab "cannot export GPIO $gpio"; continue; }
+		for attr in value direction active_low; do
+			chgrp {{ labgrid_group }} "$dir/$attr"
+			chmod 0664 "$dir/$attr"
+		done
+	done
+}
