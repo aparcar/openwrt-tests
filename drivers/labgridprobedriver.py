@@ -36,7 +36,7 @@ class LabgridProbeDriver(Driver):
 
     SESSION = "0" * 32  # rpcd's built-in unauthenticated session
     OBJECT = "labgrid-probe"
-    INSTALL_HINT = "run the labgrid_probe Ansible role"
+    INSTALL_HINT = "run contrib/labgrid-probe/install-probe.sh lan"
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
@@ -245,7 +245,7 @@ class LabgridWifiProbeDriver(LabgridProbeDriver):
     """
 
     OBJECT = "labgrid-wifi-probe"
-    INSTALL_HINT = "run contrib/labgrid-probe/install-wifi-probe.sh"
+    INSTALL_HINT = "run contrib/labgrid-probe/install-probe.sh wifi"
 
     def radios(self):
         """{ radios: [{ phy, bands, mac, busy, stations, up }], mem_available_kb }"""

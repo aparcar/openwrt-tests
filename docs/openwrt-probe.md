@@ -87,14 +87,14 @@ the internet ones also `online`.
 
 ### Setting it up
 
-A probe of its own (GL-MT2500): flash the release, add it to group `probes`
-in `ansible/inventory.yaml` and run `uv run ansible-playbook lab.yml --limit
-labgrid-<lab>-probe` (role `labgrid_probe`, trunk mode; first install with
-`labgrid_probe_config: true`). Its port is a trunk: management untagged,
-every DUT LAN and WAN VLAN tagged.
+A probe of its own (GL-MT2500): flash the release and run `sh
+contrib/labgrid-probe/install-probe.sh lan --config root@<probe> -J
+labgrid-<lab>` (trunk mode; drop `--config` for updates, which copy the code
+only). Not Ansible: the probe has no python3. Its port is a trunk:
+management untagged, every DUT LAN and WAN VLAN tagged.
 
-On an OpenWrt lab host: `labgrid_probe_on_host: true` in the inventory
-(local mode: slots are macvlans on the host's own DUT interfaces).
+On an OpenWrt lab host: `install-probe.sh local --parent <dev>... root@<lab
+host>` (local mode: slots are macvlans on the host's own DUT interfaces).
 
 Either way: `probe: true` in the lab's `labnet.yaml` entry and the probe's
 uhttpd in its `exporter.yaml`:
@@ -156,7 +156,7 @@ counters, the probe's own counters and the AP's isolation settings.
    give LAN a static address on the lab management network without a DHCP
    server, cable it to an untagged management port, and place it in radio
    range of the lab's Wi-Fi DUTs.
-2. `sh contrib/labgrid-probe/install-wifi-probe.sh root@<probe> -J
+2. `sh contrib/labgrid-probe/install-probe.sh wifi root@<probe> -J
    labgrid-<lab>`. Not Ansible: python3 doesn't fit in its 8 MB of flash. It
    disables the radios for netifd, adds the firewall zone for the stations
    and sets ath9k's software crypto (one reboot).

@@ -90,32 +90,39 @@ The DUT's VLANs come from its own place: the LAN VLAN from its
 
 ## Install
 
-With Ansible, role `labgrid_probe`: it installs the packages, copies the
+With `install-probe.sh lan` over SSH (not Ansible: the probe is a plain
+OpenWrt device without python3). It installs the packages, copies the
 files, compile-checks the ucode, restarts rpcd and checks the ubus object,
 the ACL and uhttpd.
 
 1. Flash OpenWrt (`mediatek/filogic`, profile `glinet_gl-mt2500`, or
    `glinet_gl-mt2500-airoha` for the Airoha-PHY revision) and give root an
    SSH key. SSH as root is for the admin only; tests never log in.
-2. Add the probe to group `probes` in `ansible/inventory.yaml`, reached
-   through its lab host (`ansible_ssh_common_args: -J labgrid-<lab>`). For
-   the first install, also `labgrid_probe_config: true`: it replaces the
-   probe's network, firewall and hostname config, which applies at the
-   next reboot (then `192.168.128.3` on `eth0`).
-3. Run it (from `ansible/`); later runs update the code only:
+2. The first install, with `--config`: it also replaces the probe's
+   network, firewall and hostname config, which applies at the next reboot
+   (then `192.168.128.3` on `eth0`):
 
    ```shell
-   uv run ansible-playbook lab.yml --limit labgrid-<lab>-probe
+   sh contrib/labgrid-probe/install-probe.sh lan --config root@<probe> -J labgrid-<lab>
    ```
 
-The package install needs internet on the probe. `dnsmasq`, busybox `ntpd`
+3. Updates (after changing the files, or when the tests expect a newer
+   probe: `up` answering ubus status 2 means an outdated one) copy the code
+   only:
+
+   ```shell
+   sh contrib/labgrid-probe/install-probe.sh lan root@192.168.128.3 -J labgrid-aparcar
+   ```
+
+List the probe in group `probes` of `ansible/inventory.yaml` for its address
+and jump host; no play uses that group. The package install needs internet
+on the probe. `dnsmasq`, busybox `ntpd`
 and `nft` (fw4) come with the default image.
 
 ## On the lab host
 
 An OpenWrt lab host (role `labgrid_lab_openwrt`) can be the probe itself:
-`labgrid_probe_on_host: true` in the inventory, `probe: true` in
-`labnet.yaml`, and in `exporter.yaml`:
+`probe: true` in `labnet.yaml`, and in `exporter.yaml`:
 
 ```yaml
 labgrid-<lab>-probe:
@@ -125,22 +132,26 @@ labgrid-<lab>-probe:
     username: root
 ```
 
-`lab.yml` then installs it in local mode (UCI `labgrid_probe.main.mode`):
+Install and update it in local mode (UCI `labgrid_probe.main.mode`), with a
+`--parent` for each DUT interface (the `%<dev>` of the DUTs'
+`NetworkService` and the `ifname` of their `NetworkInterface`s):
+
+```shell
+sh contrib/labgrid-probe/install-probe.sh local --parent eth1 --parent eth0 root@<lab host>
+```
 
 - **Slots are macvlans** on the host's own DUT interfaces, not VLANs on a
   trunk: the host already has `vlan<N>` (Linux allows one VLAN device per ID
   and port), or the DUT is cabled straight to a port (`eth1`) without VLANs.
   Each slot's namespace gets a macvlan in private mode, so it only talks to
   the DUT, not to the host's address on that interface.
-- **Only the host's DUT interfaces** may be parents (`list parent`, from the
-  DUTs' `NetworkService` `%<dev>` and `NetworkInterface`s in
-  `exporter.yaml`), so callers can't attach slots to the uplink.
+- **Only the host's DUT interfaces** may be parents (`list parent`, the
+  `--parent`s), so callers can't attach slots to the uplink.
 - **Slot ids:** the VLAN for `vlan<N>`, else 4000 + the interface's ifindex
   (`up` returns it as `lan_vlan`, which the fixtures then use).
 - **HTTP:** a uhttpd instance of its own on `127.0.0.1:8080`; the host's
   other uhttpd config (LuCI) stays as it is. The DUTs' internet uplinks
-  (`pbx+`) are forwarded to the host's `wan` zone
-  (`labgrid_probe_uplink_zone`); WAN tests need the DUT's WAN port on a
+  (`pbx+`) are forwarded to the host's `wan` zone; WAN tests need the DUT's WAN port on a
   `vlan<N>` interface of the host.
 - **No probe config** (`files/etc`): the host's network and firewall are the
   lab admin's.
@@ -190,7 +201,7 @@ and wait), `ra_capture`, `mcast_join`, …); the `Slot` from
 With `wan_up`, the DUT is online through its WAN port (see above). The
 probe's management network must reach the internet (the lab host's NAT,
 `192.168.128.1`). The forwarding needs the shipped firewall config
-(`labgrid_probe_config: true`).
+(`install-probe.sh lan --config`).
 
 In tests, use the `online` fixture (`tests/probe_fixtures.py`, module
 scope). It brings up the WAN side (`wan_slot`), waits until the DUT resolves
@@ -277,7 +288,7 @@ associate in about 28 s (batches of 8) and cost about 225 kB of RAM each.
 3. From the openwrt-tests checkout:
 
    ```shell
-   sh contrib/labgrid-probe/install-wifi-probe.sh root@192.168.128.4 -J labgrid-aparcar
+   sh contrib/labgrid-probe/install-probe.sh wifi root@192.168.128.4 -J labgrid-aparcar
    ```
 
    It copies the files, installs `ip-full`, disables both radios in
