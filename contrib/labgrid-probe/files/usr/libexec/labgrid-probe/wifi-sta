@@ -1,0 +1,17 @@
+#!/usr/bin/ucode
+// labgrid-wifi-probe: the background part of sta_up. Creates the stations
+// listed in <dir>/request.json, starts wpa_supplicant for them in batches and
+// keeps every connected station leased, until sta_down kills it. Progress in
+// <dir>/state.json. Logic in /usr/share/ucode/labgrid_probe_wifi.uc.
+//
+//   wifi-sta <dir>
+
+'use strict';
+
+import { helper_run } from 'labgrid_probe_wifi';
+
+if (ARGV[0] == null) {
+	warn('usage: wifi-sta <dir>\n');
+	exit(2);
+}
+exit(helper_run(ARGV[0]));

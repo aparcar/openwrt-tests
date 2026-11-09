@@ -1,0 +1,16 @@
+#!/usr/bin/ucode
+// udhcpc hook for labgrid-wifi-probe stations (ws<n>s<i>): puts the lease on
+// the station as a /32 with a routing table of its own and records it as
+// JSON. Logic in /usr/share/ucode/labgrid_probe_wifi.uc (dhcp_hook).
+//
+// udhcpc passes the action in ARGV[0] and the lease in environment variables.
+
+'use strict';
+
+import { dhcp_hook } from 'labgrid_probe_wifi';
+
+const env = {};
+for (let name in ['interface', 'ip', 'mask', 'router', 'dns', 'serverid', 'lease'])
+	env[name] = getenv(name);
+
+exit(ARGV[0] == null ? 1 : dhcp_hook(ARGV[0], env));
