@@ -37,3 +37,21 @@
   tags:
     role: probe
 {% endif %}
+{% if labnet["labs"][inventory_hostname].get("wifi_probe") %}
+{{ inventory_hostname }}-wifi-probe:
+  acquired: null
+  acquired_resources: []
+  aliases: []
+  allowed: []
+  changed: {{ ansible_date_time.epoch }}
+  comment: 'Wi-Fi client probe (contrib/labgrid-probe, ath9k)'
+  created: {{ ansible_date_time.epoch }}
+  matches:
+  - cls: '*'
+    exporter: '*'
+    group: {{ inventory_hostname }}-wifi-probe
+    name: null
+    rename: null
+  tags:
+    role: wifi-probe
+{% endif %}

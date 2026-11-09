@@ -36,6 +36,7 @@ class LabgridProbeDriver(Driver):
 
     SESSION = "0" * 32  # rpcd's built-in unauthenticated session
     OBJECT = "labgrid-probe"
+    INSTALL_HINT = "run the labgrid_probe Ansible role"
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
@@ -61,7 +62,7 @@ class LabgridProbeDriver(Driver):
 
     @Driver.check_active
     def call_raw(self, method, **params):
-        """Return (ubus status, reply data) of labgrid-probe.<method>.
+        """Return (ubus status, reply data) of <OBJECT>.<method>.
 
         Raises ProbeError if the HTTP request fails or rpcd refuses it.
         """
@@ -84,11 +85,12 @@ class LabgridProbeDriver(Driver):
             raise ProbeError(f"probe at {self._url} not reachable: {error}") from error
         if "error" in body:
             message = body["error"].get("message", body["error"])
-            # uhttpd-mod-ubus: "Object not found" = rpcd has no labgrid-probe
-            # object (plugin not installed or failed to load); "Access denied"
-            # = the ACL doesn't allow the method
+            # uhttpd-mod-ubus: "Object not found" = rpcd has no such object
+            # (plugin not installed or failed to load); "Access denied" = the
+            # ACL doesn't allow the method
             hint = {
-                "Object not found": "rpcd plugin not loaded, run the labgrid_probe Ansible role",
+                "Object not found": f"rpcd has no {self.OBJECT} object (restarting, or "
+                f"not installed: {self.INSTALL_HINT})",
                 "Access denied": "check the rpcd ACL",
             }.get(message, "rpcd")
             raise ProbeError(f"probe refused {method}: {message} ({hint})")
@@ -98,14 +100,14 @@ class LabgridProbeDriver(Driver):
     @Driver.check_active
     @step(args=["method"])
     def call(self, method, **params):
-        """Call labgrid-probe.<method>; raise ProbeError unless it succeeded."""
+        """Call <OBJECT>.<method>; raise ProbeError unless it succeeded."""
         status, reply = self.call_raw(method, **params)
         if status != 0:
-            raise ProbeError(f"labgrid-probe.{method} failed with ubus status {status}")
+            raise ProbeError(f"{self.OBJECT}.{method} failed with ubus status {status}")
         if reply is None:
-            raise ProbeError(f"labgrid-probe.{method} returned no data")
+            raise ProbeError(f"{self.OBJECT}.{method} returned no data")
         if "error" in reply:
-            raise ProbeError(f"labgrid-probe.{method}: {reply['error']}")
+            raise ProbeError(f"{self.OBJECT}.{method}: {reply['error']}")
         return reply
 
     # --- per-slot helpers: every method takes the DUT's LAN VLAN first ------
@@ -230,3 +232,108 @@ class LabgridProbeDriver(Driver):
     def mcast_leave(self, lan_vlan):
         """Stop the receiver (IGMP leave) and sender; returns the last counts."""
         return self._slot_call("mcast_leave", lan_vlan)
+
+
+@target_factory.reg_driver
+@attr.s(eq=False)
+class LabgridWifiProbeDriver(LabgridProbeDriver):
+    """Call methods of the Wi-Fi probe's `labgrid-wifi-probe` ubus object.
+
+    Many Wi-Fi clients ("stations") at once against a DUT's AP, one set per
+    band (contrib/labgrid-probe/README.md, "Wi-Fi probe"). The wired
+    probe's per-slot helpers above don't apply to it.
+    """
+
+    OBJECT = "labgrid-wifi-probe"
+    INSTALL_HINT = "run contrib/labgrid-probe/install-wifi-probe.sh"
+
+    def radios(self):
+        """{ radios: [{ phy, bands, mac, busy, stations, up }], mem_available_kb }"""
+        return self.call("radios")
+
+    def bands(self):
+        return {band for radio in self.radios()["radios"] for band in radio["bands"]}
+
+    def sta_up(
+        self,
+        band,
+        count,
+        ssid,
+        bssid=None,
+        freq=None,
+        encryption="psk2",
+        key=None,
+        hidden=None,
+        batch=None,
+        stagger_ms=None,
+    ):
+        """Start `count` stations on the probe's `band` radio, joining `ssid`
+        (locked to `bssid` and `freq` if given). Returns at once; the probe
+        associates them in the background (wait_stations()). encryption:
+        none, psk, psk2, psk-mixed, sae, sae-mixed; hidden: scan for the
+        SSID by name (hidden SSIDs)."""
+        params = {
+            "band": band,
+            "count": count,
+            "ssid": ssid,
+            "bssid": bssid,
+            "freq": freq,
+            "encryption": encryption,
+            "key": key,
+            "hidden": hidden,
+            "batch": batch,
+            "stagger_ms": stagger_ms,
+        }
+        return self.call("sta_up", **{k: v for k, v in params.items() if v is not None})
+
+    def sta_status(self, band, detail=False):
+        """{ phase (creating, associating, running, failed), error, count,
+        connected, leases, first_connected_s, all_connected_s, all_leases_s,
+        mem_available_kb, stations: [{ index, ifname, mac, connected,
+        carrier_changes, ip, lease, link: { bssid, freq, signal, tx_mbps }
+        (detail) }] }"""
+        return self.call("sta_status", band=band, detail=bool(detail))
+
+    def wait_stations(self, band, count=None, leases=True, timeout=120.0, poll=2.0):
+        """Wait until `count` stations (default: all) are connected, and
+        leased if `leases`. Returns the last sta_status (also on timeout:
+        callers assert on it). Raises ProbeError if the probe's helper
+        failed."""
+        deadline = time.monotonic() + timeout
+        while True:
+            status = self.sta_status(band)
+            if status.get("phase") == "failed":
+                raise ProbeError(f"{band} stations failed: {status.get('error')}")
+            want = status["count"] if count is None else count
+            done = status["connected"] >= want and (
+                not leases or status["leases"] >= want
+            )
+            if done and status.get("all_leases_s") is None and want == status["count"]:
+                # The helper records the times on its next tick (1 s)
+                time.sleep(1.5)
+                status = self.sta_status(band)
+            if done or time.monotonic() > deadline:
+                return status
+            time.sleep(poll)
+
+    def sta_ping(self, band, host, count=None, size=None, stations=None, diag=None):
+        """Ping `host` from every leased station (or the indexes in
+        `stations`), all at once: { host, ok, results: [{ index, ip, rc,
+        transmitted, received }] }. count <= 20. diag: also { diag: {
+        counters, dmesg, rules, neigh, routes } } from the probe's side."""
+        params = {
+            "band": band,
+            "host": host,
+            "count": count,
+            "size": size,
+            "diag": diag,
+        }
+        if stations is not None:
+            params["stations"] = list(stations)
+        return self.call(
+            "sta_ping", **{k: v for k, v in params.items() if v is not None}
+        )
+
+    def sta_down(self, band=None):
+        """Remove the band's stations (all bands without one)."""
+        return self.call("sta_down", **({"band": band} if band else {}))

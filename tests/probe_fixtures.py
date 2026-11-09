@@ -136,23 +136,23 @@ class Coordinator:
         self.call("CancelReservation", pb2.CancelReservationRequest(token=token))
 
 
-@pytest.fixture(scope="module")
-def probe(env, target):
-    """The probe's LabgridProbeDriver, locked for the requesting module.
+def hold_probe_place(env, target, tags, driver, name):
+    """Generator for a module fixture: reserve and lock a place with `tags`,
+    yield `driver` of a target `name` on it, release it afterwards.
 
-    Skips without a coordinator (QEMU) or if the lab has no probe (no place
-    tagged role=probe). Depends on `target` so the DUT's RemotePlace has
-    opened the coordinator session.
+    Skips without a coordinator (QEMU) or if no place has `tags`. `target`
+    (the DUT's) has opened the coordinator session through its RemotePlace.
+    Used by `probe` and by wifi_probe_fixtures.py's `wifi_probe`.
     """
     manager = RemotePlaceManager.get()
     if manager.session is None:
         pytest.skip("no labgrid coordinator session (not a remote place)")
     coordinator = Coordinator(manager)
 
-    if not coordinator.places_tagged(PROBE_TAGS):
-        pytest.skip(f"no place tagged {PROBE_TAGS} on this coordinator")
+    if not coordinator.places_tagged(tags):
+        pytest.skip(f"no place tagged {tags} on this coordinator")
 
-    res = coordinator.reserve(PROBE_TAGS)
+    res = coordinator.reserve(tags)
     place = None
     try:
         res = coordinator.wait(res.id, PROBE_WAIT_TIMEOUT)
@@ -168,15 +168,15 @@ def probe(env, target):
         coordinator.set_comment(place, PROBE_HOLDER.format(dut_place))
 
         probe_target = target_factory.make_target(
-            "probe",
+            name,
             {
                 "resources": {"RemotePlace": {"name": place}},
-                "drivers": {"LabgridProbeDriver": {}},
+                "drivers": {driver: {}},
             },
             env=env,
         )
         try:
-            yield probe_target.get_driver("LabgridProbeDriver")
+            yield probe_target.get_driver(driver)
         finally:
             probe_target.cleanup()
     finally:
@@ -193,6 +193,17 @@ def probe(env, target):
             coordinator.cancel(res.id)
         except RuntimeError as e:
             logger.warning("cancelling reservation %s failed: %s", res.id, e)
+
+
+@pytest.fixture(scope="module")
+def probe(env, target):
+    """The probe's LabgridProbeDriver, locked for the requesting module.
+
+    Skips without a coordinator (QEMU) or if the lab has no probe (no place
+    tagged role=probe). Depends on `target` so the DUT's RemotePlace has
+    opened the coordinator session.
+    """
+    yield from hold_probe_place(env, target, PROBE_TAGS, "LabgridProbeDriver", "probe")
 
 
 # --- DUT side -----------------------------------------------------------------

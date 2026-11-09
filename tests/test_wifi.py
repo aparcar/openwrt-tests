@@ -13,11 +13,22 @@ WIFI_BANDS = {
 }
 
 # How iwinfo shows each encryption (it has rendered SAE as "WPA3 SAE (CCMP)",
-# "SAE (CCMP)" and "SAE / SAE-EXT-KEY (CCMP)")
+# "SAE (CCMP)" and "SAE / SAE-EXT-KEY (CCMP)"). The ucode iwinfo (25.12)
+# prints hostapd's key management and pairwise ciphers, "WPA-PSK (CCMP)",
+# with no WPA/WPA2 distinction: psk-mixed only differs from psk2 in the
+# ciphers, which depend on the cipher option, so it matches any PSK.
 IWINFO_ENCRYPTION = {
+    "none": r"Encryption: none",
     "psk2": r"Encryption: (WPA2 PSK|WPA-PSK) \(CCMP\)",
+    "psk-mixed": r"Encryption: (mixed WPA/WPA2 PSK|WPA2? PSK|WPA-PSK) \(",
     "sae": r"Encryption:.*\bSAE\b.*\(CCMP\)",
+    "sae-mixed": r"Encryption:.*(PSK.*\bSAE\b|\bSAE\b.*PSK)",
 }
+
+AP_KEY = "openwrt4all"
+# wifi-iface options open_ap(options=...) may set. Every open_ap() clears
+# them first, so they don't carry over from an earlier test.
+AP_OPTIONS = ("hidden", "isolate", "maxassoc")
 
 
 def band_params(*extra_features, encryptions=False):
@@ -60,39 +71,63 @@ def find_ap(ssh_command, ssid):
     return None, None
 
 
-def open_ap(ssh_command, band, encryption):
-    """Turn on the `band` radio with an AP (SSID OpenWrt-CI-<band>) and wait
-    until it runs; returns its interface. Fails if the device has no radio
-    for the band (its target declares one) or the AP doesn't come up."""
+def open_ap(
+    ssh_command, band, encryption, ssid=None, key=AP_KEY, options=None, channel=None
+):
+    """Turn on the `band` radio with an AP (SSID `ssid`, default
+    OpenWrt-CI-<band>) and wait until it runs with `encryption`; returns its
+    interface. Fails if the device has no radio for the band (its target
+    declares one) or the AP doesn't come up.
+
+    options: AP_OPTIONS to set on the wifi-iface ({"isolate": 1}); channel:
+    instead of the band's default.
+
+    `wifi reload` returns before the new config is applied, and a previous
+    test may have left an AP with the same SSID (other encryption) running,
+    so wait for the encryption too, not just the SSID."""
     settings = WIFI_BANDS[band]
-    ssid = f"OpenWrt-CI-{band}"
+    ssid = ssid or f"OpenWrt-CI-{band}"
     radio, iface = wifi_radio_for_band(ssh_command, band)
     assert radio, f"the target declares wifi-{band}, but the device has no {band} radio"
     assert iface, f"no wifi-iface for {radio}"
 
-    for setting in (
+    settings_cmds = [
         f"uci delete wireless.{radio}.disabled",
         f"uci delete wireless.{iface}.disabled",
-        f"uci set wireless.{radio}.channel={settings['channel']}",
+        f"uci set wireless.{radio}.channel={channel or settings['channel']}",
         f"uci set wireless.{iface}.mode=ap",
         f"uci set wireless.{iface}.ssid={ssid}",
         f"uci set wireless.{iface}.encryption={encryption}",
-        f"uci set wireless.{iface}.key=openwrt4all",
-    ):
+        f"uci -q delete wireless.{iface}.key"
+        if encryption == "none"
+        else f"uci set wireless.{iface}.key={key}",
+    ]
+    settings_cmds += [f"uci -q delete wireless.{iface}.{opt}" for opt in AP_OPTIONS]
+    for opt, value in (options or {}).items():
+        assert opt in AP_OPTIONS, f"open_ap: unknown option {opt}"
+        settings_cmds.append(f"uci set wireless.{iface}.{opt}={value}")
+    for setting in settings_cmds:
         ssh_command.run(setting)
     ssh_command.run("uci commit wireless")
     ssh_command.run("wifi reload")
 
     deadline = time.monotonic() + 60
     ifname = freq = None
+    info = ""
     while time.monotonic() < deadline:
         ifname, freq = find_ap(ssh_command, ssid)
         if freq:
-            break
+            info = "\n".join(ssh_command.run(f"iwinfo {ifname} info")[0])
+            if re.search(IWINFO_ENCRYPTION[encryption], info):
+                break
         time.sleep(2)
 
     iw = "\n".join(ssh_command.run("iw dev")[0])
     assert freq, f"no AP with SSID {ssid} after 60 s; iw dev:\n{iw}"
+    assert re.search(IWINFO_ENCRYPTION[encryption], info), (
+        f"{ssid} not running with {encryption} after 60 s; "
+        f"iwinfo {ifname} info:\n{info}"
+    )
     low, high = settings["mhz"]
     assert low <= freq <= high, (
         f"{ssid} runs on {freq} MHz, not in the {band} band; iw dev:\n{iw}"

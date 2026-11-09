@@ -11,7 +11,7 @@ as the server in front of it.
   LAN soak against the DUT), `test_probe_wan.py` (WAN DHCP options, NTP),
   `test_probe_ra.py` (parsed RAs), `test_probe_multicast.py` (IGMP proxy and
   snooping) and the online tests in `test_apk.py` (internet over the DUT's
-  WAN). Wi-Fi comes later.
+  WAN). Wi-Fi clients come from a second probe, see [Wi-Fi probe](#wi-fi-probe).
 
 ```
 lab host ──HTTP /ubus (port forward)──┐
@@ -236,3 +236,120 @@ curl -s http://192.168.128.3/ubus -d '{"jsonrpc":"2.0","id":1,"method":"call",
 - The DUTs' internet access is unrestricted, which includes the lab
   management network behind the probe (lab host, switch).
 - The internet uplink is IPv4 only.
+
+## Wi-Fi probe
+
+A TP-Link TL-WDR4300 running a stock OpenWrt release joins a DUT's AP with
+many clients ("stations") at once. Its two radios are ath9k: 2.4 GHz (AR9344,
+2x2) and 5 GHz (AR9580, 3x3), 802.11n only. ath9k allows up to 2048 station
+interfaces on one channel; measured on this probe: 64 WPA2 stations
+associate in about 28 s (batches of 8) and cost about 225 kB of RAM each.
+
+- On the probe: `files/usr/share/ucode/labgrid_probe_wifi.uc`, the ubus
+  object `labgrid-wifi-probe` (rpcd plugin and ACL), the background helper
+  `files/usr/libexec/labgrid-probe/wifi-sta` and the udhcpc hook
+  `files/usr/share/udhcpc/labgrid-wifi-probe.script`.
+- In openwrt-tests: `LabgridWifiProbeDriver` (`drivers/labgridprobedriver.py`),
+  the `wifi_probe` fixture and `WifiBed` (`tests/wifi_probe_fixtures.py`),
+  the tests in `tests/test_wifi_clients.py`.
+- In labgrid: a place of its own, `labgrid-<lab>-wifi-probe`, tagged
+  `role=wifi-probe` (`wifi_probe: true` in `labnet.yaml`); the exporter
+  exports its uhttpd:
+
+  ```yaml
+  labgrid-aparcar-wifi-probe:
+    NetworkService:
+      address: 192.168.128.4
+      port: 80
+      username: root
+  ```
+
+### Install
+
+1. Flash the release's `ath79/generic` image for `tplink_tl-wdr4300-v1`.
+2. Give LAN a static address on the lab management network, without a DHCP
+   server, and cable a LAN port to an untagged management port:
+   `uci set network.lan.ipaddr=192.168.128.4`, `network.lan.gateway`,
+   `network.lan.dns` (`192.168.128.1`), `uci set dhcp.lan.ignore=1`.
+3. From the openwrt-tests checkout:
+
+   ```shell
+   sh contrib/labgrid-probe/install-wifi-probe.sh root@192.168.128.4 -J labgrid-aparcar
+   ```
+
+   It copies the files, installs `ip-full`, disables both radios in
+   `/etc/config/wireless` (netifd must leave them to the probe), adds the
+   firewall zone `wprobe` for the stations (`ws+`, input accepted: fw4's
+   default input policy would answer new traffic to a station, such as
+   another station's ping, with ICMP unreachable), sets
+   `ath9k nohwcrypt=1` (see below; reboots once for it), compile-checks the
+   code, restarts rpcd and checks the ubus object. Not Ansible: that needs
+   python3, which doesn't fit in 8 MB of flash.
+
+**Software crypto.** All stations of a set talk to the same AP. ath9k's
+hardware key cache finds a pairwise key by the peer's address, so with
+hardware crypto only one station's unicast frames decrypt: the others
+associate (the 4-way handshake is unencrypted) but never see a DHCP offer.
+Open networks work either way. Hence `nohwcrypt=1`; the probe's CPU does
+the crypto, which is fine at test traffic rates.
+
+**The lab host's address in the DUT's LAN.** The lab host has
+`192.168.1.<VLAN id>` on each DUT VLAN (`.102` on `vlan102`), inside the
+DUT's default DHCP pool (`.100`-`.249`). Once dnsmasq offers that address to
+a station, the DUT's ARP entry for it points to the station and the lab's
+SSH connection to the DUT dies. `WifiBed` therefore moves the DUT's pool to
+`.150`-`.249` first (`dut_dhcp_pool()` in `tests/wifi_probe_fixtures.py`).
+
+`wifi-spike.sh` is the measurement script the design came from: run by hand
+on the probe, no rpcd.
+
+### Stations
+
+`sta_up` creates `count` station interfaces `ws<n>s<i>` on the radio for the
+band (n: phy number, i: station) and returns at once. The helper then:
+
+- starts wpa_supplicant for `batch` stations per process (default 8),
+  `stagger_ms` apart (default 1000), locked to `bssid` and `freq` if given;
+- gives every connected station a DHCP lease from the DUT (at most 16
+  udhcpc at once) and keeps doing so after reconnects;
+- writes its progress to `state.json` until `sta_down` kills it.
+
+A station counts as connected when its `operstate` is `up`: wpa_supplicant
+sets it after the 4-way handshake. `carrier_changes` per station shows
+disconnects. `iw dev` lists no SSID for stations on this kernel.
+
+MACs: the radio's address, locally administered, byte 4 = n * 16 + i / 256,
+byte 5 = i % 256. Only the last two bytes differ, which keeps ath9k's BSSID
+mask (the addresses the hardware ACKs) narrow.
+
+Routing: a cfg80211 interface can't move into a network namespace on its
+own, so all stations are in the root namespace. Each lease is a /32 on its
+station, with a routing table and a rule `from <ip> iif lo` of its own;
+the local table's rule moves from preference 0 to 30000, behind those
+rules. A ping from one station to another station's address therefore
+leaves over the air and goes through the AP (client isolation tests).
+Per station: `accept_local=1`, `arp_ignore=1`, `arp_announce=2`,
+`rp_filter=0`, IPv6 off.
+
+### ubus API
+
+| Method | Args | Reply |
+|---|---|---|
+| `radios` | | `{ radios: [{ phy, bands, mac, busy, stations, up }], mem_available_kb }` |
+| `sta_up` | `band` (`2g`, `5g`), `count` (1–256), `ssid`, `bssid`, `freq`, `encryption` (`none`, `psk`, `psk2`, `psk-mixed`, `sae`, `sae-mixed`), `key`, `hidden` (probe for the SSID), `batch`, `stagger_ms` | `{ phy, band, count, started, stations: [{ index, ifname, mac }] }` |
+| `sta_status` | `band`, `detail` (`iw dev link` per station) | `{ phase, error, count, connected, leases, first_connected_s, all_connected_s, all_leases_s, mem_available_kb, stations: [{ index, ifname, mac, connected, carrier_changes, ip, lease, link }] }` |
+| `sta_ping` | `band`, `host`, `count` (≤ 20), `size`, `stations` (indexes; default all) | `{ host, count, ok, results: [{ index, ifname, ip, rc, transmitted, received }] }`; all stations at once |
+| `sta_down` | `band` (default: all) | `{ ok, down: [phys] }` |
+
+`phase`: `creating`, `associating`, `running`, or `failed` with `error`.
+
+### Limits
+
+- 802.11n only: no VHT/HE/EHT features, no 80/160 MHz, no 6 GHz. HE and VHT
+  DUTs serve these clients as HT.
+- About 64 stations per radio is the tested range. The hardware key cache
+  has 128 entries; with more stations crypto may fall back to software.
+- Throughput is bound by the probe's 560 MHz CPU (roughly 100 Mbit/s for
+  all stations together): not a throughput probe.
+- Fixed antennas, open air: the signal level isn't controlled, and other
+  networks in the lab share the channel.
