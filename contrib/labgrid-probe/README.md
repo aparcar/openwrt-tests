@@ -1,5 +1,8 @@
 # labgrid-probe: OpenWrt-based test probe
 
+How the probes are used by the tests (fixtures, test overview, lab setup):
+`docs/openwrt-probe.md`. This file covers the probe side.
+
 A GL.iNet GL-MT2500(A) running OpenWrt. It acts as a client behind a DUT and
 as the server in front of it.
 - On the probe: a ucode module plus an rpcd plugin expose it as the ubus
