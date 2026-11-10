@@ -43,6 +43,7 @@ import ipaddress
 import json
 import logging
 import re
+import signal
 import sys
 import time
 from pathlib import Path
@@ -70,11 +71,11 @@ PROBE_TAGS = {"role": "probe"}
 # probes whose comment names the DUT place it is giving up. Keep both in sync
 # (PROBE_HOLDER in kernelci_labgrid/labgrid.py).
 PROBE_HOLDER = "held for {}"
-# How long a test module waits for a probe another module holds. The per-test
-# timeout (pyproject.toml, 300 s) covers this wait and the DUT's boot in the
-# same fixture (wifi_probe boots first; ~100 s on slow TFTP boards), so stay
-# well below it: the test then fails with this message, not a bare timeout
-PROBE_WAIT_TIMEOUT = 120
+# How long a test module waits for a probe another DUT's module holds. A
+# module holds it throughout: wifi_clients takes ~20 min, so this lets two
+# other DUTs go first. The wait doesn't count against the per-test timeout
+# (paused_test_timeout); the job's timeout (owci, timeout_s) has room for it
+PROBE_WAIT_TIMEOUT = 45 * 60
 RPC_TIMEOUT = 30
 # Releasing at teardown: tries, and the pause between them (a coordinator
 # restart takes a few seconds)
@@ -176,6 +177,25 @@ def _retry(what, call):
 
 
 @contextlib.contextmanager
+def paused_test_timeout():
+    """Stop pytest-timeout's timer meanwhile, then give the test the time it
+    had left.
+
+    With timeout_method = "signal" (pyproject.toml) the per-test timeout is
+    one SIGALRM timer (setitimer) for setup, call and teardown. Waiting in
+    the probe queue is not the test's time: it would eat the 300 s meant for
+    the test, or end it while another DUT still holds the probe."""
+    remaining, interval = signal.getitimer(signal.ITIMER_REAL)
+    if remaining:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+    try:
+        yield
+    finally:
+        if remaining:
+            signal.setitimer(signal.ITIMER_REAL, remaining, interval)
+
+
+@contextlib.contextmanager
 def hold_probe_place(env, target, tags, driver, name):
     """Context manager for a module fixture: reserve and lock a place with
     `tags`, yield `driver` of a target `name` on it, release it afterwards.
@@ -200,7 +220,11 @@ def hold_probe_place(env, target, tags, driver, name):
     res = coordinator.reserve(tags)
     place = None
     try:
-        res = coordinator.wait(res.id, PROBE_WAIT_TIMEOUT)
+        if res.state is ReservationState.waiting:
+            # in the test's log and the live view: why nothing happens
+            logger.info("waiting for a probe: %s", coordinator.holders(tags))
+        with paused_test_timeout():
+            res = coordinator.wait(res.id, PROBE_WAIT_TIMEOUT)
         if res.state is ReservationState.waiting:
             pytest.fail(
                 f"no probe free within {PROBE_WAIT_TIMEOUT}s: "

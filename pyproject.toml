@@ -18,8 +18,9 @@ dev = ["isort>=6.0.1", "ruff==0.17.4"]
 [tool.pytest.ini_options]
 # xunit2 has no per-test <properties>: record_property warns on every call
 junit_family = "xunit1"
-# Per test, fixture setup included (a test that waits for a busy probe or a
-# board that hangs fails after 5 min instead of eating the job's time). Tests
+# Per test, fixture setup included (a board that hangs fails after 5 min
+# instead of eating the job's time; waiting for a busy probe doesn't count,
+# see probe_fixtures.paused_test_timeout). Tests
 # that need longer say so: @pytest.mark.timeout(<s>). "signal" fails just the
 # test and runs the teardowns (releasing the probes); "thread" would kill
 # pytest
