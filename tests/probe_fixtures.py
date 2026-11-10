@@ -109,6 +109,19 @@ class Coordinator:
             if all(place.tags.get(k) == v for k, v in tags.items())
         ]
 
+    def holders(self, tags):
+        """Who holds the places with `tags`, as text for a failure message."""
+        try:
+            self.sync()
+        except (grpc.aio.AioRpcError, TimeoutError, OSError) as e:
+            return f"(coordinator unreachable: {e})"
+        return "; ".join(
+            f"{name}: acquired by {place.acquired or 'nobody'}"
+            + (f" ({place.comment})" if place.comment else "")
+            for name, place in self.session.places.items()
+            if all(place.tags.get(k) == v for k, v in tags.items())
+        )
+
     def reserve(self, tags):
         request = pb2.CreateReservationRequest(
             filters={"main": pb2.Reservation.Filter(filter=tags)}, prio=0.0
@@ -189,7 +202,10 @@ def hold_probe_place(env, target, tags, driver, name):
     try:
         res = coordinator.wait(res.id, PROBE_WAIT_TIMEOUT)
         if res.state is ReservationState.waiting:
-            pytest.fail(f"no probe free within {PROBE_WAIT_TIMEOUT}s")
+            pytest.fail(
+                f"no probe free within {PROBE_WAIT_TIMEOUT}s: "
+                + coordinator.holders(tags)
+            )
         if res.state is not ReservationState.allocated:
             pytest.fail(f"probe reservation {res.id} is {res.state.name}")
         # Before acquiring: an acquire that times out on our side may still
