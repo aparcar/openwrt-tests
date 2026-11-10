@@ -1,3 +1,7 @@
+"""The basics, run before every other module (see pytest_collection_modifyitems
+in conftest.py) and in this order: the first test boots the device, so its
+log is the boot log, and a device without a shell or SSH fails here first."""
+
 import os
 import tarfile
 import time
@@ -11,18 +15,8 @@ def test_shell(shell_command):
     shell_command.run_check("true")
 
 
-def test_firmware_version(shell_command, record_property):
-    [actual_version] = shell_command.run_check("source /etc/os-release; echo $BUILD_ID")
-    record_property("firmware_version", actual_version)
-
-    if "FIRMWARE_VERSION" in os.environ:
-        expected_version = os.environ["FIRMWARE_VERSION"]
-        record_property("expected_firmware_version", expected_version)
-        assert actual_version == expected_version, (
-            f"Firmware version mismatch: expected {expected_version}, got {actual_version}"
-        )
-
-
+# Before test_ssh: SSHDriver only retries for 30 s, and dropbear may take
+# longer to generate its host keys on a first boot
 def test_dropbear_startup(shell_command):
     for _ in range(120):
         if (
@@ -37,6 +31,28 @@ def test_dropbear_startup(shell_command):
 
 def test_ssh(ssh_command):
     ssh_command.run_check("true")
+
+
+def test_kernel_errors(ssh_command):
+    """Patterns live in kernel_log.py, shared with test_sysupgrade. Right
+    after boot, so it checks the boot and not what later tests did."""
+    errors_found = kernel_errors(ssh_command.run_check("dmesg"))
+
+    assert not errors_found, (
+        f"Critical errors found in kernel log: {errors_found[:5]}"
+    )  # Show first 5
+
+
+def test_firmware_version(shell_command, record_property):
+    [actual_version] = shell_command.run_check("source /etc/os-release; echo $BUILD_ID")
+    record_property("firmware_version", actual_version)
+
+    if "FIRMWARE_VERSION" in os.environ:
+        expected_version = os.environ["FIRMWARE_VERSION"]
+        record_property("expected_firmware_version", expected_version)
+        assert actual_version == expected_version, (
+            f"Firmware version mismatch: expected {expected_version}, got {actual_version}"
+        )
 
 
 def test_echo(ssh_command):
@@ -83,12 +99,3 @@ def test_sysupgrade_backup_u(ssh_command):
             assert "etc/config/dropbear" not in backup.getnames()
     finally:
         ssh_command.run("rm -rf /tmp/backup.tar.gz")
-
-
-def test_kernel_errors(ssh_command):
-    """Patterns live in kernel_log.py, shared with test_sysupgrade."""
-    errors_found = kernel_errors(ssh_command.run_check("dmesg"))
-
-    assert not errors_found, (
-        f"Critical errors found in kernel log: {errors_found[:5]}"
-    )  # Show first 5
