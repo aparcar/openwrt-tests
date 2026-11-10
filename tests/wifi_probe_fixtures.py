@@ -23,6 +23,7 @@ stations are also locked to the AP's BSSID.
 
 import hashlib
 import itertools
+import json
 import logging
 import re
 import time
@@ -205,6 +206,83 @@ class WifiBed:
         """hostapd's clients of the AP: {mac: {authorized, bytes, packets, ...}}"""
         reply = ubus_call(self.ssh, f"hostapd.{self.ap_ifname()}", "get_clients")
         return {mac.lower(): info for mac, info in reply.get("clients", {}).items()}
+
+    def kernel_keys(self):
+        """The keys mac80211 holds for the AP's netdev, [(algorithm, keyidx)]
+        ("00-0f-ac:4" CCMP, ":6" BIP-CMAC), from debugfs; None without
+        debugfs. An open AP should have none."""
+        ap = self.ap_ifname()
+        cmd = (
+            f"echo IF $(cat /sys/class/net/{ap}/ifindex); "
+            f"d=/sys/kernel/debug/ieee80211/$(cat /sys/class/net/{ap}/phy80211/name); "
+            "[ -d $d ] || { echo NODEBUGFS; exit 0; }; "
+            "for k in $d/keys/*; do [ -d $k ] && "
+            "echo KEY $(cat $k/ifindex) $(cat $k/algorithm) $(cat $k/keyidx); "
+            "done; true"
+        )
+        stdout = self.ssh.run_check(cmd)
+        if "NODEBUGFS" in stdout:
+            return None
+        ifindex = next(
+            (line.split()[1] for line in stdout if line.startswith("IF ")), ""
+        )
+        keys = []
+        for line in stdout:
+            fields = line.split()
+            # Older kernels print the netdev's index, newer ones its name
+            if fields[0] == "KEY" and len(fields) == 4 and fields[1] in (ap, ifindex):
+                keys.append((fields[2], fields[3]))
+        return keys
+
+    def diagnose(self):
+        """Both sides of the bed as text, for a failure message: the probe's
+        stations (link, lease, udhcpc log) and the DUT's view of them
+        (authorized?, packets counted or dropped, bridge port, ath9k/mac80211
+        counters, hostapd config and log). Never raises."""
+        out = []
+        try:
+            out.append("probe: " + json.dumps(self.status(detail=True), indent=1))
+        except Exception as e:  # noqa: BLE001 (diagnostics only)
+            out.append(f"probe status failed: {e}")
+        ap = find_ap(self.ssh, self.ssid)[0] or "phy*-ap0"
+        cmds = (
+            f"iw dev {ap} station dump",
+            f"ubus call hostapd.{ap} get_clients",
+            (
+                f"cd /sys/class/net/{ap}/statistics; "
+                "for c in rx_packets rx_dropped tx_packets tx_dropped; do "
+                "echo $c $(cat $c); done"
+            ),
+            f"cat /sys/class/net/{ap}/brport/state; ls /sys/class/net/br-lan/brif",
+            (
+                "for f in /sys/kernel/debug/ieee80211/*/ath9k/recv; do "
+                "echo == $f; cat $f; done"
+            ),
+            (
+                f"for f in /sys/kernel/debug/ieee80211/*/netdev:{ap}/stations/*/flags; "
+                "do echo == $f; cat $f; done"
+            ),
+            # Keys mac80211 still has: an open AP with a group key left from
+            # an earlier WPA config drops unencrypted data (rx drop misc)
+            (
+                f"echo {ap} ifindex $(cat /sys/class/net/{ap}/ifindex); "
+                f"for f in /sys/kernel/debug/ieee80211/*/netdev:{ap}/default_*key; "
+                "do echo == $f; cat $f; done; "
+                "for k in /sys/kernel/debug/ieee80211/*/keys/*; do echo == $k "
+                "$(cat $k/algorithm $k/keyidx $k/ifindex $k/station 2>/dev/null); done"
+            ),
+            "grep -hvE '^#|^$' /var/run/hostapd-*.conf",
+            "logread | grep -E 'hostapd|netifd|dnsmasq-dhcp' | tail -n 30",
+        )
+        for cmd in cmds:
+            try:
+                stdout, stderr, rc = self.ssh.run(cmd, timeout=30)
+                out.append(f"# {cmd} (rc {rc})\n" + "\n".join(stdout + stderr))
+            except Exception as e:  # noqa: BLE001 (SSH may be gone too)
+                out.append(f"# {cmd}: {e}")
+        text = "\n".join(out)
+        logger.warning("Wi-Fi bed %s (%s):\n%s", self.ssid, self.encryption, text)
+        return text
 
     def dut_authorized(self):
         return {

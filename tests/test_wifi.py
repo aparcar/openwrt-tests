@@ -1,7 +1,12 @@
+import json
+import logging
 import re
 import time
 
 import pytest
+from labgrid.driver.exception import ExecutionError
+
+logger = logging.getLogger(__name__)
 
 # Bands and how to test them: the target's wifi-<band> features say which
 # bands the device has. Fixed channels without radar detection (DFS), so an
@@ -29,6 +34,51 @@ AP_KEY = "openwrt4all"
 # wifi-iface options open_ap(options=...) may set. Every open_ap() clears
 # them first, so they don't carry over from an earlier test.
 AP_OPTIONS = ("hidden", "isolate", "maxassoc")
+WIRELESS_BACKUP = "/tmp/wireless.pre-test"
+# How long wifi_reset waits for netifd to finish bringing the radios down/up
+WIFI_SETTLE_TIMEOUT = 30
+
+
+@pytest.fixture(autouse=True)
+def wifi_reset(ssh_command):
+    """Every Wi-Fi test starts with the radios as the test before it found
+    them (the boot default) and with fresh APs: afterwards the wireless config
+    goes back and `wifi` takes every radio down and up again, so hostapd
+    sets up each BSS anew. Otherwise the next open_ap() reconfigures the
+    running BSS in place, and whatever survives that (the group keys of a
+    WPA BSS turned open, test_wifi_client_open_after_wpa) makes the tests
+    depend on their order. Also used by test_wifi_clients.py (imported)."""
+    ssh_command.run_check(f"cp /etc/config/wireless {WIRELESS_BACKUP}")
+    yield
+    for cmd in (
+        "uci revert wireless",
+        f"cp {WIRELESS_BACKUP} /etc/config/wireless",
+        "wifi",
+    ):
+        try:
+            ssh_command.run(cmd, timeout=60)
+        except (ExecutionError, OSError) as e:  # the next test will show it
+            logger.warning("wifi reset: %s failed: %s", cmd, e)
+            return
+    wifi_settle(ssh_command)
+
+
+def wifi_settle(ssh_command, timeout=WIFI_SETTLE_TIMEOUT):
+    """Wait until netifd has no radio setup or teardown pending."""
+    deadline = time.monotonic() + timeout
+    while True:
+        time.sleep(1)
+        stdout, _, rc = ssh_command.run("wifi status")
+        try:
+            devices = json.loads("\n".join(stdout)) if rc == 0 else {}
+        except json.JSONDecodeError:
+            devices = {}
+        pending = [name for name, dev in devices.items() if dev.get("pending")]
+        if not pending:
+            return
+        if time.monotonic() > deadline:
+            logger.warning("wifi reset: radios still pending: %s", pending)
+            return
 
 
 def band_params(*extra_features, encryptions=False):

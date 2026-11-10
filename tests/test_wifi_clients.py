@@ -25,7 +25,14 @@ import time
 import pytest
 from labgrid.driver.exception import ExecutionError
 from probe_fixtures import DUT_LAN, DUT_LAN_IP
-from test_wifi import AP_KEY, band_params, find_ap, open_ap, wifi_radio_for_band
+from test_wifi import (
+    AP_KEY,
+    band_params,
+    find_ap,
+    open_ap,
+    wifi_radio_for_band,
+    wifi_reset,  # noqa: F401 (autouse fixture: fresh APs for every test)
+)
 from wifi_probe_fixtures import (
     PROBE_BANDS,
     WifiBed,
@@ -80,9 +87,13 @@ def per_band(cases, idfn):
 
 def assert_all_up(status, leases=True, dut_log=None):
     """All stations connected (and leased). dut_log: a callable returning
-    the DUT's side for the failure message (dut_diagnostics())."""
+    the DUT's side for the failure message (dut_diagnostics(), WifiBed.diagnose)."""
     down = not_connected(status)
-    assert not down, f"{len(down)} stations not connected ({summary(status)}): {down}"
+    if down:
+        text = f"{len(down)} stations not connected ({summary(status)}): {down}"
+        if dut_log:
+            text += f"\n{dut_log()}"
+        pytest.fail(text)
     if leases:
         missing = not_leased(status)
         if missing:
@@ -164,7 +175,7 @@ def test_wifi_client_encryption(
         sta_encryption=sta_encryption,
     )
     status = bed.wait()
-    assert_all_up(status)
+    assert_all_up(status, dut_log=bed.diagnose)
     assert_all_ping(bed)
 
     mac = status["stations"][0]["mac"].lower()
@@ -174,6 +185,41 @@ def test_wifi_client_encryption(
     # Both sides speak SAE: wpa_supplicant prefers it over PSK
     if "sae" in sta_encryption and "sae" in ap_encryption:
         assert clients[mac]["mfp"], f"SAE client without MFP: {clients[mac]}"
+
+
+@pytest.mark.xfail(
+    reason="upstream bug: hostapd keeps the WPA group keys of a BSS "
+    "reconfigured to open (issues/generic.md in openwrtci)",
+    strict=False,
+)
+@pytest.mark.parametrize("band", BANDS)
+def test_wifi_client_open_after_wpa(
+    ssh_command, wifi_probe, target, band, record_property
+):
+    """
+    Regression (not filed upstream yet, issues/generic.md "hostapd keeps
+    the group keys"): an AP switched from SAE to open with `wifi reload`
+    serves open clients. hostapd reconfigures the BSS on the same netdev and
+    leaves the WPA group keys (GTK, IGTK) in mac80211, which then drops the
+    open clients' unencrypted frames ("rx drop misc"): they associate but
+    get no lease.
+
+    wifi_reset gives every other test fresh APs; this one reconfigures in
+    place on purpose.
+    """
+    first = WifiBed.start(ssh_command, wifi_probe, target, band, "sae")
+    assert_all_up(first.wait(), dut_log=first.diagnose)
+
+    bed = WifiBed.start(ssh_command, wifi_probe, target, band, "none")
+    keys = bed.kernel_keys()
+    record_property("dut_keys_on_open_ap", json.dumps(keys))
+    status = bed.wait()
+    assert_all_up(status, dut_log=bed.diagnose)
+    assert_all_ping(bed)
+    assert not keys, (
+        f"mac80211 still has keys on the phy of the open AP {bed.ap_ifname()}"
+        f" (algorithm, keyidx): {keys}"
+    )
 
 
 @pytest.mark.parametrize(
