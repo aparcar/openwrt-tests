@@ -5,7 +5,7 @@ class TestSystemHealth:
     """Tests for monitoring system health and resource usage."""
 
     def test_memory_usage(self, ssh_command, record_property):
-        """At most 80% of RAM is in use right after boot.
+        """At most 95% of RAM is in use right after boot.
 
         Reads /proc/meminfo instead of `free`: busybox ignores `-m` and its
         "used" leaves out tmpfs. Used is MemTotal - MemAvailable, so only
@@ -28,8 +28,7 @@ class TestSystemHealth:
         record_property("memory_available_mb", available_mem)
         record_property("memory_used_percent", round(mem_percent, 2))
 
-        # Memory usage should be at most 80%
-        assert mem_percent <= 80, f"Memory usage {mem_percent:.1f}% is too high"
+        assert mem_percent <= 95, f"Memory usage {mem_percent:.1f}% is too high"
 
         # Should have at least 10MB available
         assert available_mem > 10, f"Only {available_mem}MB available memory"

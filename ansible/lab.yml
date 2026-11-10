@@ -10,17 +10,15 @@
 # The agent's tokens come from openwrtci (server.yml writes them to its
 # secrets directory, labgrid_agent_secrets_dir). See README.md.
 #
-# The labgrid-probe (contrib/labgrid-probe, role labgrid_probe): on OpenWrt
-# lab hosts with labgrid_probe_on_host: true, and on probes of their own in
-# group `probes`:
-#
-#   uv run ansible-playbook lab.yml --limit labgrid-<lab>-probe
+# Probes (wired, Wi-Fi, or the wired one on an OpenWrt lab host) aren't
+# managed here: contrib/labgrid-probe/install-probe.sh.
 
-# OpenWrt lab hosts and probes need python3 (and sudo) before Ansible can
-# gather facts
-- name: Python for Ansible on OpenWrt lab hosts and probes
-  hosts: labs:probes
+# OpenWrt lab hosts need python3 (and sudo) before Ansible can gather facts
+# (tagged always, so --tags export/agent/... still bootstraps)
+- name: Python for Ansible on OpenWrt lab hosts
+  hosts: labs
   gather_facts: false
+  tags: always
   tasks:
     - name: Bootstrap OpenWrt
       ansible.builtin.import_role:
@@ -40,15 +38,3 @@
     - role: labgrid_agent
       when: labgrid_agent_lab_name is defined
       tags: agent
-    # The probe on the lab host itself (OpenWrt only)
-    - role: labgrid_probe
-      when: labgrid_probe_on_host | default(false) | bool
-      vars:
-        labgrid_probe_mode: local
-      tags: probe
-
-- name: Probes of their own
-  hosts: probes
-  roles:
-    - role: labgrid_probe
-      tags: probe

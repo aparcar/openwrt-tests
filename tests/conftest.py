@@ -102,6 +102,11 @@ def pytest_configure(config):
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(items):
+    # test_base.py first, in its own order (the basics: boot, shell, SSH,
+    # kernel log), then the other modules as collected (by file name). The
+    # sort is stable, so tests keep their order within a module.
+    items.sort(key=lambda item: item.path.name != "test_base.py")
+
     # Tests using the `online` fixture (probe_fixtures.py), directly or
     # through another fixture, need the labgrid feature `online` (the DUT has
     # a WAN uplink): add the mark before labgrid's hook skips on features

@@ -224,6 +224,7 @@ def test_sysupgrade_image_check(ssh_command, sysupgrade_image):
 
 
 @pytest.mark.lg_feature("sysupgrade")
+@pytest.mark.timeout(600)  # upload, flash and reboot
 def test_sysupgrade_keep_settings(
     target, strategy, ssh_command, sysupgrade_image, record_property
 ):
@@ -253,6 +254,7 @@ def test_sysupgrade_keep_settings(
 
 
 @pytest.mark.lg_feature("sysupgrade")
+@pytest.mark.timeout(600)  # reboot
 def test_sysupgrade_persists_across_reboot(
     target, strategy, ssh_command, record_property
 ):
@@ -273,6 +275,7 @@ def test_sysupgrade_persists_across_reboot(
 
 
 @pytest.mark.lg_feature("sysupgrade")
+@pytest.mark.timeout(600)  # upload, flash and reboot
 def test_sysupgrade_no_keep(
     target, strategy, ssh_command, sysupgrade_image, record_property
 ):
