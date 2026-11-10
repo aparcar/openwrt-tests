@@ -115,6 +115,50 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.lg_feature("online"))
 
 
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_call(item):
+    yield
+    drain_consoles(item.config)
+
+
+# What drain_consoles reads at most per console and test
+DRAIN_MAX_BYTES = 1 << 20
+
+
+def drain_consoles(config):
+    """Read what the devices printed on their serial consoles meanwhile.
+
+    labgrid logs console output (log level CONSOLE) only when a driver
+    reads it. A test that only uses SSH reads nothing, so kernel messages
+    from its time (driver warnings, oopses) would sit in the serial buffer
+    and show up in a later test's log, or never. Reading them at the end of
+    the test puts them into this test's captured log. Only consoles that
+    are already active: no test gets a console it didn't ask for."""
+    import pexpect
+    from labgrid.exceptions import NoDriverFoundError
+    from labgrid.protocol import ConsoleProtocol
+    from labgrid.pytestplugin.hooks import LABGRID_ENV_KEY
+
+    env = config.stash.get(LABGRID_ENV_KEY, None)
+    if env is None:
+        return
+    for target in list(env.targets.values()):
+        try:
+            console = target.get_active_driver(ConsoleProtocol)
+        except NoDriverFoundError:  # no console, or none active
+            logger.debug("no active console on %s", target.name)
+            continue
+        read = 0
+        while read < DRAIN_MAX_BYTES:
+            try:
+                read += len(console.read(size=1, timeout=0.2, max_size=65536))
+            except pexpect.TIMEOUT:
+                break
+            except OSError:  # a console that went away is not this test's failure
+                logger.debug("draining %s failed", console, exc_info=True)
+                break
+
+
 device = getenv("LG_ENV", "Unknown").split("/")[-1].split(".")[0]
 
 
