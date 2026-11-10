@@ -73,9 +73,9 @@ def wifi_probe(env, target, strategy):
     the tests' function-scoped shell_command/ssh_command, and the probe is
     shared by the lab, so it shouldn't wait out a boot reserved."""
     strategy.transition("shell")
-    for driver in hold_probe_place(
+    with hold_probe_place(
         env, target, WIFI_PROBE_TAGS, "LabgridWifiProbeDriver", "wifi-probe"
-    ):
+    ) as driver:
         # Leftovers of a run that was killed before its teardown
         driver.sta_down()
         try:

@@ -9,6 +9,7 @@ dependencies = [
     "labgrid>=25.0",
     "pytest>=8.4.1",
     "pytest-check>=2.5.3",
+    "pytest-timeout>=2.3.1",
 ]
 
 [dependency-groups]
@@ -17,6 +18,13 @@ dev = ["isort>=6.0.1", "ruff==0.17.4"]
 [tool.pytest.ini_options]
 # xunit2 has no per-test <properties>: record_property warns on every call
 junit_family = "xunit1"
+# Per test, fixture setup included (a test that waits for a busy probe or a
+# board that hangs fails after 5 min instead of eating the job's time). Tests
+# that need longer say so: @pytest.mark.timeout(<s>). "signal" fails just the
+# test and runs the teardowns (releasing the probes); "thread" would kill
+# pytest
+timeout = 300
+timeout_method = "signal"
 filterwarnings = [
     # pyserial(-labgrid) 3.5 rfc2217 calls Thread.setDaemon()/setName();
     # no newer release, drop once one fixes it

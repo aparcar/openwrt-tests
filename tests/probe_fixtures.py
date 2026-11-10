@@ -15,9 +15,11 @@ keeps its cached place state current, so the probe's RemotePlace sees the
 lock right away.
 
 The probe is released at module teardown, which also runs on Ctrl-C and
-SIGTERM (conftest.py). While held, the probe place's comment names the DUT
-place (PROBE_HOLDER), so the KernelCI agent can release it if pytest is
-killed outright.
+SIGTERM (conftest.py), and right away if the fixture fails while setting up.
+While held, the probe place's comment names the DUT place (PROBE_HOLDER):
+if pytest is killed outright (SIGKILL on the job timeout) or the release
+fails, the KernelCI agent releases it when it gives up the DUT place
+(kernelci-labgrid Coordinator.release_probes).
 
 On top of it (module scope; conftest.py only imports `probe`, so a test
 module imports the ones it uses, including those they depend on):
@@ -35,6 +37,7 @@ module imports the ones it uses, including those they depend on):
 """
 
 import asyncio
+import contextlib
 import datetime
 import ipaddress
 import json
@@ -63,12 +66,20 @@ logger = logging.getLogger(__name__)
 PROBE_TAGS = {"role": "probe"}
 # Comment on the probe place while a test holds it, naming the DUT place.
 # pytest releases the probe at teardown; if it is killed first (SIGKILL), the
-# KernelCI agent (kernelci-labgrid Coordinator.release) releases probes whose
-# comment names the DUT place it is giving up. Keep both in sync.
+# KernelCI agent (kernelci-labgrid Coordinator.release_probes) releases
+# probes whose comment names the DUT place it is giving up. Keep both in sync
+# (PROBE_HOLDER in kernelci_labgrid/labgrid.py).
 PROBE_HOLDER = "held for {}"
-# How long a test module waits for a probe another module holds
-PROBE_WAIT_TIMEOUT = 1800
+# How long a test module waits for a probe another module holds. The per-test
+# timeout (pyproject.toml, 300 s) covers this wait and the DUT's boot in the
+# same fixture (wifi_probe boots first; ~100 s on slow TFTP boards), so stay
+# well below it: the test then fails with this message, not a bare timeout
+PROBE_WAIT_TIMEOUT = 120
 RPC_TIMEOUT = 30
+# Releasing at teardown: tries, and the pause between them (a coordinator
+# restart takes a few seconds)
+RELEASE_ATTEMPTS = 3
+RELEASE_RETRY_DELAY = 5
 
 
 class Coordinator:
@@ -136,9 +147,30 @@ class Coordinator:
         self.call("CancelReservation", pb2.CancelReservationRequest(token=token))
 
 
+def _retry(what, call):
+    """Run a teardown call, retrying while the coordinator is unreachable
+    (it may be restarting); log instead of raising. True if it worked."""
+    for attempt in range(1, RELEASE_ATTEMPTS + 1):
+        try:
+            call()
+            return True
+        # RuntimeError from call(), AioRpcError from sync(), RPC_TIMEOUT
+        except (RuntimeError, grpc.aio.AioRpcError, TimeoutError, OSError) as e:
+            logger.warning("%s failed (attempt %d): %s", what, attempt, e)
+            if attempt < RELEASE_ATTEMPTS:
+                time.sleep(RELEASE_RETRY_DELAY)
+    return False
+
+
+@contextlib.contextmanager
 def hold_probe_place(env, target, tags, driver, name):
-    """Generator for a module fixture: reserve and lock a place with `tags`,
-    yield `driver` of a target `name` on it, release it afterwards.
+    """Context manager for a module fixture: reserve and lock a place with
+    `tags`, yield `driver` of a target `name` on it, release it afterwards.
+
+    A context manager rather than a generator so the release runs as soon as
+    anything fails, also before the yield: an unclosed generator would only
+    release when garbage collected, and pytest keeps a failed module
+    fixture's traceback (and with it the generator) alive.
 
     Skips without a coordinator (QEMU) or if no place has `tags`. `target`
     (the DUT's) has opened the coordinator session through its RemotePlace.
@@ -160,9 +192,10 @@ def hold_probe_place(env, target, tags, driver, name):
             pytest.fail(f"no probe free within {PROBE_WAIT_TIMEOUT}s")
         if res.state is not ReservationState.allocated:
             pytest.fail(f"probe reservation {res.id} is {res.state.name}")
-        allocated = res.allocations["main"][0]
-        coordinator.acquire(allocated)
-        place = allocated
+        # Before acquiring: an acquire that times out on our side may still
+        # have locked the place at the coordinator
+        place = res.allocations["main"][0]
+        coordinator.acquire(place)
         logger.info("acquired probe place %s (reservation %s)", place, res.id)
         dut_place = target.get_resource("RemotePlace").name
         coordinator.set_comment(place, PROBE_HOLDER.format(dut_place))
@@ -180,19 +213,14 @@ def hold_probe_place(env, target, tags, driver, name):
         finally:
             probe_target.cleanup()
     finally:
-        if place:
-            try:
-                coordinator.set_comment(place, "")
-            except RuntimeError as e:
-                logger.warning("clearing the comment of %s failed: %s", place, e)
-            try:
-                coordinator.release(place)
-            except RuntimeError as e:
-                logger.warning("releasing %s failed: %s", place, e)
-        try:
-            coordinator.cancel(res.id)
-        except RuntimeError as e:
-            logger.warning("cancelling reservation %s failed: %s", res.id, e)
+        # The comment goes only once the place is released: while it names
+        # the DUT place, the KernelCI agent releases a probe left locked
+        if place and _retry(f"releasing {place}", lambda: coordinator.release(place)):
+            _retry(
+                f"clearing the comment of {place}",
+                lambda: coordinator.set_comment(place, ""),
+            )
+        _retry(f"cancelling reservation {res.id}", lambda: coordinator.cancel(res.id))
 
 
 @pytest.fixture(scope="module")
@@ -203,7 +231,10 @@ def probe(env, target):
     tagged role=probe). Depends on `target` so the DUT's RemotePlace has
     opened the coordinator session.
     """
-    yield from hold_probe_place(env, target, PROBE_TAGS, "LabgridProbeDriver", "probe")
+    with hold_probe_place(
+        env, target, PROBE_TAGS, "LabgridProbeDriver", "probe"
+    ) as driver:
+        yield driver
 
 
 # --- DUT side -----------------------------------------------------------------
