@@ -17,6 +17,7 @@ import logging
 import os
 import shlex
 import shutil
+import signal
 import tempfile
 from os import getenv
 from pathlib import Path
@@ -273,13 +274,25 @@ def setup_env(env, pytestconfig):
 
 
 @pytest.fixture
-def shell_command(strategy):
+def shell_command(env, strategy):
+    # The first call boots the DUT. Targets whose boot doesn't fit into the
+    # per-test timeout (e.g. CFETFTPStrategy flashing the image) set
+    # openwrt.boot_timeout: the transition runs on that budget instead, and
+    # the test gets the time it had left afterwards
+    boot_timeout = (env.config.data.get("openwrt") or {}).get("boot_timeout")
+    remaining, interval = signal.getitimer(signal.ITIMER_REAL)
+    budget = bool(boot_timeout and remaining)
+    if budget:
+        signal.setitimer(signal.ITIMER_REAL, float(boot_timeout))
     try:
         strategy.transition("shell")
         return strategy.shell
     except Exception:
         logger.exception("Failed to transition to state shell")
         pytest.exit("Failed to transition to state shell", returncode=3)
+    finally:
+        if budget:
+            signal.setitimer(signal.ITIMER_REAL, remaining, interval)
 
 
 @pytest.fixture
