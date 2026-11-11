@@ -1,0 +1,33 @@
+# Forget the agent's device health (health.json), so its next poll runs a
+# fresh health check of every device and reports the results. Used by
+# reset-health.yml.
+#
+# The agent loads health.json when a poll starts and writes it back when the
+# poll ends, so the file is removed between two polls: a running poll (maybe
+# a job, up to TimeoutStartSec) is waited for, never killed.
+
+- name: Reset the agent's health state
+  block:
+    - name: Pause the agent's polls
+      ansible.builtin.systemd_service:
+        name: labgrid-agent.timer
+        state: stopped
+
+    - name: Wait for a running poll to finish
+      ansible.builtin.command: systemctl is-active labgrid-agent.service
+      register: _agent_active
+      changed_when: false
+      failed_when: false
+      until: _agent_active.rc != 0
+      retries: "{{ (labgrid_agent_reset_health_timeout / 30) | int }}"
+      delay: 30
+
+    - name: Remove the health state
+      ansible.builtin.file:
+        path: "{{ labgrid_agent_state_dir }}/health.json"
+        state: absent
+  always:
+    - name: Resume the agent's polls
+      ansible.builtin.systemd_service:
+        name: labgrid-agent.timer
+        state: started
