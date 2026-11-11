@@ -1,0 +1,51 @@
+openwrt:
+  name: QEMU LoongArch 64-bit (EFI)
+  target: loongarch64-generic
+  profile: generic
+  # The 25.12 kernel (6.12) has no virtio drivers, so it finds neither disk
+  # nor NIC in QEMU; virtio came with the 6.18 kernel on main
+  snapshots_only: true
+  # loongarch64 only builds EFI disk images (no initramfs), with ext4 only
+  image:
+    type: combined-efi
+    filesystem: ext4
+  # UEFI firmware (edk2) for the QEMUDriver `bios` image, see conftest.py
+  efi_firmware: loongarch64
+targets:
+  main:
+    features:
+      - wan_port
+      - rootfs
+      - sysupgrade
+    resources:
+      - NetworkService:
+          # The actual address will be filled in by the strategy
+          address: ""
+          port: 22
+          username: root
+    drivers:
+      - QEMUDriver:
+          qemu_bin: qemu_bin
+          machine: virt
+          cpu: la464
+          memory: 1G
+          extra_args: "-device virtio-rng-pci -netdev user,id=wan -device virtio-net-pci,netdev=wan"
+          nic: user,model=virtio-net-pci,net=192.168.1.0/24,id=lan
+          bios: bios
+          disk: firmware
+          # Writes (overlay, sysupgrade) go to a temporary overlay that lives
+          # as long as QEMU, not into the firmware file
+          disk_opts: snapshot=on
+      - ShellDriver:
+          login_prompt: Please press Enter to activate this console.
+          prompt: 'root@[\w()]+:[^ ]+ '
+          await_login_timeout: 15
+          username: root
+      - SSHDriver:
+          connection_timeout: 120.0
+          explicit_scp_mode: True
+      - QEMUNetworkStrategy: {}
+tools:
+  qemu_bin: qemu-system-loongarch64
+imports:
+  - ../strategies/qemunetworkstrategy.py

@@ -158,11 +158,15 @@ def _assert_healthy(ssh, record_property):
     revision = _revision(ssh)
     record_property("revision_after", revision)
 
-    # Booted from storage with a writable overlay, not from RAM
+    # Booted from storage, not from RAM: squashfs images have a writable
+    # overlay, ext4 images (e.g. loongarch64) a writable root and no overlay
     mounts = "\n".join(ssh.run_check("cat /proc/mounts"))
     overlay = re.search(r"^\S+ /overlay (\S+)", mounts, re.MULTILINE)
-    assert overlay, "no /overlay mount"
-    assert overlay.group(1) != "tmpfs", "overlay is tmpfs: not running from storage"
+    if overlay:
+        assert overlay.group(1) != "tmpfs", "overlay is tmpfs: not running from storage"
+    else:
+        root = re.search(r"^/dev/\S+ / (\S+) rw\b", mounts, re.MULTILINE)
+        assert root, "neither an /overlay nor a writable root on storage"
     ssh.run_check("touch /etc/.rw-check && rm /etc/.rw-check")
 
     lan = "\n".join(ssh.run_check("ifstatus lan"))
@@ -204,11 +208,12 @@ def test_sysupgrade_rejects_invalid_image(env, ssh_command):
     finally:
         ssh_command.run(f"rm -f {REMOTE_IMAGE}")
     target = (env.config.data.get("openwrt") or {}).get("target", "")
-    if rc == 0 and target.startswith("armsr"):
-        # armsr's platform_check_image (target/linux/armsr/base-files/lib/
-        # upgrade/platform.sh) only compares partition tables: when they
-        # differ it logs "Full image will be written" and accepts the file
-        pytest.xfail("armsr's platform_check_image accepts any file (upstream)")
+    if rc == 0 and target.startswith(("armsr", "loongarch64")):
+        # armsr's and loongarch64's platform_check_image (target/linux/<target>/
+        # base-files/lib/upgrade/platform.sh) only compares partition tables:
+        # when they differ it logs "Full image will be written" and accepts
+        # the file
+        pytest.xfail(f"{target}'s platform_check_image accepts any file (upstream)")
     assert rc != 0, "sysupgrade accepted random data as an image"
 
 
