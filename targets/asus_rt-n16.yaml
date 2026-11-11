@@ -1,0 +1,40 @@
+openwrt:
+  name: ASUS RT-N16
+  target: bcm47xx-mips74k
+  profile: asus_rt-n16
+  # bcm47xx publishes no initramfs: CFETFTPStrategy flashes the TRX every run
+  # (programming 7 MB of NOR plus the first boot exceeds the 300 s per test)
+  boot_timeout: 900
+  image:
+    type: trx
+    filesystem: squashfs
+targets:
+  main:
+    features:
+      - rootfs
+      - wan_port
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      PDUDaemonDriver: {}
+      TFTPProviderDriver: {}
+      SerialDriver:
+        txdelay: 0.01
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 240
+        post_login_settle_time: 5
+        username: root
+      CFETFTPStrategy:
+        prompt: "CFE>"
+        flash_device: flash1.trx
+      SSHDriver:
+        connection_timeout: 120.0
+        explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/cfestrategy.py
