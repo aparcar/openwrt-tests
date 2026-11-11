@@ -214,6 +214,26 @@ labgrid-aparcar-ripe_atlas-v5:
     match:
       ID_PATH: platform-xhci-hcd.0-usb-0:1.2:1.0
 
+## CFE (no U-Boot): CFETFTPStrategy flashes the TRX from this TFTPProvider
+labgrid-aparcar-asus_rt-n16:
+  wan:
+    cls: NetworkInterface
+    ifname: vlan124
+  NetworkService:
+    address: 192.168.1.1%vlan123
+    username: root
+  PDUDaemonPort:
+    host: localhost:16421
+    index: 23
+    pdu: 192.168.128.2
+  TFTPProvider:
+    external: tftp://192.168.123.1/asus_rt-n16/
+    internal: /srv/tftp/asus_rt-n16/
+  USBSerialPort:
+    match:
+      '@port_number': '0'
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.1.4:1.0
+
 ## labgrid-probe (contrib/labgrid-probe): its own place, tagged role=probe.
 ## Tests reserve and lock it for the modules that use it and control it over
 ## HTTP (uhttpd /ubus on port 80), not SSH.
