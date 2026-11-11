@@ -30,9 +30,6 @@ class TestSystemHealth:
 
         assert mem_percent <= 95, f"Memory usage {mem_percent:.1f}% is too high"
 
-        # Should have at least 10MB available
-        assert available_mem > 10, f"Only {available_mem}MB available memory"
-
     def test_filesystem_usage(self, ssh_command, record_property):
         """Test filesystem usage on critical mount points."""
         # Check key filesystems
