@@ -189,7 +189,7 @@ def test_wifi_client_encryption(
 
 @pytest.mark.xfail(
     reason="upstream bug: hostapd keeps the WPA group keys of a BSS "
-    "reconfigured to open (issues/generic.md in openwrtci)",
+    "reconfigured to open",
     strict=False,
 )
 @pytest.mark.parametrize("band", BANDS)
@@ -197,12 +197,11 @@ def test_wifi_client_open_after_wpa(
     ssh_command, wifi_probe, target, band, record_property
 ):
     """
-    Regression (not filed upstream yet, issues/generic.md "hostapd keeps
-    the group keys"): an AP switched from SAE to open with `wifi reload`
-    serves open clients. hostapd reconfigures the BSS on the same netdev and
-    leaves the WPA group keys (GTK, IGTK) in mac80211, which then drops the
-    open clients' unencrypted frames ("rx drop misc"): they associate but
-    get no lease.
+    Regression (not filed upstream yet): an AP switched from SAE to open
+    with `wifi reload` serves open clients. hostapd reconfigures the BSS on
+    the same netdev and leaves the WPA group keys (GTK, IGTK) in mac80211,
+    which then drops the open clients' unencrypted frames ("rx drop misc"):
+    they associate but get no lease.
 
     wifi_reset gives every other test fresh APs; this one reconfigures in
     place on purpose.
