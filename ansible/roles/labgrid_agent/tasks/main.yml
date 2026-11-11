@@ -195,6 +195,7 @@
   become: true
   become_user: "{{ labgrid_agent_user }}"
   register: _checkouts
+  tags: agent-code
 
 - name: Install their Python environments
   ansible.builtin.command: "{{ uv_install_dir }}/uv sync --project {{ labgrid_agent_dir }}/{{ item }}"
@@ -203,6 +204,7 @@
   become_user: "{{ labgrid_agent_user }}"
   when: _checkouts is changed
   changed_when: true
+  tags: agent-code
 
 - name: Install the lab's tokens
   ansible.builtin.copy:
