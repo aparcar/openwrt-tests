@@ -51,6 +51,15 @@ Optional OpenWrt release used specifically by the healthcheck
 An explicit `RELEASE` environment variable takes precedence over this value
 If neither is set, the healthcheck uses its default release
 
+### `boot_timeout`
+
+Optional time in seconds for booting the DUT into its shell, the first time a
+test needs it (`shell_command` in `tests/conftest.py`)
+
+Without it, the boot counts against the first test's per-test timeout (300 s,
+`pyproject.toml`). Set it for targets whose boot takes longer, e.g. because the
+strategy flashes the image first (`asus_rt-n16`: 900)
+
 ### `lan_ipv4`
 
 Optional IPv4 address and prefix expected on `br-lan`

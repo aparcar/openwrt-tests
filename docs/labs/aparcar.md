@@ -34,7 +34,7 @@ Every DUT gets two switch ports, each untagged in its own VLAN:
 
 - **Switch ports:** port `lanN` is the untagged member of VLAN `100+N`.
 - **Trunks:**
-  - `lan25` and `lan26` carry all DUT VLANs (101–122) tagged, plus the
+  - `lan25` and `lan26` carry all DUT VLANs (101–124) tagged, plus the
     management network (VLAN 1) untagged. That's where the exporter and the
     labgrid-probe are connected.
   - `lan27`/`lan28` are management only.
@@ -74,7 +74,7 @@ flowchart LR
   PROBE["labgrid-probe (GL-MT2500)<br/>192.168.128.3"]
 
   subgraph SW["Linksys LGS328MPC v2 (PoE, OpenWrt) · 192.168.128.2"]
-    T["lan25 / lan26<br/>trunk: VLAN 101–122 tagged<br/>+ mgmt untagged"]
+    T["lan25 / lan26<br/>trunk: VLAN 101–124 tagged<br/>+ mgmt untagged"]
   end
 
   EXP ---|trunk| T
@@ -93,13 +93,14 @@ flowchart LR
   SW ---|"lan18 LAN ⚡"| d11["Raspberry Pi 3B"]
   SW ---|"lan19 LAN ⚡ · lan20 WAN"| d12["VisionFive2"]
   SW ---|"lan21 LAN ⚡"| d13["RIPE Atlas v5"]
+  SW ---|"lan23 LAN ⚡ · lan24 WAN"| d14["ASUS RT-N16"]
 ```
 
 ### USB (serial consoles and SD-Muxes)
 
 Three 7-port hubs. Each one is two cascaded 4-port hub chips, with the inner
 chip on port 1. The labels are the `ID_PATH` port numbers (from `lsusb -tv`).
-Free ports: hub A `1.1.3`, `1.1.4`; hub B `1.3`, `1.4`; hub C `2.1.1`.
+Free ports: hub A `1.1.3`; hub B `1.3`, `1.4`; hub C `2.1.1`.
 
 ```mermaid
 flowchart LR
@@ -124,6 +125,7 @@ flowchart LR
 
   A1 -->|1.1.1| a1["LGT8F328P cdc_acm<br/>OpenWrt One"]
   A1 -->|1.1.2| a2["LGT8F328P cdc_acm<br/>BPi-R4-Lite"]
+  A1 -->|1.1.4| a6["PL2303<br/>ASUS RT-N16"]
   A0 -->|1.2| a3["PL2303<br/>RIPE Atlas v5"]
   A0 -->|1.3| a4["CH9102 cdc_acm<br/>Raspberry Pi 3B"]
   A0 -->|1.4| a5["USB-SD-Mux<br/>Raspberry Pi 3B SD"]
@@ -168,6 +170,7 @@ a labgrid place named `labgrid-aparcar-<device>`.
 | Raspberry Pi 3B        | 18       | 118      | –        | `platform-xhci-hcd.0-usb-0:1.3:1.0`   | SD-Mux (`USBSDMuxDevice`)      |
 | StarFive VisionFive2   | 19       | 119      | 120      | `platform-xhci-hcd.1-usb-0:2.1.2:1.0` | TFTP via `192.168.119.1`       |
 | RIPE Atlas v5          | 21       | 121      | –        | `platform-xhci-hcd.0-usb-0:1.2:1.0`   | TFTP via `192.168.121.1`       |
+| ASUS RT-N16            | 23       | 123      | 124      | `platform-xhci-hcd.0-usb-0:1.1.4:1.0` | CFE flashes via `192.168.123.1` |
 
 Notes:
 
@@ -178,11 +181,14 @@ Notes:
     VLAN (113, 115) differs from their LAN VLAN.
   - The Raspberry Pis and the Pine64 Rock64 have no TFTP provider: they are
     imaged by switching their SD card to the host via a `USBSDMuxDevice`.
+  - The ASUS RT-N16 has CFE instead of U-Boot and no netbootable image:
+    `CFETFTPStrategy` interrupts CFE, gives it `192.168.123.2` and writes the
+    TRX to flash over TFTP on every run (several minutes).
 - **WAN VLAN:** "–" means the board has no WAN port, or it isn't cabled. The
   WAN VLANs were identified from the WAN MAC (LAN MAC ±1) in the exporter's
   DHCP leases. The VisionFive2 is wired to switch port `lan20`.
-- **Serial:** the Aruba AP-32x and Pine64 Rock64 additionally match
-  `@port_number: 0`. The Pine64 Rock64 console runs at 1500000 baud, all
+- **Serial:** the Aruba AP-32x, Pine64 Rock64 and ASUS RT-N16 additionally
+  match `@port_number: 0`. The Pine64 Rock64 console runs at 1500000 baud, all
   others at the default 115200.
 - **LAN access:** the `NetworkService` reaches each device at
   `192.168.1.1%vlan<LAN VLAN>` as `root`.

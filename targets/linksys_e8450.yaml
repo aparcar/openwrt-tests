@@ -1,7 +1,10 @@
 openwrt:
-  name: Linksys E8450 / Belkin RT3200
+  name: Linksys E8450 / Belkin RT3200 (UBI)
   target: mediatek-mt7622
-  profile: linksys_e8450
+  # The UBI layout (OpenWrt's U-Boot, which sets $bootconf below). The
+  # non-UBI image reads the radios' calibration data from a raw factory
+  # partition that isn't there on UBI boards: random MAC, no 5 GHz radio
+  profile: linksys_e8450-ubi
 targets:
   main:
     features:

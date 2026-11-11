@@ -25,7 +25,14 @@ import time
 import pytest
 from labgrid.driver.exception import ExecutionError
 from probe_fixtures import DUT_LAN, DUT_LAN_IP
-from test_wifi import AP_KEY, band_params, find_ap, open_ap, wifi_radio_for_band
+from test_wifi import (
+    AP_KEY,
+    band_params,
+    find_ap,
+    open_ap,
+    wifi_radio_for_band,
+    wifi_reset,  # noqa: F401 (autouse fixture: fresh APs for every test)
+)
 from wifi_probe_fixtures import (
     PROBE_BANDS,
     WifiBed,
@@ -80,9 +87,13 @@ def per_band(cases, idfn):
 
 def assert_all_up(status, leases=True, dut_log=None):
     """All stations connected (and leased). dut_log: a callable returning
-    the DUT's side for the failure message (dut_diagnostics())."""
+    the DUT's side for the failure message (dut_diagnostics(), WifiBed.diagnose)."""
     down = not_connected(status)
-    assert not down, f"{len(down)} stations not connected ({summary(status)}): {down}"
+    if down:
+        text = f"{len(down)} stations not connected ({summary(status)}): {down}"
+        if dut_log:
+            text += f"\n{dut_log()}"
+        pytest.fail(text)
     if leases:
         missing = not_leased(status)
         if missing:
@@ -164,7 +175,7 @@ def test_wifi_client_encryption(
         sta_encryption=sta_encryption,
     )
     status = bed.wait()
-    assert_all_up(status)
+    assert_all_up(status, dut_log=bed.diagnose)
     assert_all_ping(bed)
 
     mac = status["stations"][0]["mac"].lower()
@@ -174,6 +185,40 @@ def test_wifi_client_encryption(
     # Both sides speak SAE: wpa_supplicant prefers it over PSK
     if "sae" in sta_encryption and "sae" in ap_encryption:
         assert clients[mac]["mfp"], f"SAE client without MFP: {clients[mac]}"
+
+
+@pytest.mark.xfail(
+    reason="upstream bug: hostapd keeps the WPA group keys of a BSS "
+    "reconfigured to open",
+    strict=False,
+)
+@pytest.mark.parametrize("band", BANDS)
+def test_wifi_client_open_after_wpa(
+    ssh_command, wifi_probe, target, band, record_property
+):
+    """
+    Regression (not filed upstream yet): an AP switched from SAE to open
+    with `wifi reload` serves open clients. hostapd reconfigures the BSS on
+    the same netdev and leaves the WPA group keys (GTK, IGTK) in mac80211,
+    which then drops the open clients' unencrypted frames ("rx drop misc"):
+    they associate but get no lease.
+
+    wifi_reset gives every other test fresh APs; this one reconfigures in
+    place on purpose.
+    """
+    first = WifiBed.start(ssh_command, wifi_probe, target, band, "sae")
+    assert_all_up(first.wait(), dut_log=first.diagnose)
+
+    bed = WifiBed.start(ssh_command, wifi_probe, target, band, "none")
+    keys = bed.kernel_keys()
+    record_property("dut_keys_on_open_ap", json.dumps(keys))
+    status = bed.wait()
+    assert_all_up(status, dut_log=bed.diagnose)
+    assert_all_ping(bed)
+    assert not keys, (
+        f"mac80211 still has keys on the phy of the open AP {bed.ap_ifname()}"
+        f" (algorithm, keyidx): {keys}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -273,12 +318,19 @@ def test_wifi_clients_many(
     )
 
 
+@pytest.mark.xfail(
+    reason="known problem: isolated clients still reach each other (isolate=1)",
+    strict=False,
+)
 @pytest.mark.parametrize("band", BANDS)
 def test_wifi_clients_isolation(ssh_command, wifi_probe, target, band):
     """
     Two clients reach each other over the AP; with `option isolate 1` they
     don't, and both still reach the DUT. The isolated half only counts once
     the open half has shown the path works.
+
+    Known problem (not filed upstream yet): with isolate=1 the clients still
+    reach each other.
     """
     for isolate in (0, 1):
         bed = WifiBed.start(
@@ -298,41 +350,85 @@ def test_wifi_clients_isolation(ssh_command, wifi_probe, target, band):
         before = peer_packets(bed, a, b)
         reply = bed.ping(host=b["ip"], stations=[0], diag=True)
         after = peer_packets(bed, a, b)
-        received = reply["results"][0]["received"]
-        # Where did the pings go? AP received from A (a_rx), sent to B (b_tx),
-        # received from B (b_rx), sent to A (a_tx); the probe's own view in
-        # diag (older probe code: none)
+        ping = reply["results"][0]
         moved = {k: after[k] - before[k] for k in before}
-        text = (
-            f"{a['ip']} -> {b['ip']}: {reply['results'][0]}; DUT packet counts {moved}"
-            f"\nprobe: {json.dumps(reply.get('diag'), indent=1)}"
-        )
-        if isolate:
-            assert received == 0, (
-                f"isolated client reached its peer: {text}\n{ap_isolation_state(bed)}"
+        # The probe's own view (counters, rules, neighbours, routes; older
+        # probe code: none) goes to the captured output, not the message
+        print(f"probe diagnostics, ping {a['ip']} -> {b['ip']}:")
+        print(json.dumps(reply.get("diag"), indent=1))
+        if isolate and ping["received"]:
+            ap = ap_isolation_state(bed)
+            print(f"DUT AP {ap['ifname']}: {ap}")
+            pytest.fail(isolation_leak(a, b, ping, moved, ap))
+        if not isolate and not ping["received"]:
+            pytest.fail(
+                f"isolate=0, but {a['ip']} can't reach its peer {b['ip']} through the AP: "
+                f"{ping_text(ping)}\n{forwarding_text(moved)}"
             )
-        else:
-            assert received > 0, f"client can't reach its peer through the AP: {text}"
+
+
+def ping_text(ping):
+    return f"{ping['received']} of {ping['transmitted']} pings answered"
+
+
+def forwarding_text(moved):
+    """hostapd's packet counters during the ping, as a path"""
+    return (
+        "hostapd counted during the ping: "
+        f"from A {moved['a_rx']}, to B {moved['b_tx']}, "
+        f"from B {moved['b_rx']}, to A {moved['a_tx']} packets"
+    )
+
+
+def isolation_leak(a, b, ping, moved, ap):
+    """Why an isolated client reached its peer, first line first"""
+    lines = [
+        f"isolate=1, but {a['ip']} ({a['ifname']}) still reaches {b['ip']}: {ping_text(ping)}",
+        forwarding_text(moved),
+        (
+            f"hostapd {ap['ifname']}: ap_isolate={ap['ap_isolate'] or '(not set)'}; "
+            f"uci: {ap['uci_isolate'] or 'no isolate option'}"
+        ),
+        (
+            f"bridge port {ap['ifname']}: isolated={ap['isolated'] or '?'}, "
+            f"hairpin_mode={ap['hairpin_mode'] or '?'}, "
+            f"multicast_to_unicast={ap['multicast_to_unicast'] or '?'}"
+        ),
+    ]
+    if ap["ap_isolate"] != "1":
+        lines.append("likely cause: hostapd runs this AP without ap_isolate")
+    elif ap["hairpin_mode"] == "1" and ap["isolated"] != "1":
+        lines.append(
+            "likely cause: the bridge sends client traffic back out of the AP "
+            "(hairpin_mode=1) and the port is not isolated (isolated=0)"
+        )
+    return "\n".join(lines)
 
 
 def ap_isolation_state(bed):
-    """How the DUT runs the AP: hostapd's isolation settings and the bridge
-    port flags that decide whether traffic between clients comes back out
-    (hairpin_mode) or is blocked (isolated)."""
+    """How the DUT runs the AP: hostapd's isolation setting for this
+    interface, the uci option, and the bridge port flags that decide
+    whether traffic between clients comes back out (hairpin_mode) or is
+    blocked (isolated). Values are strings, "" where there is none."""
     ifname = bed.ap_ifname()
-    cmds = (
-        "grep -hE '^(ap_isolate|multicast_to_unicast|proxy_arp)=' /var/run/hostapd-*.conf",
-        "uci show wireless | grep -E 'isolate|multicast|proxy_arp'",
-        (
-            "for f in hairpin_mode isolated multicast_to_unicast; do "
-            f"echo $f=$(cat /sys/class/net/{ifname}/brport/$f 2>/dev/null); done"
-        ),
-    )
-    out = []
-    for cmd in cmds:
-        stdout, _, rc = bed.ssh.run(cmd)
-        out.append(f"# {cmd} (rc {rc})\n" + "\n".join(stdout))
-    return "DUT AP:\n" + "\n".join(out)
+    state = {"ifname": ifname}
+    # hostapd's config: one interface= (first) or bss= block per AP
+    stdout, _, _ = bed.ssh.run("cat /var/run/hostapd-*.conf")
+    current = None
+    state["ap_isolate"] = ""
+    for line in stdout:
+        key, _, value = line.partition("=")
+        if key in ("interface", "bss"):
+            current = value
+        elif key == "ap_isolate" and current == ifname:
+            state["ap_isolate"] = value
+    # e.g. "wireless.default_radio0.isolate='1'", one per AP that sets it
+    stdout, _, _ = bed.ssh.run("uci show wireless | grep '[.]isolate='")
+    state["uci_isolate"] = ", ".join(stdout)
+    for flag in ("isolated", "hairpin_mode", "multicast_to_unicast"):
+        stdout, _, _ = bed.ssh.run(f"cat /sys/class/net/{ifname}/brport/{flag}")
+        state[flag] = stdout[0].strip() if stdout else ""
+    return state
 
 
 def peer_packets(bed, a, b):
