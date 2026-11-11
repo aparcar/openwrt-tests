@@ -91,6 +91,11 @@ def test_sysupgrade_backup(ssh_command):
 
 @pytest.mark.lg_feature("rootfs")
 def test_sysupgrade_backup_u(ssh_command):
+    # -u leaves out files equal to their /rom copy; ext4 images (no
+    # squashfs) have no /rom, so there is nothing to compare against
+    _, _, rc = ssh_command.run("test -d /rom/etc")
+    if rc != 0:
+        pytest.skip("no /rom (ext4 rootfs): sysupgrade -u keeps every file")
     try:
         ssh_command.run_check("sysupgrade -u -b /tmp/backup.tar.gz")
         ssh_command.get("/tmp/backup.tar.gz")

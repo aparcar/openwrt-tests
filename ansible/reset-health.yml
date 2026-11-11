@@ -1,0 +1,17 @@
+# Fresh health checks in every lab: removes each agent's device health state
+# (role labgrid_agent, tasks/reset_health.yml), so its next poll checks every
+# device again and reports the results to the CI server. Waits for a running
+# job to finish first; nothing else of the lab is changed.
+#
+#   uv run ansible-playbook reset-health.yml
+#   uv run ansible-playbook reset-health.yml --limit labgrid-<lab>
+
+- name: Reset the agents' health state
+  hosts: labs
+  become: true
+  tasks:
+    - name: Reset the health state
+      ansible.builtin.include_role:
+        name: labgrid_agent
+        tasks_from: reset_health
+      when: labgrid_agent_lab_name is defined

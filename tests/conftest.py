@@ -183,6 +183,10 @@ QEMU_EFI_FIRMWARE = {
     "arm": ["edk2-arm-code.fd", "/usr/share/AAVMF/AAVMF32_CODE.fd"],
     "x86_64": ["edk2-x86_64-code.fd", "/usr/share/OVMF/OVMF_CODE_4M.fd"],
     "i386": ["edk2-i386-code.fd", "/usr/share/OVMF/OVMF32_CODE_4M.fd"],
+    "loongarch64": [
+        "edk2-loongarch64-code.fd",
+        "/usr/share/qemu-efi-loongarch64/QEMU_EFI.fd",
+    ],
 }
 # x86 (OVMF) firmware is a code-only image too small for -bios: QEMU refuses it
 # as a PC BIOS. It runs from pflash instead, with a variable store next to it
@@ -199,6 +203,7 @@ QEMU_EFI_PACKAGES = {
     "arm": "qemu-efi-arm",
     "x86_64": "ovmf",
     "i386": "ovmf-ia32",
+    "loongarch64": "qemu-efi-loongarch64",
 }
 
 
@@ -235,8 +240,9 @@ def setup_env(env, pytestconfig):
         "firmware"
     )
 
-    # EFI targets boot their disk image through a UEFI firmware: Arm via the
-    # QEMUDriver `bios: bios` image, x86 via two pflash drives (code, vars)
+    # EFI targets boot their disk image through a UEFI firmware: Arm and
+    # LoongArch via the QEMUDriver `bios: bios` image, x86 via two pflash
+    # drives (code, vars)
     vars_dir = None
     arch = env.config.data.get("openwrt", {}).get("efi_firmware")
     if arch:

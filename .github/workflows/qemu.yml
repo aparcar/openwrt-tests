@@ -3,8 +3,8 @@
 # KernelCI (openwrtci), not here.
 #
 # The image comes from the current stable release; targets that only have
-# snapshot images (malta) use the snapshot, and those jobs may fail without
-# failing the run.
+# snapshot images (malta, loongarch64) use the snapshot, and those jobs may
+# fail without failing the run.
 name: QEMU
 
 on:
@@ -69,6 +69,10 @@ jobs:
             snapshots_only: true
           - target: malta-le
             packages: qemu-system-mips
+            snapshots_only: true
+          # EFI disk boot; 25.12 has no virtio drivers for loongarch64
+          - target: loongarch64-generic
+            packages: qemu-system-misc qemu-efi-loongarch64
             snapshots_only: true
     env:
       LG_ENV: targets/qemu_${{ matrix.target }}.yaml
