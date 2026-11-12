@@ -196,9 +196,10 @@ def paused_test_timeout():
 
 
 @contextlib.contextmanager
-def hold_probe_place(env, target, tags, driver, name):
+def hold_probe_place(env, target, tags, driver, name, needs=()):
     """Context manager for a module fixture: reserve and lock a place with
     `tags`, yield `driver` of a target `name` on it, release it afterwards.
+    `needs`: drivers `driver` binds to, set up first (e.g. "SSHDriver").
 
     A context manager rather than a generator so the release runs as soon as
     anything fails, also before the yield: an unclosed generator would only
@@ -207,7 +208,8 @@ def hold_probe_place(env, target, tags, driver, name):
 
     Skips without a coordinator (QEMU) or if no place has `tags`. `target`
     (the DUT's) has opened the coordinator session through its RemotePlace.
-    Used by `probe` and by wifi_probe_fixtures.py's `wifi_probe`.
+    Used by `probe`, wifi_probe_fixtures.py's `wifi_probe` and
+    iphone_probe_fixtures.py's `iphone_probe`.
     """
     manager = RemotePlaceManager.get()
     if manager.session is None:
@@ -244,7 +246,7 @@ def hold_probe_place(env, target, tags, driver, name):
             name,
             {
                 "resources": {"RemotePlace": {"name": place}},
-                "drivers": {driver: {}},
+                "drivers": {**{need: {} for need in needs}, driver: {}},
             },
             env=env,
         )

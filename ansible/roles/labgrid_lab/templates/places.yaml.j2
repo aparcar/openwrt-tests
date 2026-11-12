@@ -55,3 +55,21 @@
   tags:
     role: wifi-probe
 {% endif %}
+{% if labnet["labs"][inventory_hostname].get("iphone_probe") %}
+{{ inventory_hostname }}-iphone-probe:
+  acquired: null
+  acquired_resources: []
+  aliases: []
+  allowed: []
+  changed: {{ ansible_date_time.epoch }}
+  comment: 'iPhone Wi-Fi client (contrib/iphone-probe)'
+  created: {{ ansible_date_time.epoch }}
+  matches:
+  - cls: '*'
+    exporter: '*'
+    group: {{ inventory_hostname }}-iphone-probe
+    name: null
+    rename: null
+  tags:
+    role: iphone-probe
+{% endif %}
