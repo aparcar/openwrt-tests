@@ -43,8 +43,9 @@ from wifi_probe_fixtures import (
     wifi_probe,  # noqa: F401 (fixture)
 )
 
-# Stations for test_wifi_clients_many; the probe manages about 64 per radio
-CLIENTS = int(os.environ.get("WIFI_PROBE_CLIENTS", "32"))
+# Stations for test_wifi_clients_many. The probe manages about 64 per radio,
+# but the TL-WDR4300 probe rebooted when 32 of them pinged at once.
+CLIENTS = int(os.environ.get("WIFI_PROBE_CLIENTS", "16"))
 # How long a station that must not get in gets to try
 REJECT_SECONDS = 30
 WRONG_KEY = "not-the-key-42"
@@ -281,7 +282,7 @@ def test_wifi_clients_many(
     shell_command, ssh_command, wifi_probe, target, band, encryption, record_property
 ):
     """
-    CLIENTS stations (WIFI_PROBE_CLIENTS, default 32) join the AP together:
+    CLIENTS stations (WIFI_PROBE_CLIENTS, default 16) join the AP together:
     all connect, all get distinct leases in the DUT's LAN, all ping the DUT,
     and the DUT lists every one as authorized and in its DHCP leases.
     """

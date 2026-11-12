@@ -135,7 +135,7 @@ probe has (no 6 GHz).
 | `test_wifi_client_encryption[band-ap-sta]` | 10 AP/client pairs (open, WPA2, WPA/WPA2 mixed, WPA2/WPA3 transition, WPA3): lease, ping, authorized on the DUT, MFP for SAE |
 | `test_wifi_client_rejected[...]` | wrong passphrase (WPA2, WPA3) and WPA2-only on a WPA3-only AP stay out |
 | `test_wifi_client_hidden_ssid` | a client joins a hidden SSID |
-| `test_wifi_clients_many[encryption-band]` | 32 clients (`WIFI_PROBE_CLIENTS`), open and WPA2: all connect, get distinct leases, ping the DUT, show up in hostapd and `/tmp/dhcp.leases`; records association and lease times, DUT memory per client |
+| `test_wifi_clients_many[encryption-band]` | 16 clients (`WIFI_PROBE_CLIENTS`), open and WPA2: all connect, get distinct leases, ping the DUT, show up in hostapd and `/tmp/dhcp.leases`; records association and lease times, DUT memory per client |
 | `test_wifi_clients_isolation` | two clients reach each other through the AP; with `option isolate 1` they don't |
 | `test_wifi_clients_maxassoc` | with `option maxassoc 4`, exactly 4 of 6 clients get in |
 | `test_wifi_reload_keeps_clients` | `wifi reload` without a config change disconnects nobody |
