@@ -1,6 +1,8 @@
-"""Wi-Fi configuration regressions on mac80211_hwsim radios (docs/hwsim.md).
+"""Wi-Fi configuration bugs that broke OpenWrt before (AP, station, mesh,
+multiple SSIDs, config reloads), checked on simulated radios so they are
+caught on every build without lab hardware.
 
-One QEMU VM, no lab hardware: the DUT's hwsim radios are configured through
+Runs on mac80211_hwsim radios (docs/hwsim.md). One QEMU VM, no lab hardware: the DUT's hwsim radios are configured through
 /etc/config/wireless like a real board's, and a "peer" (station, external AP)
 runs on another hwsim radio that is moved into a network namespace, so its
 traffic crosses the (simulated) air instead of the DUT's own stack. hwsim
@@ -474,7 +476,12 @@ AP_OPTIONS = {
 
 @pytest.mark.parametrize("option", AP_OPTIONS)
 def test_wifi_ap_options(bed, option, record_property):
-    """Regression: openwrt/openwrt#23565
+    """For each common AP option (fast roaming 802.11r, 802.11k/v, client
+    isolation), an AP using it comes up with the default wpad-basic. If it
+    fails, enabling such an option in the config breaks Wi-Fi on most
+    boards.
+
+    Regression: openwrt/openwrt#23565
 
     An AP with a common option (802.11v bss_transition, 802.11k, 802.11r,
     isolate) on the default wpad-basic comes up, and hostapd does not
@@ -499,7 +506,11 @@ def test_wifi_ap_options(bed, option, record_property):
 
 @pytest.mark.parametrize("unsupported", ["bss_transition", "mesh"])
 def test_wifi_unsupported_option_isolated(bed, unsupported, record_property):
-    """Regression: openwrt/openwrt#24625
+    """One network with a feature wpad-basic doesn't support (802.11v, mesh)
+    shouldn't take down the other networks on the same radio. If it does,
+    one bad setting silently turns off all Wi-Fi on that radio.
+
+    Regression: openwrt/openwrt#24625
 
     On wpad-basic, one wifi-iface with something basic may not support
     (802.11v bss_transition, a mesh iface) must not take down the other
@@ -541,7 +552,11 @@ def test_wifi_unsupported_option_isolated(bed, unsupported, record_property):
 
 
 def test_wifi_txpower_zero(bed, record_property):
-    """Regression: openwrt/openwrt#22855
+    """Setting the transmit power to 0 gives the lowest power, below 1 dBm
+    and automatic. If it fails, users who turn the power down get full
+    power instead.
+
+    Regression: openwrt/openwrt#22855
 
     `option txpower 0` must give the lowest power, not the automatic
     (maximum) one: wifi-scripts treated 0 as unset.
@@ -571,7 +586,11 @@ def test_wifi_txpower_zero(bed, record_property):
 
 
 def test_wifi_country_applies(bed, record_property):
-    """Regression: openwrt/openwrt#13070
+    """Changing the Wi-Fi country takes effect on `wifi reload`, without a
+    reboot. If it fails, the device keeps the old country's regulatory
+    rules (channels, power), which can be illegal where it is used.
+
+    Regression: openwrt/openwrt#13070
 
     With two radios, changing `country` on both must change the global
     regulatory domain at `wifi reload` (checked without a reboot).
@@ -602,7 +621,11 @@ ACS_CASES = {
 
 @pytest.mark.parametrize("band", ACS_CASES)
 def test_wifi_acs_respects_channels(bed, band, record_property):
-    """Regression: openwrt/openwrt#22774
+    """For 2.4 and 5 GHz, automatic channel selection only picks channels
+    from the list the user allowed. If it fails, the AP ends up on channels
+    the user excluded, e.g. busy or unsupported ones.
+
+    Regression: openwrt/openwrt#22774
 
     With `channel auto` and `channels` set, automatic channel selection
     picks a channel from that list, every time (5 restarts).
@@ -629,7 +652,11 @@ def test_wifi_acs_respects_channels(bed, band, record_property):
 
 @pytest.mark.parametrize("bss", ["primary", "secondary"])
 def test_wifi_multi_ssid_data(bed, bss, record_property):
-    """Regression: openwrt/openwrt#24293 (the wifi-scripts/netifd part)
+    """With two networks (SSIDs) on one radio, a client on either of them
+    can exchange data with the router. If it fails, clients of a second
+    network (e.g. a guest network) connect but get no traffic through.
+
+    Regression: openwrt/openwrt#24293 (the wifi-scripts/netifd part)
 
     Two SSIDs on one 2.4 GHz radio, both bridged to lan: a station on
     either BSS reaches the router. The bug was a secondary BSS that
@@ -655,7 +682,11 @@ def test_wifi_multi_ssid_data(bed, bss, record_property):
 
 
 def test_wifi_vif_macs_unique(bed, record_property):
-    """Regression: openwrt/openwrt#23578
+    """On a device whose bands share one Wi-Fi chip, every network gets its
+    own valid MAC address. If it fails, networks share or get invalid
+    addresses and clients can't connect reliably.
+
+    Regression: openwrt/openwrt#23578
 
     On a single-wiphy multi-radio device (hwsim multi_radio, the model of
     mt7996), the APs of all radios and a second AP on one radio get unique,
@@ -693,7 +724,11 @@ def test_wifi_vif_macs_unique(bed, record_property):
 
 
 def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
-    """Regression: openwrt/openwrt#9944
+    """A client using a per-VLAN Wi-Fi password ends up in that VLAN and gets
+    an address there. If it fails, password-based network separation
+    (e.g. guests or IoT devices on their own VLAN) doesn't work.
+
+    Regression: openwrt/openwrt#9944
 
     Per-station VLANs from a PSK (wifi-station/wifi-vlan, no RADIUS): a
     station with the VLAN's key lands in that VLAN's bridge and gets DHCP
@@ -753,7 +788,12 @@ def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
 
 
 def test_hostapd_survives_sta_reconnect_during_scan(bed, record_property):
-    """Regression: openwrt/openwrt#25840
+    """hostapd keeps running while the device, as a Wi-Fi client of another
+    AP, follows that AP to new channels and its own APs move along. If it
+    crashes, all of the device's Wi-Fi networks go down, e.g. in repeater
+    setups.
+
+    Regression: openwrt/openwrt#25840
 
     Two APs and a station on the 5 GHz radio of a multi-radio wiphy; the
     station follows an external AP that changes channel, so hostapd moves
@@ -820,7 +860,11 @@ def mld(ifs, ssid="hwsim-mld"):
 
 
 def test_wifi_mlo_he_htmode(bed, record_property):
-    """Regression: openwrt/openwrt#25414
+    """A Wi-Fi 7 multi-link (MLO) network over 2.4 and 5 GHz either comes up
+    or reports an error, and never runs on a band it wasn't configured
+    for. If it fails, an MLO setup misbehaves silently.
+
+    Regression: openwrt/openwrt#25414
 
     An AP MLD over 2.4 GHz (htmode HE20) and 5 GHz (EHT80): either the
     links come up, or wifi-scripts reports an error, and in no case does an
@@ -851,7 +895,11 @@ def test_wifi_mlo_he_htmode(bed, record_property):
 
 
 def test_wifi_mlo_width_survives_other_radio_reload(bed, record_property):
-    """Regression: openwrt/openwrt#25413
+    """In a Wi-Fi 7 multi-link (MLO) network, changing the 2.4 GHz radio
+    leaves the 5 GHz link at its 80 MHz width. If it fails, a change on
+    one band cuts the other band's speed.
+
+    Regression: openwrt/openwrt#25413
 
     An AP MLD with its 5 GHz link at 80 MHz keeps that width when only the
     2.4 GHz radio is reconfigured (channel change and `wifi reload`).
@@ -889,7 +937,11 @@ def test_wifi_mlo_width_survives_other_radio_reload(bed, record_property):
 
 @pytest.mark.parametrize("channel", [6, 8, 11])
 def test_wifi_mesh_he40_upper(bed, channel, record_property):
-    """Regression: openwrt/openwrt#26335
+    """For channels 6, 8 and 11, an 802.11s mesh next to an AP on a 2.4 GHz
+    radio at 40 MHz width comes up and peers. If it fails, mesh networks
+    don't work on the upper 2.4 GHz channels.
+
+    Regression: openwrt/openwrt#26335
 
     802.11s mesh plus an AP on one 2.4 GHz radio at HE40 joins and peers on
     every channel; channels 8-11 (secondary channel below) failed with

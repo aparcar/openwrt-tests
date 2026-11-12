@@ -1,3 +1,6 @@
+"""The DUT's LAN bridge (br-lan) with its default configuration, seen from
+the DUT itself: link, address and a neighbour on the wire."""
+
 from ipaddress import IPv4Interface
 from time import monotonic, sleep
 
@@ -5,6 +8,8 @@ from conftest import ubus_call
 
 
 def test_lan_wait_for_link_ready(shell_command):
+    """The LAN bridge comes up and starts forwarding within 60 seconds of
+    boot. If it doesn't, nothing on the LAN ports can reach the device."""
     deadline = monotonic() + 60
 
     while monotonic() < deadline:
@@ -17,7 +22,9 @@ def test_lan_wait_for_link_ready(shell_command):
 
 
 def test_lan_wait_for_network(shell_command):
-    # Give the LAN interface a reasonable amount of time to obtain an IPv4 address.
+    """netifd brings the LAN interface up with an IPv4 address within 60
+    seconds. Without it the web interface and SSH are unreachable from the
+    LAN."""
     deadline = monotonic() + 60
 
     while monotonic() < deadline:
@@ -32,8 +39,12 @@ def test_lan_wait_for_network(shell_command):
 
 
 def test_lan_interface_address(shell_command, env):
-    # Keep the standard OpenWrt LAN address unless the target explicitly
-    # overrides it, for example when using an isolated test subnet.
+    """The LAN bridge has OpenWrt's default address, 192.168.1.1/24. Users
+    rely on it to reach a freshly flashed device.
+
+    A target can override the expected address with `openwrt.lan_ipv4` in
+    its YAML, for example when it uses an isolated test subnet.
+    """
     expected_address = env.config.data.get("openwrt", {}).get(
         "lan_ipv4", "192.168.1.1/24"
     )
@@ -44,6 +55,12 @@ def test_lan_interface_address(shell_command, env):
 
 
 def test_lan_interface_has_neighbor(shell_command):
+    """All three IPv6 all-nodes pings (ff02::1) on the LAN bridge get an
+    answer, so IPv6 link-local traffic works on the LAN.
+
+    The DUT answers this ping itself too, so it doesn't prove that another
+    host is attached.
+    """
     assert "3 packets transmitted, 3 packets received" in "\n".join(
         shell_command.run("ping -c 3 ff02::1%br-lan")[0]
     )

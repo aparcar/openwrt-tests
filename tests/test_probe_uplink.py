@@ -80,9 +80,11 @@ def fetch(shell, family):
 
 
 def test_uplink_ipv4(online, ssh_command, record_property):
-    """The DUT reaches the internet over IPv4 through its WAN: WAN address
-    and default route from the probe's lease, ping to public resolvers, A
-    records through its dnsmasq, HTTPS to downloads.openwrt.org."""
+    """The DUT gets online over IPv4 through its WAN port: a WAN address and
+    default route via DHCP, a ping to public DNS servers, name resolution
+    through its own resolver, and an HTTPS download from
+    downloads.openwrt.org. A failure means the router can't give its LAN
+    internet access or install packages."""
     status = interface_status(ssh_command, "wan") or {}
     addrs = status.get("ipv4-address", [])
     route = default_route(status, 4)
@@ -100,9 +102,13 @@ def test_uplink_ipv4(online, ssh_command, record_property):
 
 
 def test_uplink_ipv6(online, ssh_command, record_property):
-    """The DUT reaches the internet over IPv6 through its WAN: global wan6
-    address and default route, ping to public resolvers, AAAA records through
-    its dnsmasq, HTTPS to downloads.openwrt.org."""
+    """The DUT gets online over IPv6 through its WAN port: a global wan6
+    address and default route, a ping to public DNS servers, AAAA name
+    resolution through its own resolver, and an HTTPS download from
+    downloads.openwrt.org.
+
+    Skipped while the lab's upstream offers no IPv6.
+    """
     status = interface_status(ssh_command, "wan6") or {}
     addrs = [
         a

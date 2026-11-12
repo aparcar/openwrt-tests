@@ -1,6 +1,10 @@
 """
-Wi-Fi tests with real clients: the lab's Wi-Fi probe (contrib/labgrid-probe,
-"Wi-Fi probe") joins the DUT's AP with one or many stations at once.
+The DUT's access point with real Wi-Fi clients: they connect with each
+encryption, wrong keys are rejected, many clients at once, client isolation,
+and clients stay connected or come back when Wi-Fi is reloaded or restarted.
+
+The lab's Wi-Fi probe (contrib/labgrid-probe, "Wi-Fi probe") joins the DUT's
+AP with one or many stations at once.
 
 - The probe is a place of its own (role=wifi-probe). The `wifi_probe`
   fixture (wifi_probe_fixtures.py) reserves and locks it for this module.
@@ -163,9 +167,13 @@ def test_wifi_client_encryption(
     ssh_command, wifi_probe, target, band, ap_encryption, sta_encryption
 ):
     """
-    A client with `sta_encryption` joins an AP with `ap_encryption`, gets a
-    lease from the DUT and pings it. The DUT lists it as authorized; SAE
-    clients use management frame protection (WPA3 requires it).
+    For each band and each compatible pair of AP and client encryption (open,
+    WPA2, WPA2/WPA3 mixed, WPA3), a real client joins, gets an address from
+    the device and reaches it. If it fails, clients with that security
+    setting can't use the network.
+
+    The DUT lists the client as authorized; SAE clients use management frame
+    protection (WPA3 requires it).
     """
     bed = WifiBed.start(
         ssh_command,
@@ -198,8 +206,11 @@ def test_wifi_client_open_after_wpa(
     ssh_command, wifi_probe, target, band, record_property
 ):
     """
-    Regression (not filed upstream yet): an AP switched from SAE to open
-    with `wifi reload` serves open clients. hostapd reconfigures the BSS on
+    For each band, an AP switched from WPA3 to open without a restart still
+    serves clients. If it fails, changing a network to open leaves clients
+    connected but without an address until Wi-Fi is restarted.
+
+    Regression (not filed upstream yet). hostapd reconfigures the BSS on
     the same netdev and leaves the WPA group keys (GTK, IGTK) in mac80211,
     which then drops the open clients' unencrypted frames ("rx drop misc"):
     they associate but get no lease.
@@ -235,9 +246,12 @@ def test_wifi_client_rejected(
     ssh_command, wifi_probe, target, band, ap_encryption, sta_encryption, sta_key
 ):
     """
-    A client with the wrong passphrase, or WPA2-only against a WPA3-only AP,
-    doesn't get in: not connected after REJECT_SECONDS, and the DUT lists it
-    as not authorized (or not at all).
+    For each band, a client with the wrong passphrase, or a WPA2-only client
+    on a WPA3-only AP, doesn't get in. If it fails, the network admits
+    clients it should keep out, a security problem.
+
+    Not connected after REJECT_SECONDS, and the DUT lists it as not
+    authorized (or not at all).
     """
     bed = WifiBed.start(
         ssh_command,
@@ -257,7 +271,8 @@ def test_wifi_client_rejected(
 
 @pytest.mark.parametrize("band", BANDS)
 def test_wifi_client_hidden_ssid(ssh_command, wifi_probe, target, band):
-    """A client that probes for the SSID by name joins a hidden AP."""
+    """For each band, a client that asks for the network by name joins an AP
+    with a hidden SSID. If it fails, hidden networks are unusable."""
     bed = WifiBed.start(
         ssh_command,
         wifi_probe,
@@ -282,9 +297,15 @@ def test_wifi_clients_many(
     shell_command, ssh_command, wifi_probe, target, band, encryption, record_property
 ):
     """
-    CLIENTS stations (WIFI_PROBE_CLIENTS, default 16) join the AP together:
-    all connect, all get distinct leases in the DUT's LAN, all ping the DUT,
-    and the DUT lists every one as authorized and in its DHCP leases.
+    For each band, open and WPA2, many clients (16 by default) join the AP
+    at once and all of them get an address and reach the device. If it
+    fails, the device can't handle a busy network, e.g. in a home with
+    many devices or after a power cut when all reconnect together.
+
+    CLIENTS stations (WIFI_PROBE_CLIENTS): all connect, all get distinct
+    leases in the DUT's LAN, all ping the DUT, and the DUT lists every one
+    as authorized and in its DHCP leases. Open runs first: it needs no
+    keys, so it tells scale problems apart from encryption ones.
     """
     mem_before = dut_mem_available_kb(ssh_command)
     bed = WifiBed.start(
@@ -326,8 +347,12 @@ def test_wifi_clients_many(
 @pytest.mark.parametrize("band", BANDS)
 def test_wifi_clients_isolation(ssh_command, wifi_probe, target, band):
     """
-    Two clients reach each other over the AP; with `option isolate 1` they
-    don't, and both still reach the DUT. The isolated half only counts once
+    For each band, client isolation (`option isolate 1`) keeps Wi-Fi clients
+    from reaching each other while they still reach the device. If it fails,
+    guest or public networks don't protect their clients from each other.
+
+    Two clients reach each other over the AP; with isolate=1 they don't,
+    and both still reach the DUT. The isolated half only counts once
     the open half has shown the path works.
 
     Known problem (not filed upstream yet): with isolate=1 the clients still
@@ -447,7 +472,9 @@ def peer_packets(bed, a, b):
 
 @pytest.mark.parametrize("band", BANDS)
 def test_wifi_clients_maxassoc(ssh_command, wifi_probe, target, band):
-    """With `option maxassoc 4`, 6 clients try and exactly 4 get in."""
+    """For each band, the client limit (`option maxassoc 4`) holds: of 6
+    clients exactly 4 get in. If it fails, the limit an admin sets has no
+    effect, or the AP admits fewer clients than allowed."""
     limit = 4
     bed = WifiBed.start(
         ssh_command,
@@ -474,7 +501,9 @@ def test_wifi_clients_maxassoc(ssh_command, wifi_probe, target, band):
 
 @pytest.mark.parametrize("band", BANDS)
 def test_wifi_reload_keeps_clients(ssh_command, wifi_probe, target, band):
-    """`wifi reload` without a config change doesn't disconnect anyone."""
+    """For each band, `wifi reload` without a config change doesn't
+    disconnect any client. If it fails, every config apply (e.g. from LuCI)
+    interrupts all Wi-Fi users even when nothing changed for them."""
     bed = WifiBed.start(ssh_command, wifi_probe, target, band, "psk2", count=8)
     status = bed.wait()
     assert_all_up(status)
@@ -496,7 +525,9 @@ def test_wifi_reload_keeps_clients(ssh_command, wifi_probe, target, band):
 def test_wifi_restart_clients_reconnect(
     ssh_command, wifi_probe, target, band, record_property
 ):
-    """After `wifi down` and `wifi up`, every client is back and reaches the DUT."""
+    """For each band, after `wifi down` and `wifi up` every client comes back
+    and reaches the device. If it fails, clients stay offline after a Wi-Fi
+    restart. The reconnect time is recorded."""
     bed = WifiBed.start(ssh_command, wifi_probe, target, band, "psk2", count=8)
     assert_all_up(bed.wait())
 
@@ -517,8 +548,9 @@ def test_wifi_restart_clients_reconnect(
 @pytest.mark.lg_feature(["wifi-2g", "wifi-5g"])
 def test_wifi_radio_disable_keeps_other_band(ssh_command, wifi_probe, target):
     """
-    Disabling the 2.4 GHz radio drops its clients and leaves the 5 GHz
-    clients connected; enabling it again brings its clients back.
+    Turning off the 2.4 GHz radio disconnects only its clients: the 5 GHz
+    clients stay connected, and the 2.4 GHz clients come back once it is
+    on again. If it fails, changing one radio disrupts the other band.
     """
     bed2 = WifiBed.start(ssh_command, wifi_probe, target, "2g", "psk2", count=2)
     bed5 = WifiBed.start(ssh_command, wifi_probe, target, "5g", "psk2", count=2)
@@ -555,8 +587,9 @@ def test_wifi_radio_disable_keeps_other_band(ssh_command, wifi_probe, target):
 @pytest.mark.lg_feature("wifi-2g")
 def test_wifi_clients_follow_channel_change(ssh_command, wifi_probe, target):
     """
-    Moving the AP from channel 1 to 11: clients not locked to a channel find
-    it again and reach the DUT.
+    After the AP moves from channel 1 to channel 11, its clients find it on
+    the new channel and reach the device again. If it fails, changing the
+    channel leaves clients disconnected.
     """
     bed = WifiBed.start(
         ssh_command, wifi_probe, target, "2g", "psk2", count=4, lock_freq=False
@@ -588,8 +621,11 @@ def test_wifi_clients_follow_channel_change(ssh_command, wifi_probe, target):
 @pytest.mark.parametrize("band", BANDS)
 def test_wifi_client_counters(ssh_command, wifi_probe, target, band):
     """
-    The DUT's per-client byte counters (hostapd get_clients) grow by at least
-    the traffic the client sent and received: 10 pings of 1000 bytes.
+    For each band, the device's per-client traffic counters count at least
+    the traffic a client sent and received. If it fails, statistics in LuCI
+    and monitoring tools are wrong.
+
+    hostapd get_clients byte counters, 10 pings of 1000 bytes.
     """
     bed = WifiBed.start(ssh_command, wifi_probe, target, band, "psk2")
     status = bed.wait()
@@ -608,7 +644,9 @@ def test_wifi_client_counters(ssh_command, wifi_probe, target, band):
 
 @pytest.mark.parametrize("band", BANDS)
 def test_wifi_client_on_dut_lan(ssh_command, wifi_probe, target, band):
-    """The client's lease is in the DUT's LAN, with the DUT as router."""
+    """For each band, a Wi-Fi client gets an address in the device's LAN with
+    the device as its router, i.e. the AP is bridged into the LAN. If it
+    fails, Wi-Fi clients end up in the wrong network or without Internet."""
     bed = WifiBed.start(ssh_command, wifi_probe, target, band, "psk2")
     status = bed.wait()
     assert_all_up(status)

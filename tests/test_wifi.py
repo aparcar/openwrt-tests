@@ -1,3 +1,9 @@
+"""Wi-Fi on the device's own radios: access points per band and encryption,
+scanning, and (on QEMU with mac80211_hwsim) an AP and a station connecting.
+
+The helpers here (open_ap, band_params, wifi_reset) are shared with
+test_wifi_clients.py."""
+
 import json
 import logging
 import re
@@ -188,8 +194,9 @@ def open_ap(
 @pytest.mark.parametrize("band,encryption", band_params(encryptions=True))
 def test_wifi_ap(ssh_command, band, encryption):
     """
-    Open an access point on the device's `band` radio with `encryption`
-    (psk2: WPA2, sae: WPA3) and check it runs in that band and encryption.
+    For each band and encryption the device supports, an access point
+    (psk2: WPA2, sae: WPA3) comes up in that band with that encryption. If it
+    fails, the device can't offer a working Wi-Fi network as configured.
 
     Runs only on targets with the matching feature (wifi-2g, wifi-5g,
     wifi-6g); fails if the device has no radio for a band its target file
@@ -206,8 +213,11 @@ def test_wifi_ap(ssh_command, band, encryption):
 @pytest.mark.parametrize("band", band_params("wifi-neighbors"))
 def test_wifi_scan(ssh_command, band):
     """
-    Scan on the device's `band` radio and expect at least one network (needs
-    other access points in range: the lab's wifi-neighbors).
+    For each band, a scan on the device's radio finds at least one other
+    network. If it fails, the radio can't see its surroundings, so client
+    mode and channel selection can't work either.
+
+    Needs other access points in range (the lab's wifi-neighbors feature).
     """
     ifname = open_ap(ssh_command, band, WIFI_BANDS[band]["encryptions"][0])
     scan_results = "\n".join(ssh_command.run(f"iwinfo {ifname} scan")[0])
@@ -217,10 +227,12 @@ def test_wifi_scan(ssh_command, band):
 @pytest.mark.lg_feature("hwsim")
 def test_wifi_hwsim_sae_mixed(hwsim, ssh_command):
     """
-    Test wifi configuration.
+    A station joins an AP set to WPA2/WPA3 mixed mode (sae-mixed), and after
+    switching the station to WPA2 only (psk2) it reconnects. If it fails,
+    mixed-mode networks lock out clients, e.g. older WPA2-only devices.
 
-    This test creates one AP and one station and checks if they can connect to each other.
-    It sets up the wireless configuration using the `ssh_command` fixture and relies on the
+    One AP and one station on two simulated radios of the same device. It
+    sets up the wireless configuration using the `ssh_command` fixture and relies on the
     "hwsim" driver to create the virtual radios (installed by the `hwsim` fixture).
     """
     ssh_command.run("uci set wireless.radio0.channel=11")

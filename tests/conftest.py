@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import json
 import logging
 import os
@@ -114,6 +115,19 @@ def pytest_collection_modifyitems(items):
     for item in items:
         if "online" in getattr(item, "fixturenames", ()):
             item.add_marker(pytest.mark.lg_feature("online"))
+
+    # The docstrings of the test and its module (what they check and why) as
+    # the JUnit properties `description` and `module_description`:
+    # labgrid-agent stores them with the results and the web UI shows them.
+    # Recorded at collection, so skipped tests have them too.
+    for item in items:
+        for name, obj in (
+            ("description", getattr(item, "obj", None)),
+            ("module_description", getattr(item, "module", None)),
+        ):
+            doc = getattr(obj, "__doc__", None)
+            if doc and doc.strip():
+                item.user_properties.append((name, inspect.cleandoc(doc)))
 
 
 @pytest.hookimpl(hookwrapper=True)

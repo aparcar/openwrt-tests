@@ -9,7 +9,11 @@ import pytest
 
 
 def test_booted_via_uefi(env, ssh_command):
-    """On targets with `openwrt.efi_firmware`, the kernel was started by UEFI."""
+    """On EFI targets, the kernel was really started by UEFI firmware and
+    not through the BIOS fallback, so the UEFI boot path of the image works.
+
+    Applies to targets with `openwrt.efi_firmware`; skipped on the others.
+    """
     if not env.config.data.get("openwrt", {}).get("efi_firmware"):
         pytest.skip("not an EFI target")
     _, _, rc = ssh_command.run("test -d /sys/firmware/efi")

@@ -1,6 +1,9 @@
 """
-WAN-side services of the labgrid-probe (contrib/labgrid-probe) against the
-DUT's WAN client: DHCPv4 options and NTP from the probe's WAN namespace.
+The DUT's WAN client takes what the ISP's DHCP server hands out: extra DHCPv4
+options and an NTP server to set its clock from.
+
+Runs against the WAN-side services of the labgrid-probe
+(contrib/labgrid-probe) in its WAN namespace.
 
 The probe serves the DUT's WAN lease (dnsmasq in its WAN namespace); the
 wan_dhcp method restarts that server with extra options and an NTP server,
@@ -56,7 +59,11 @@ def wan_broadcast(shell, device):
     "(broadcast derived from the netmask, 25.12.6)"
 )
 def test_wan_dhcp_broadcast_option(wan_dhcp_reset, shell_command, record_property):
-    """Regression: openwrt/openwrt#24782
+    """The DUT uses the broadcast address its WAN DHCP server sends (option
+    28) instead of deriving one from the netmask. Some providers' networks
+    rely on that setting. This is a known bug, expected to fail.
+
+    Regression: openwrt/openwrt#24782
 
     The DUT's WAN address uses the broadcast address the DHCP server sends
     in option 28, not the one derived from the netmask.
@@ -103,7 +110,11 @@ def dut_clock_offset(shell):
 def test_ntp_synced_from_wan_dhcp(
     wan_dhcp_reset, only_dhcp_ntp, shell_command, record_property
 ):
-    """Regression: openwrt/openwrt#10843
+    """The DUT sets its clock from the NTP server that its WAN DHCP server
+    announces. Many routers have no battery-backed clock, and a wrong time
+    breaks TLS certificate checks and logs.
+
+    Regression: openwrt/openwrt#10843
 
     sysntpd syncs to the NTP server the WAN DHCP server announces (option
     42), with its configured servers removed. The DUT's clock is set back a

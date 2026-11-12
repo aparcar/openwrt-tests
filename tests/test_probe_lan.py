@@ -1,5 +1,8 @@
 """
-LAN-side tests through the labgrid-probe (contrib/labgrid-probe).
+The DUT as a router, seen from a real client on its LAN port: addresses by
+DHCP and SLAAC, DNS, reaching the internet through the DUT, and throughput.
+
+Runs through the labgrid-probe (contrib/labgrid-probe).
 
 The probe puts one network namespace on the DUT's LAN VLAN (DHCP/DNS/SLAAC
 client, iperf3 client) and one on its WAN VLAN (iperf3 server, DHCP server
@@ -49,7 +52,9 @@ DUT_IPERF_PORT = 5201
 
 
 def test_lan_dhcp_lease(lease, record_property):
-    """The DUT hands a LAN client a lease with itself as router and DNS."""
+    """The DUT's DHCP server gives a LAN client an address in the LAN subnet,
+    with the DUT as router and DNS server. Without this, computers plugged
+    into the LAN get no working network configuration."""
     ip = ipaddress.ip_address(lease["ip"])
     record_property("probe_lan_ip", str(ip))
 
@@ -61,7 +66,9 @@ def test_lan_dhcp_lease(lease, record_property):
 
 
 def test_lan_lease_on_dut(shell_command, slot, lease):
-    """The DUT's dnsmasq lists the lease with the client's MAC and hostname."""
+    """The DUT's lease table (dnsmasq) lists the LAN client's lease with its
+    MAC address and hostname. LuCI's client overview and local name
+    resolution read this table."""
     mac = slot.info["lan_mac"].lower()
     leases = shell_command.run("cat /tmp/dhcp.leases")[0]
     entries = [line.split() for line in leases if mac in line.lower()]
@@ -73,12 +80,16 @@ def test_lan_lease_on_dut(shell_command, slot, lease):
 
 
 def test_lan_ping_dut(slot, lease):
+    """A LAN client with a DHCP lease can ping the DUT, so the DUT is
+    reachable from the LAN."""
     reply = slot.call("ping", host=DUT_LAN_IP, count=3)
     assert reply["received"] > 0, reply["out"]
 
 
 def test_lan_dns_dhcp_hostname(slot, lease):
-    """dnsmasq resolves the hostname the client sent in its DHCP request."""
+    """The DUT's DNS resolves a LAN client by the hostname it sent in its
+    DHCP request (e.g. `<host>.lan`), so devices on the LAN can reach each
+    other by name."""
     name = f"{slot.info['hostname']}.{lease.get('domain') or 'lan'}"
     reply = slot.call("resolve", name=name, server=DUT_LAN_IP)
     assert lease["ip"] in reply["addresses"], (
@@ -87,7 +98,9 @@ def test_lan_dns_dhcp_hostname(slot, lease):
 
 
 def test_lan_ipv6_slaac(slot, lease, record_property):
-    """The DUT's router advertisements give the client a (ULA) address."""
+    """A LAN client gets a global-scope IPv6 address (the DUT's ULA prefix)
+    from the DUT's router advertisements within 30 seconds. Without it, IPv6
+    on the LAN doesn't work."""
     addresses = []
     deadline = time.monotonic() + 30
     while not addresses and time.monotonic() < deadline:
@@ -105,7 +118,9 @@ def test_lan_ipv6_slaac(slot, lease, record_property):
 
 @pytest.mark.lg_feature("wan_port")
 def test_wan_reachable(wan_slot, lease):
-    """The probe's WAN-side server answers through the DUT's NAT."""
+    """A LAN client reaches a server on the DUT's WAN side through the DUT's
+    NAT. That's the basic job of a router: LAN devices get out to the
+    upstream network."""
     server = wan_slot.info["wan_ip"]
     reply = wan_slot.call("ping", host=server, count=3)
     assert reply["received"] > 0, (
@@ -117,7 +132,10 @@ def test_wan_reachable(wan_slot, lease):
 @pytest.mark.lg_feature("wan_port")
 @pytest.mark.parametrize("direction", ["upload", "download"])
 def test_speedtest(wan_slot, lease, direction, record_property):
-    """TCP throughput LAN→WAN (upload) and WAN→LAN (download) through the DUT."""
+    """TCP throughput through the DUT's NAT, LAN→WAN (upload) and WAN→LAN
+    (download), one run per direction. It records the speed and fails only
+    below 20 Mbit/s, which means the forwarding path is broken rather than
+    slow."""
     result = wan_slot.speedtest(duration=IPERF_SECONDS, reverse=direction == "download")
     assert result["rc"] == 0, result
 
@@ -137,7 +155,9 @@ def test_speedtest(wan_slot, lease, direction, record_property):
 @pytest.mark.lg_feature("wan_port")
 @pytest.mark.parametrize("direction", ["upload", "download"])
 def test_speedtest_udp(wan_slot, lease, direction, record_property):
-    """UDP at a fixed bitrate through the DUT's NAT: loss and jitter."""
+    """UDP at 50 Mbit/s through the DUT's NAT, one run per direction (upload
+    and download). It records throughput, loss and jitter, and fails above 5%
+    packet loss. Loss like that hurts voice, video and games."""
     result = wan_slot.speedtest(
         duration=IPERF_SECONDS,
         reverse=direction == "download",
@@ -186,7 +206,11 @@ def tx_timeouts(shell):
 def test_lan_soak_no_tx_timeout(
     slot, lease, dut_iperf_server, shell_command, direction, record_property
 ):
-    """Regression: openwrt/openwrt#20570
+    """Sustained LAN traffic to and from the DUT (one run per direction)
+    causes no network driver transmit timeouts (NETDEV WATCHDOG). Such
+    timeouts can stall or reset the Ethernet port under load.
+
+    Regression: openwrt/openwrt#20570
 
     TCP between the probe's LAN client and the DUT's own iperf3 server (no
     WAN port needed if the image has iperf3), then no NETDEV WATCHDOG tx

@@ -1,3 +1,5 @@
+"""Security of the DUT's network services, as seen from outside."""
+
 import json
 import re
 import subprocess
@@ -5,6 +7,14 @@ from collections import defaultdict
 
 
 def test_ssh_supported_algorithms(env, ssh_command, record_property):
+    """The SSH server offers modern key exchange, host key, cipher and MAC
+    algorithms (e.g. curve25519, Ed25519, chacha20-poly1305, the strict-KEX
+    fix for the Terrapin attack); records everything it offers.
+
+    A missing algorithm means current SSH clients may fail to connect or fall
+    back to weaker cryptography. Ed25519 isn't required on small-flash
+    targets, whose dropbear is built without it.
+    """
     with ssh_command.forward_local_port(22) as localport:
         # "+" runs the script on the forwarded port without -sV (its port
         # rule wants 22 or a detected ssh service). -sV sets up DTLS, which

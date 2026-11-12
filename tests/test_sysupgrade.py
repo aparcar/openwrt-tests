@@ -201,7 +201,11 @@ def _markers(ssh):
 
 @pytest.mark.lg_feature("sysupgrade")
 def test_sysupgrade_rejects_invalid_image(env, ssh_command):
-    """sysupgrade -T must refuse a file that is not an image."""
+    """sysupgrade refuses a file of random data instead of flashing it.
+
+    If it accepted any file, a wrong or corrupt download could be written to
+    flash and leave the device unbootable.
+    """
     try:
         ssh_command.run_check(f"head -c 65536 /dev/urandom > {REMOTE_IMAGE}")
         _, _, rc = ssh_command.run(f"sysupgrade -T {REMOTE_IMAGE}")
@@ -219,7 +223,12 @@ def test_sysupgrade_rejects_invalid_image(env, ssh_command):
 
 @pytest.mark.lg_feature("sysupgrade")
 def test_sysupgrade_image_check(ssh_command, sysupgrade_image):
-    """sysupgrade -T accepts the image (metadata, board name, signature)."""
+    """sysupgrade accepts the sysupgrade image built for this device (its
+    metadata, board name and signature check out).
+
+    A failure means users can't upgrade to this firmware with sysupgrade or
+    the web interface without forcing it.
+    """
     try:
         _upload(ssh_command, sysupgrade_image)
         out, err, rc = ssh_command.run(f"sysupgrade -T {REMOTE_IMAGE}")
@@ -233,8 +242,13 @@ def test_sysupgrade_image_check(ssh_command, sysupgrade_image):
 def test_sysupgrade_keep_settings(
     target, strategy, ssh_command, sysupgrade_image, record_property
 ):
-    """Upgrade keeping settings: the new system boots, keeps the config
-    (a uci option and a file listed in /etc/sysupgrade.conf) and works."""
+    """An upgrade that keeps settings (the default) flashes the image, boots
+    the new system, keeps the configuration and leaves a working device.
+
+    This is the normal way users upgrade. Checked: a uci option and a file
+    listed in /etc/sysupgrade.conf survive, the system runs from storage, LAN,
+    core services and firewall are up, and the kernel log has no errors.
+    """
     ssh = ssh_command
     record_property("revision_before", _revision(ssh))
     record_property("image_bytes", sysupgrade_image.stat().st_size)
@@ -263,7 +277,12 @@ def test_sysupgrade_keep_settings(
 def test_sysupgrade_persists_across_reboot(
     target, strategy, ssh_command, record_property
 ):
-    """The installed system keeps changes across a plain reboot."""
+    """The installed system keeps changes across a plain reboot and comes
+    back healthy.
+
+    A failure means changes are lost on reboot (e.g. the overlay isn't
+    written to storage) or the device doesn't come back up properly.
+    """
     ssh = ssh_command
     boot_id = _boot_id(ssh)
     ssh.run_check("echo persist > /etc/openwrtci-reboot-marker && sync")
@@ -284,7 +303,12 @@ def test_sysupgrade_persists_across_reboot(
 def test_sysupgrade_no_keep(
     target, strategy, ssh_command, sysupgrade_image, record_property
 ):
-    """Upgrade with -n: the new system boots with default settings."""
+    """An upgrade without keeping settings (`sysupgrade -n`) boots the new
+    system with default settings and a working device.
+
+    Users rely on this to start fresh; old configuration left behind could
+    leave the device in an unexpected state.
+    """
     ssh = ssh_command
     boot_id = _boot_id(ssh)
 

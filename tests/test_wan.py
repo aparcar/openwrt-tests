@@ -1,3 +1,6 @@
+"""The DUT's WAN side: firewall zone, WAN interface and downloads from the
+internet."""
+
 import pytest
 from conftest import ubus_call
 
@@ -44,6 +47,8 @@ def check_download(
 
 @pytest.mark.lg_feature("wan_port")
 def test_wan_firewall_zone(shell_command):
+    """The default firewall configuration has a zone named "wan". Without it
+    the WAN port is not protected, and LAN-to-WAN masquerading is missing."""
     stdout, _, _ = shell_command.run(
         'uci show firewall | grep "=zone" | while read zone; do '
         "section=${zone%%=zone}; "
@@ -56,6 +61,9 @@ def test_wan_firewall_zone(shell_command):
 
 @pytest.mark.lg_feature("wan_port")
 def test_wan_interface_device(shell_command):
+    """The "wan" network interface is bound to a network device. If the
+    board's default config has no WAN port mapped, the device can't get an
+    internet connection."""
     status = ubus_call(shell_command, "network.interface.wan", "status")
     device = status.get("device") or status.get("l3_device")
     assert device, "WAN interface has no device assigned"
@@ -63,6 +71,9 @@ def test_wan_interface_device(shell_command):
 
 @pytest.mark.lg_feature("online")
 def test_https_download(ssh_command):
+    """wget downloads a file from downloads.openwrt.org over HTTPS, and its
+    checksum matches. This covers DNS, the uplink, TLS and the CA
+    certificates, which package installs and updates depend on."""
     check_download(
         ssh_command,
         "https://downloads.openwrt.org/releases/21.02.2/targets/armvirt/64/config.buildinfo",

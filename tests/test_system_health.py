@@ -1,11 +1,18 @@
-"""System health monitoring tests for OpenWrt."""
+"""The device's resources after boot: memory, filesystem space, uptime,
+temperatures, processes, entropy and open files. They catch firmware that
+leaves too little room to run, and the recorded values show how resource use
+changes between releases."""
 
 
 class TestSystemHealth:
     """Tests for monitoring system health and resource usage."""
 
     def test_memory_usage(self, ssh_command, record_property):
-        """At most 95% of RAM is in use right after boot.
+        """At most 95% of RAM is in use after boot; records the memory figures.
+
+        Devices with little RAM that are this full already run out of memory
+        under load, and the recorded values show memory use growing between
+        releases.
 
         Reads /proc/meminfo instead of `free`: busybox ignores `-m` and its
         "used" leaves out tmpfs. Used is MemTotal - MemAvailable, so only
@@ -31,7 +38,12 @@ class TestSystemHealth:
         assert mem_percent <= 95, f"Memory usage {mem_percent:.1f}% is too high"
 
     def test_filesystem_usage(self, ssh_command, record_property):
-        """Test filesystem usage on critical mount points."""
+        """The root filesystem, /tmp and /overlay are less than 95% full;
+        records their size and usage.
+
+        A full overlay means users can't save settings or install packages,
+        and a full /tmp (RAM) breaks logging, downloads and upgrades.
+        """
         # Check key filesystems
         filesystems = ["/", "/tmp", "/overlay"]
         fs_usage = {}
@@ -65,14 +77,23 @@ class TestSystemHealth:
             )
 
     def test_system_uptime(self, ssh_command):
-        """Test and record system uptime."""
+        """The device has been up for less than an hour, i.e. it really booted
+        the firmware for this run.
+
+        A longer uptime means the tests ran on a system that was already
+        running before, not a fresh boot of the image under test.
+        """
         uptime_output = ssh_command.run_check("cat /proc/uptime")
         uptime_seconds = float(uptime_output[0].split()[0])
 
         assert uptime_seconds < 3600, "System uptime is over 1 hour"
 
     def test_temperature_sensors(self, ssh_command, record_property):
-        """Test temperature sensors if available."""
+        """Every thermal sensor reads below 85 °C; records the temperatures.
+
+        Overheating points to broken thermal or fan control and can damage
+        the hardware or make it unstable. Devices without sensors pass.
+        """
         # Check if thermal zones exist
         thermal_zones = ssh_command.run(
             "ls /sys/class/thermal/thermal_zone*/temp 2>/dev/null"
@@ -95,7 +116,12 @@ class TestSystemHealth:
                 assert temp < 85, f"Temperature in {zone} is critically high: {temp}°C"
 
     def test_process_count(self, ssh_command, record_property):
-        """Test number of running processes is reasonable."""
+        """The number of running processes is plausible (between 20 and 300);
+        records the count.
+
+        Too many point to a process leak or respawn loop, too few to services
+        that didn't start.
+        """
         proc_count = int(ssh_command.run_check("ps | wc -l")[0])
 
         record_property("process_count", proc_count)
@@ -107,7 +133,12 @@ class TestSystemHealth:
         assert proc_count > 20, f"Too few processes running: {proc_count}"
 
     def test_entropy_available(self, ssh_command):
-        """Test that sufficient entropy is available for cryptographic operations."""
+        """The kernel's random number generator reports at least 256 bits of
+        entropy.
+
+        Without enough entropy, generating SSH host keys, Wi-Fi keys and TLS
+        sessions can stall or be weaker.
+        """
         entropy = int(
             ssh_command.run_check("cat /proc/sys/kernel/random/entropy_avail")[0]
         )
@@ -116,7 +147,12 @@ class TestSystemHealth:
         assert entropy >= 256, f"Insufficient entropy available: {entropy} bits"
 
     def test_open_file_descriptors(self, ssh_command, record_property):
-        """Test system-wide open file descriptors."""
+        """Less than 80% of the system-wide file descriptor limit is in use;
+        records the counts.
+
+        Running out of file descriptors makes services fail to open files or
+        sockets; a high count after boot points to a leak.
+        """
         # Get current and max file descriptors
         fd_info = ssh_command.run_check("cat /proc/sys/fs/file-nr")[0].split()
 

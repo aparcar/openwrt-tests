@@ -1,6 +1,10 @@
 """
-IPv6 Router Advertisements from the DUT's LAN, captured and parsed by the
-labgrid-probe (contrib/labgrid-probe, method ra_capture).
+The IPv6 Router Advertisements the DUT sends on its LAN, which LAN clients
+use to configure IPv6 (prefixes, default route, DNS): they carry what
+odhcpd's configuration says.
+
+Captured and parsed by the labgrid-probe (contrib/labgrid-probe, method
+ra_capture).
 
 The probe sends a Router Solicitation from its LAN client namespace and
 returns the RAs it receives (router lifetime, M/O flags, prefixes with
@@ -63,8 +67,9 @@ def uci(shell_command):
 
 
 def test_lan_ra(slot, lease, record_property):
-    """The DUT answers a Router Solicitation with an RA that carries an
-    on-link, autonomous prefix with sane lifetimes."""
+    """The DUT answers a LAN client's IPv6 Router Solicitation with a Router
+    Advertisement that carries a /64 prefix for automatic addressing (SLAAC),
+    with sane lifetimes. LAN clients use it to configure IPv6."""
     ra = solicit_ra(slot)
     record_property("ra", json.dumps(ra))
 
@@ -81,7 +86,11 @@ def test_lan_ra(slot, lease, record_property):
     "(valid lifetime 5400 s with leasetime 30m, 25.12.6)"
 )
 def test_ra_prefix_lifetimes(slot, lease, uci, shell_command, record_property):
-    """Regression: openwrt/openwrt#10804
+    """With `ra_useleasetime` set, the IPv6 prefix lifetimes the DUT
+    advertises are capped at the DHCP lease time. Otherwise clients keep
+    addresses longer than configured. This is a known bug, expected to fail.
+
+    Regression: openwrt/openwrt#10804
 
     With ra_useleasetime, the prefix lifetimes in the RAs are limited to the
     DHCP lease time, and preferred never exceeds valid.
@@ -118,7 +127,11 @@ def device_default_route(shell_command):
 def test_odhcpd_ra_with_device_default_route(
     slot, lease, uci, device_default_route, shell_command, record_property
 ):
-    """Regression: openwrt/openwrt#23246
+    """The DUT keeps announcing itself as the IPv6 default router when its
+    default route points at a device without a gateway, as with WireGuard or
+    other tunnels. If it doesn't, LAN clients lose their IPv6 route.
+
+    Regression: openwrt/openwrt#23246
 
     odhcpd treats a default route without a nexthop as a default route: the
     RAs keep a router lifetime > 0 (ra_default=1: no public prefix needed),

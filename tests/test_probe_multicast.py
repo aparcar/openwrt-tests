@@ -1,5 +1,8 @@
 """
-IPv4 multicast through the DUT with the labgrid-probe (contrib/labgrid-probe):
+IPv4 multicast (e.g. IPTV) from the internet side reaches clients on the LAN
+when igmpproxy runs on the DUT, and stops once they leave the group.
+
+Uses the labgrid-probe (contrib/labgrid-probe):
 a sender in the probe's WAN namespace, a joiner (IGMP) in its LAN namespace,
 and igmpproxy on the DUT forwarding the group from WAN to LAN.
 
@@ -92,7 +95,11 @@ def multicast_reaches_lan(slot, record_property, prefix):
 
 
 def test_igmp_proxy_forwards(slot, igmpproxy, strategy, record_property):
-    """Regression: openwrt/openwrt#12366
+    """igmpproxy forwards an IPv4 multicast stream from the WAN to a LAN
+    client that joined the group. IPTV from an internet provider
+    depends on this.
+
+    Regression: openwrt/openwrt#12366
 
     igmpproxy forwards a group a LAN client joined from WAN to LAN.
     """
@@ -145,7 +152,12 @@ def lan_igmp_snooping(strategy, igmpproxy):
 def test_igmp_snooping_bridge(
     slot, igmpproxy, lan_igmp_snooping, strategy, record_property
 ):
-    """Regression: openwrt/openwrt#9115
+    """With IGMP snooping turned on for the LAN bridge, a LAN client that
+    joined a multicast group still gets the group's traffic from the WAN.
+    Snooping should only keep multicast away from ports that didn't ask for
+    it, never drop it for the ones that did.
+
+    Regression: openwrt/openwrt#9115
 
     With IGMP snooping on br-lan, the LAN port that joined the group still
     gets the group's traffic (forwarded by igmpproxy from WAN).
