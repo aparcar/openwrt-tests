@@ -10,12 +10,14 @@ probe is a labgrid place that tests reserve themselves.
 |---|---|---|---|---|
 | wired probe | GL.iNet GL-MT2500, or an OpenWrt lab host itself | on the DUT's LAN and WAN VLANs | `labgrid-<lab>-probe`, `role=probe` | `test_probe_*.py`, `test_apk.py` |
 | Wi-Fi probe | TP-Link TL-WDR4300 (ath9k) | in radio range of the DUT | `labgrid-<lab>-wifi-probe`, `role=wifi-probe` | `test_wifi_clients.py` |
+| NixOS probe | any NixOS machine, a lab host too | on the DUT's LAN and WAN VLANs | `labgrid-<lab>-nixos-probe`, `role=nixos-probe` | `test_nixos_probe_pd.py` |
 
 Both are stock OpenWrt releases with the code in `contrib/labgrid-probe/`;
 its README has the internals (ubus API, namespaces and routing, MAC scheme).
-QEMU targets and labs without a probe skip these tests. The Debian probe
-(`docs/debian-probe.md`) is a third kind, for what OpenWrt can't do (raw L2,
-scapy, DHCPv6-PD).
+QEMU targets and labs without a probe skip these tests. The NixOS probe
+(`contrib/nixos-probe/README.md`) is a third kind, for what OpenWrt can't do
+as a probe (DHCPv6-PD server, raw L2, scapy); see
+[below](#the-nixos-probe-dhcpv6-pd-and-scapy).
 
 ## The wired probe: LAN and WAN
 
@@ -231,3 +233,33 @@ each other.
   channel.
 - The DUTs' internet access through the wired probe is unrestricted, which
   includes the lab management network behind it.
+
+## The NixOS probe: DHCPv6-PD and scapy
+
+A NixOS machine with the module from `contrib/nixos-probe` (internals,
+install and the `nixos-probe` command in its README). Tests log in over SSH
+(labgrid `SSHDriver`) and get the same kind of slot as on the wired probe:
+a LAN client namespace behind the DUT and a WAN namespace in front of it.
+The WAN side is the DUT's IPv6 upstream: radvd, and kea-dhcp6 handing out
+an address and a /60 from `2001:db8:<wan VLAN in hex>:100::/56`. Tests run
+anything else themselves in a namespace (scapy, dhcpcd, tcpdump, ...).
+
+### Fixtures (`tests/nixos_probe_fixtures.py`)
+
+| Fixture | Gives |
+|---|---|
+| `nixos_probe` | the probe's `SSHDriver`, reserved and locked for the module |
+| `nixos_slot` | this DUT's slot (`NixosSlot`: `lan()`, `wan()`, `scapy()`, `leases()`); skips without a DUT LAN link |
+| `nixos_wan_slot` | `nixos_slot` with the WAN side up; waits for wan6's delegated prefix (`slot.prefix`); skips without a cabled WAN port |
+
+### Tests (`test_nixos_probe_pd.py`)
+
+| Test | Checks |
+|---|---|
+| `test_wan6_address_and_prefix` | wan6 gets an address and a prefix of the delegated length; kea has both leased to the DUT |
+| `test_lan_prefix_from_delegation` | odhcpd assigns the LAN a /64 out of the delegated prefix |
+| `test_lan_ra_carries_delegated_prefix` | a Router Solicitation sent with scapy gets an RA announcing that /64, on-link and autonomous |
+| `test_lan_client_routed_through_wan` | a SLAAC client from that /64 pings the upstream router through the DUT |
+| `test_wan6_release_returns_prefix` | `ifdown wan6` releases address and prefix at the server, `ifup wan6` gets one again |
+
+They need the target feature `wan_port`, like the wired probe's WAN tests.

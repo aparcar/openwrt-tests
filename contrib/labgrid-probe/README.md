@@ -246,7 +246,7 @@ curl -s http://192.168.128.3/ubus -d '{"jsonrpc":"2.0","id":1,"method":"call",
   ~1 s); rpcd's timeout is 30 s.
 - Multicast is IPv4 only (no MLD), and `mcast_send` is a plain UDP sender:
   no IGMP querier on the WAN side. Raw L2, scapy, DHCPv6/PD and kea belong
-  to the Debian probe (`contrib/debian-probe`).
+  to the NixOS probe (`contrib/nixos-probe`).
 - The DUTs' internet access is unrestricted, which includes the lab
   management network behind the probe (lab host, switch).
 - The internet uplink is IPv4 only.

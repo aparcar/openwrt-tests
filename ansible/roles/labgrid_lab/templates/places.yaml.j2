@@ -55,3 +55,21 @@
   tags:
     role: wifi-probe
 {% endif %}
+{% if labnet["labs"][inventory_hostname].get("nixos_probe") %}
+{{ inventory_hostname }}-nixos-probe:
+  acquired: null
+  acquired_resources: []
+  aliases: []
+  allowed: []
+  changed: {{ ansible_date_time.epoch }}
+  comment: 'NixOS probe (contrib/nixos-probe)'
+  created: {{ ansible_date_time.epoch }}
+  matches:
+  - cls: '*'
+    exporter: '*'
+    group: {{ inventory_hostname }}-nixos-probe
+    name: null
+    rename: null
+  tags:
+    role: nixos-probe
+{% endif %}
