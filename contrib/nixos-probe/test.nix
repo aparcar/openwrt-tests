@@ -103,6 +103,8 @@ in
         assert kinds.get("na") == address, leases
 
     with subtest("LAN client behind the DUT"):
+        # odhcp6c only reports the lease; on OpenWrt netifd configures it
+        dut.succeed(f"ip -6 addr add {address}/64 dev wan nodad")
         lan64 = next(prefix.subnets(new_prefix=64))
         dut.succeed(f"ip -6 addr add {lan64[1]}/64 dev lan")
         dut.succeed(
