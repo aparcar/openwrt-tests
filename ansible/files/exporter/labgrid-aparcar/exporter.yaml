@@ -8,7 +8,7 @@ labgrid-aparcar-openwrt_one:
   PDUDaemonPort:
     host: localhost:16421
     index: 1
-    pdu: 192.168.128.2
+    pdu: labgrid-switch-1
   TFTPProvider:
     external: tftp://192.168.102.1/openwrt_one/
     internal: /srv/tftp/openwrt_one/
@@ -26,7 +26,7 @@ labgrid-aparcar-bananapi_bpi-r4-lite:
   PDUDaemonPort:
     host: localhost:16421
     index: 3
-    pdu: 192.168.128.2
+    pdu: labgrid-switch-1
   TFTPProvider:
     external: tftp://192.168.104.1/bananapi_bpi-r4-lite/
     internal: /srv/tftp/bananapi_bpi-r4-lite/
@@ -37,16 +37,16 @@ labgrid-aparcar-bananapi_bpi-r4-lite:
 labgrid-aparcar-genexis_pulse-ex400:
   wan:
     cls: NetworkInterface
-    ifname: vlan106
+    ifname: vlan126
   NetworkService:
-    address: 192.168.1.1%vlan105
+    address: 192.168.1.1%vlan125
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 5
-    pdu: 192.168.128.2
+    index: 1
+    pdu: labgrid-switch-2
   TFTPProvider:
-    external: tftp://192.168.105.1/genexis_pulse-ex400/
+    external: tftp://192.168.125.1/genexis_pulse-ex400/
     internal: /srv/tftp/genexis_pulse-ex400/
   USBSerialPort:
     match:
@@ -55,16 +55,16 @@ labgrid-aparcar-genexis_pulse-ex400:
 labgrid-aparcar-tplink_tl-wdr3600-v1:
   wan:
     cls: NetworkInterface
-    ifname: vlan108
+    ifname: vlan128
   NetworkService:
-    address: 192.168.1.1%vlan107
+    address: 192.168.1.1%vlan127
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 7
-    pdu: 192.168.128.2
+    index: 3
+    pdu: labgrid-switch-2
   TFTPProvider:
-    external: tftp://192.168.107.1/tplink_tl-wdr3600-v1/
+    external: tftp://192.168.127.1/tplink_tl-wdr3600-v1/
     internal: /srv/tftp/tplink_tl-wdr3600-v1/
   USBSerialPort:
     match:
@@ -73,16 +73,16 @@ labgrid-aparcar-tplink_tl-wdr3600-v1:
 labgrid-aparcar-bananapi_bpi-r4:
   wan:
     cls: NetworkInterface
-    ifname: vlan110
+    ifname: vlan130
   NetworkService:
-    address: 192.168.1.1%vlan109
+    address: 192.168.1.1%vlan129
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 9
-    pdu: 192.168.128.2
+    index: 5
+    pdu: labgrid-switch-2
   TFTPProvider:
-    external: tftp://192.168.109.1/bananapi_bpi-r4/
+    external: tftp://192.168.129.1/bananapi_bpi-r4/
     internal: /srv/tftp/bananapi_bpi-r4/
   USBSerialPort:
     match:
@@ -90,12 +90,12 @@ labgrid-aparcar-bananapi_bpi-r4:
 
 labgrid-aparcar-rpi-4:
   NetworkService:
-    address: 192.168.1.1%vlan111
+    address: 192.168.1.1%vlan131
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 11
-    pdu: 192.168.128.2
+    index: 7
+    pdu: labgrid-switch-2
   USBSDMuxDevice:
     match:
       ID_PATH: platform-xhci-hcd.1-usb-0:1.2.1
@@ -110,13 +110,14 @@ labgrid-aparcar-enterasys_ws-ap3710i:
   PDUDaemonPort:
     host: localhost:16421
     index: 12
-    pdu: 192.168.128.2
+    pdu: labgrid-switch-1
   TFTPProvider:
     external: tftp://192.168.112.1/enterasys_ws-ap3710i/
     internal: /srv/tftp/enterasys_ws-ap3710i/
   USBSerialPort:
     match:
-      ID_PATH: platform-xhci-hcd.1-usb-0:2.4:1.0
+      '@port_number': '0'
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.1.3:1.0
 
 labgrid-aparcar-ignitenet_ss-w2-ac2600:
   NetworkService:
@@ -125,13 +126,14 @@ labgrid-aparcar-ignitenet_ss-w2-ac2600:
   PDUDaemonPort:
     host: localhost:16421
     index: 13
-    pdu: 192.168.128.2
+    pdu: labgrid-switch-1
   TFTPProvider:
     external: tftp://192.168.113.1/ignitenet_ss-w2-ac2600/
     internal: /srv/tftp/ignitenet_ss-w2-ac2600/
   USBSerialPort:
     match:
-      ID_PATH: platform-xhci-hcd.1-usb-0:2.3:1.0
+      '@port_number': '0'
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.1.4:1.0
 
 labgrid-aparcar-aruba_ap-32x:
   NetworkService:
@@ -140,14 +142,14 @@ labgrid-aparcar-aruba_ap-32x:
   PDUDaemonPort:
     host: localhost:16421
     index: 15
-    pdu: 192.168.128.2
+    pdu: labgrid-switch-1
   TFTPProvider:
     external: tftp://192.168.115.1/aruba_ap-32x/
     internal: /srv/tftp/aruba_ap-32x/
   USBSerialPort:
     match:
       '@port_number': '0'
-      ID_PATH: platform-xhci-hcd.1-usb-0:2.2:1.0
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.2:1.0
 
 labgrid-aparcar-pine64_rock64:
   NetworkService:
@@ -156,7 +158,7 @@ labgrid-aparcar-pine64_rock64:
   PDUDaemonPort:
     host: localhost:16421
     index: 17
-    pdu: 192.168.128.2
+    pdu: labgrid-switch-1
   USBSDMuxDevice:
     match:
       ID_PATH: platform-xhci-hcd.1-usb-0:2.1.4.1
@@ -168,12 +170,12 @@ labgrid-aparcar-pine64_rock64:
 
 labgrid-aparcar-raspberry-pi-3b:
   NetworkService:
-    address: 192.168.1.1%vlan118
+    address: 192.168.1.1%vlan105
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 18
-    pdu: 192.168.128.2
+    index: 5
+    pdu: labgrid-switch-1
   USBSDMuxDevice:
     match:
       ID_PATH: platform-xhci-hcd.0-usb-0:1.4.1
@@ -191,28 +193,29 @@ labgrid-aparcar-starfive_visionfive2-v1.2a:
   PDUDaemonPort:
     host: localhost:16421
     index: 19
-    pdu: 192.168.128.2
+    pdu: labgrid-switch-1
   TFTPProvider:
     external: tftp://192.168.119.1/starfive_visionfive2-v1.2a/
     internal: /srv/tftp/starfive_visionfive2-v1.2a/
   USBSerialPort:
     match:
-      ID_PATH: platform-xhci-hcd.1-usb-0:2.1.2:1.0
+      ID_PATH: platform-xhci-hcd.1-usb-0:2.4:1.0
 
 labgrid-aparcar-ripe_atlas-v5:
   NetworkService:
-    address: 192.168.1.1%vlan121
+    address: 192.168.1.1%vlan132
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 21
-    pdu: 192.168.128.2
+    index: 8
+    pdu: labgrid-switch-2
   TFTPProvider:
-    external: tftp://192.168.121.1/ripe_atlas-v5/
+    external: tftp://192.168.132.1/ripe_atlas-v5/
     internal: /srv/tftp/ripe_atlas-v5/
   USBSerialPort:
     match:
-      ID_PATH: platform-xhci-hcd.0-usb-0:1.2:1.0
+      '@port_number': '0'
+      ID_PATH: platform-xhci-hcd.1-usb-0:1.3:1.0
 
 ## CFE (no U-Boot): CFETFTPStrategy flashes the TRX from this TFTPProvider
 labgrid-aparcar-asus_rt-n16:
@@ -225,26 +228,95 @@ labgrid-aparcar-asus_rt-n16:
   PDUDaemonPort:
     host: localhost:16421
     index: 23
-    pdu: 192.168.128.2
+    pdu: labgrid-switch-1
   TFTPProvider:
     external: tftp://192.168.123.1/asus_rt-n16/
     internal: /srv/tftp/asus_rt-n16/
+  ## FIXME: no console. Its PL2303 was on hub A 1.1.4, which is now the
+  ## IgniteNet's port; add the USBSerialPort back with the adapter's new port.
+
+## o2 Box 6431, LAN only. No initramfs boot: U-Boot writes the sysupgrade
+## image from this TFTPProvider to flash (flash_commands in the target file)
+labgrid-aparcar-arcadyan_vgv7510kw22-nor:
+  NetworkService:
+    address: 192.168.1.1%vlan122
+    username: root
+  PDUDaemonPort:
+    host: localhost:16421
+    index: 22
+    pdu: labgrid-switch-1
+  TFTPProvider:
+    external: tftp://192.168.122.1/arcadyan_vgv7510kw22-nor/
+    internal: /srv/tftp/arcadyan_vgv7510kw22-nor/
   USBSerialPort:
     match:
       '@port_number': '0'
-      ID_PATH: platform-xhci-hcd.0-usb-0:1.1.4:1.0
+      ID_PATH: platform-xhci-hcd.1-usb-0:2.1.1:1.0
+
+## UniFi Security Gateway. U-Boot fetches the initramfs over LAN 1 (octeth1),
+## not the WAN port.
+## FIXME: not wired. The ports below (switch 2 lan1 = LAN 1 + power, VLAN 125;
+## lan2 = WAN 1, VLAN 126) now belong to the Genexis Pulse EX400 and switch 2
+## is full, so pick free ports on switch 1 before adding this device to
+## labnet.yaml. The console port below (hub A 1.1.3) is now the Enterasys's.
+labgrid-aparcar-ubnt_unifi-usg:
+  wan:
+    cls: NetworkInterface
+    ifname: vlan126
+  NetworkService:
+    address: 192.168.1.1%vlan125
+    username: root
+  PDUDaemonPort:
+    host: localhost:16421
+    index: 1
+    pdu: labgrid-switch-2
+  TFTPProvider:
+    external: tftp://192.168.125.1/ubnt_unifi-usg/
+    internal: /srv/tftp/ubnt_unifi-usg/
+  USBSerialPort:
+    match:
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.1.3:1.0
+
+## UniFi Cloud Gateway Fiber, for bring-up: OpenWrt publishes no image yet,
+## so its healthcheck fails and CI schedules nothing on it; use it with a
+## self-built initramfs. Powered from the Bluetooth power strip
+## (the fourth socket; the strip counts from 0). LAN on switch 1 lan7, WAN on
+## lan8.
+labgrid-aparcar-ubnt_ucgfiber:
+  wan:
+    cls: NetworkInterface
+    ifname: vlan108
+  NetworkService:
+    address: 192.168.1.1%vlan107
+    username: root
+  PDUDaemonPort:
+    host: localhost:16421
+    index: 3
+    pdu: labgrid-strip-1
+  TFTPProvider:
+    external: tftp://192.168.107.1/ubnt_ucgfiber/
+    internal: /srv/tftp/ubnt_ucgfiber/
+  USBSerialPort:
+    match:
+      ID_PATH: platform-xhci-hcd.1-usb-0:2.3:1.0
 
 ## labgrid-probe (contrib/labgrid-probe): its own place, tagged role=probe.
 ## Tests reserve and lock it for the modules that use it and control it over
 ## HTTP (uhttpd /ubus on port 80), not SSH.
 labgrid-aparcar-probe:
   NetworkService:
-    address: 192.168.128.3
+    address: 172.20.0.3
     port: 80
     username: root
 
 labgrid-aparcar-wifi-probe:
   NetworkService:
-    address: 192.168.128.4
+    address: 172.20.0.4
+    port: 80
+    username: root
+
+labgrid-aparcar-wifi-probe-2:
+  NetworkService:
+    address: 172.20.0.5
     port: 80
     username: root
