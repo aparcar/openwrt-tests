@@ -1,9 +1,10 @@
 ## These consoles hang off an 8-port WCH CH348 adapter driven by the out-of-tree
 ## ch9344 driver. All 8 ports share ONE USB interface, and ch9344 registers its
 ## ttys directly on it, so there is no per-port `port_number` sysfs attr (and no
-## /dev/serial/by-path link). The driver names ttys ttyCH9344USB<8*chip+port>, so
-## with a single adapter the node is stable; @ID_PATH scopes to that adapter so a
-## renumbered node fails to match instead of selecting the wrong console.
+## /dev/serial/by-path link). The driver names ttys ttyCH9344USB<8*chip+port>,
+## with chips numbered in probe order; @ID_PATH scopes each node to its adapter
+## (two here) so a swapped probe order fails to match instead of selecting the
+## wrong console.
 ## (labgrid renders this file with jinja2; '#' is a statement, '##' a comment.)
 labgrid-bryan-glinet_gl-mt6000:
   location: labgrid-bryan
@@ -15,7 +16,7 @@ labgrid-bryan-glinet_gl-mt6000:
   PDUDaemonPort:
     host: localhost:16421
     pdu: bryan-gpio
-    index: 1
+    index: 4
   TFTPProvider:
     internal: "/srv/tftp/glinet_gl-mt6000"
     external: "tftp://192.168.102.1/glinet_gl-mt6000"
@@ -51,7 +52,7 @@ labgrid-bryan-teltonika_rut976:
   PDUDaemonPort:
     host: localhost:16421
     pdu: bryan-gpio
-    index: 3
+    index: 24
   TFTPProvider:
     internal: "/srv/tftp/teltonika_rut976"
     external: "tftp://192.168.105.1/teltonika_rut976/"
@@ -69,7 +70,7 @@ labgrid-bryan-gemtek_w1700k-ubi:
   PDUDaemonPort:
     host: localhost:16421
     pdu: bryan-gpio
-    index: 4
+    index: 3
   TFTPProvider:
     internal: "/srv/tftp/gemtek_w1700k-ubi"
     external: "tftp://192.168.108.1/gemtek_w1700k-ubi/"
@@ -87,7 +88,7 @@ labgrid-bryan-dlink_dap-x1860-a1:
   PDUDaemonPort:
     host: localhost:16421
     pdu: bryan-gpio
-    index: 5
+    index: 9
   TFTPProvider:
     internal: "/srv/tftp/dlink_dap-x1860-a1"
     external: "tftp://192.168.109.1/dlink_dap-x1860-a1/"
@@ -99,8 +100,7 @@ labgrid-bryan-aruba_ap-32x:
   location: labgrid-bryan
   USBSerialPort:
     match:
-      "@ID_PATH": "platform-xhci-hcd.1-usb-0:2.2.2:1.0"
-      DEVNAME: "/dev/ttyUSB1"
+      ID_PATH: "platform-xhci-hcd.1-usb-0:2.2.2:1.0"
     speed: 115200
   PDUDaemonPort:
     host: localhost:16421
@@ -117,8 +117,7 @@ labgrid-bryan-enterasys_ws-ap3710i:
   location: labgrid-bryan
   USBSerialPort:
     match:
-      "@ID_PATH": "platform-xhci-hcd.1-usb-0:2.2.3:1.0"
-      DEVNAME: "/dev/ttyUSB4"
+      ID_PATH: "platform-xhci-hcd.1-usb-0:2.2.3:1.0"
     speed: 115200
   PDUDaemonPort:
     host: localhost:16421
@@ -141,7 +140,7 @@ labgrid-bryan-tplink_re650-v1:
   PDUDaemonPort:
     host: localhost:16421
     pdu: bryan-gpio
-    index: 6
+    index: 23
   TFTPProvider:
     internal: "/srv/tftp/tplink_re650-v1"
     external: "tftp://192.168.113.1/tplink_re650-v1/"

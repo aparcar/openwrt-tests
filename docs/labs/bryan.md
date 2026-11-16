@@ -21,13 +21,13 @@
 
 | Port  | PoE         | Device                                   | Serial port   | GPIO Pwr  | Vlan #   |
 | ----- | ----------- | ---------------------------------------- | ------------- | --------- | -------- |
-| 1     | ⬜ Inactive | GL.iNet GL-MT6000 WAN (Raspberry GPIO)   | ttyCH9344USB0 | Pin 2     | Vlan 101 |
+| 1     | ⬜ Inactive | GL.iNet GL-MT6000 WAN (Raspberry GPIO)   | ttyCH9344USB0 | BCM 4     | Vlan 101 |
 | 2     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 102 |
-| 3     | ⬜ Inactive | Bananapi bpi-r4 WAN (Raspberry GPIO)     | ttyCH9344USB1 | Pin 4     | Vlan 103 |
+| 3     | ⬜ Inactive | Bananapi bpi-r4 WAN (Raspberry GPIO)     | ttyCH9344USB1 | BCM 2     | Vlan 103 |
 | 4     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 104 |
-| 5     | ⬜ Inactive | Teltonika RUT976 WAN (Raspberry GPIO)    | ttyCH9344USB2 | Pin 24    | Vlan 105 |
+| 5     | ⬜ Inactive | Teltonika RUT976 WAN (Raspberry GPIO)    | ttyCH9344USB2 | BCM 24    | Vlan 105 |
 | 6     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 106 |
-| 7     | ⬜ Inactive | Lumen W1700K UBI (Raspberry GPIO)        | ttyCH9344USB3 | Pin 3     | Vlan 107 |
+| 7     | ⬜ Inactive | Lumen W1700K UBI (Raspberry GPIO)        | ttyCH9344USB3 | BCM 3     | Vlan 107 |
 | 8     | ⬜ Inactive | .. LAN                                   |               |           | Vlan 108 |
 | 9     | ⬜ Inactive | Switch 2 Zyxel GS1900-10HP A1            |               |           | Vlan 1   |
 | 10    | ⬜ Inactive | Rasmberry Pi 5                           |               |           | Vlan 1   |
@@ -42,11 +42,11 @@
 
 | Port  | PoE         | Device                                   | Serial port   | GPIO Pwr  | Vlan #   |
 | ----- | ----------- | ---------------------------------------- | ------------- | --------- | -------- |
-| 1     | ⬜ Inactive | D-Link DAP-X1860 A1 WAN (Raspberry GPIO) | ttyCH9344USB4 | Pin 9     | Vlan 109 |
-| 2     | 🟩 Active   | Aruba AP_325 WAN (PoE)                   | ttyUSB1       |           | Vlan 110 |
-| 3     | 🟩 Active   | Enterasys WS-AP3710i WAN (PoE)           | ttyUSB4       |           | Vlan 111 |
+| 1     | ⬜ Inactive | D-Link DAP-X1860 A1 WAN (Raspberry GPIO) | ttyCH9344USB4 | BCM 9     | Vlan 109 |
+| 2     | 🟩 Active   | Aruba AP_325 WAN (PoE)                   | USB 2.2.2     |           | Vlan 110 |
+| 3     | 🟩 Active   | Enterasys WS-AP3710i WAN (PoE)           | USB 2.2.3     |           | Vlan 111 |
 | 4     | 🟩 Active   | Unifi U7-Pro-XGS WAN (PoE)               | ttyCH9344USB5 |           | Vlan 112 |
-| 5     | ⬜ Inactive | TP-Link RE650 v1 WAN (Raspberry GPIO)    | ttyCH9344USB6 | Pin 23    | Vlan 113 |
+| 5     | ⬜ Inactive | TP-Link RE650 v1 WAN (Raspberry GPIO)    | ttyCH9344USB6 | BCM 23    | Vlan 113 |
 | 6     | ⬜ Inactive |                                          |               |           | Vlan 114 |
 | 7     | ⬜ Inactive |                                          |               |           | Vlan 115 |
 | 8     | ⬜ Inactive |                                          |               |           | Vlan 116 |
