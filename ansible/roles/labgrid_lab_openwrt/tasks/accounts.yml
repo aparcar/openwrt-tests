@@ -64,7 +64,9 @@
 - name: Expire old staged files
   ansible.builtin.cron:
     name: labgrid staging cache
-    special_time: daily
+    # BusyBox crond rejects @daily
+    minute: "0"
+    hour: "4"
     job: 'find {{ labgrid_cache_dir }} -mindepth 2 -maxdepth 2 -mtime +{{ labgrid_cache_max_age_days }} -exec rm -rf {} \;'
 
 - name: Create /usr/local/sbin
