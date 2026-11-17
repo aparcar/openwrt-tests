@@ -1,0 +1,32 @@
+// Managed by Ansible (openwrt-tests, role labgrid_lab). Read after Debian's
+// 50unattended-upgrades: list entries add to it, single values override it.
+
+Unattended-Upgrade::Origins-Pattern {
+        // Security updates
+        "origin=Debian,codename=${distro_codename},label=Debian-Security";
+        "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+        // Point releases: new kernels (ABI bumps) arrive here too
+        "origin=Debian,codename=${distro_codename},label=Debian";
+        // Raspberry Pi OS: kernels and firmware (no match elsewhere)
+        "origin=Raspberry Pi Foundation,codename=${distro_codename}";
+{% for pattern in labgrid_lab_upgrades_origins %}
+        "{{ pattern }}";
+{% endfor %}
+};
+
+// New kernel packages come in as dependencies of the metapackage
+// (linux-image-amd64, linux-image-rpi-v8, ...); keep two, drop older ones.
+// Also remove all unused dependencies (like apt autoremove)
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+// Reboot when an upgrade needs it (/var/run/reboot-required), even with
+// users logged in
+Unattended-Upgrade::Automatic-Reboot "{{ labgrid_lab_upgrades_reboot | bool | lower }}";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+Unattended-Upgrade::Automatic-Reboot-Time "{{ labgrid_lab_upgrades_reboot_time }}";
+
+// Finish (or roll back) an interrupted dpkg run first
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";

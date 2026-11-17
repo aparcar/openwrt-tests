@@ -5,14 +5,13 @@ Description=Control and Queueing daemon for PDUs
 [Service]
 ExecStart={{ uv_tool_bin_dir }}/pdudaemon --journal --conf=/etc/pdudaemon/pdudaemon.conf
 Type=simple
-DynamicUser=yes
+# A system account, not DynamicUser: its groups (pdudaemon_groups for device
+# access, bluetooth for BlueZ over D-Bus) are what systemd applies and what
+# dbus-daemon checks. See the account's task in tasks/labgrid.yml.
+User={{ pdudaemon_user }}
 StateDirectory=pdudaemon
 # writable cwd: lgpio (clusterctrl) creates its notify pipes there
 WorkingDirectory=/var/lib/pdudaemon
-{% if pdudaemon_groups is defined %}
-# device access for local PDU commands (the groups must exist on the host)
-SupplementaryGroups={{ pdudaemon_groups | join(' ') }}
-{% endif %}
 ProtectHome=true
 Restart=on-abnormal
 

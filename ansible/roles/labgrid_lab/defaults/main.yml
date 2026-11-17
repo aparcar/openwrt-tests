@@ -25,7 +25,13 @@ labgrid_coordinator_user: labgrid-coordinator
 labgrid_uv_tools:
   labgrid: git+https://github.com/aparcar/labgrid.git@475a767ba42ae453a6d6a82c6c485783f846d50f
   usbsdmux: usbsdmux
-  pdudaemon: git+https://github.com/maurerle/pdudaemon.git@tasmota-single-outlet
+  # upstream main plus the sysfsgpio and shelly_ble drivers, ubus login and the
+  # tasmota single-outlet fix. A branch is followed: every run (also
+  # `--tags agent-code`) updates the tool to the branch's current head.
+  pdudaemon: git+https://github.com/aparcar/pdudaemon.git@staging
+# Extra packages for a tool's venv (name: [packages], `uv tool install --with`)
+labgrid_uv_tools_with:
+  pdudaemon: "{{ ['bleak'] if pdudaemon_bluetooth else [] }}"
 
 # uv itself, its tool venvs, their entry points, and Python builds uv
 # downloads (outside root's home, so the service accounts can use them)
@@ -53,8 +59,22 @@ labgrid_lab_data_dir: "{{ playbook_dir }}/files/exporter"
 vlan_interface: eth0
 # Netplan file holding only the DUT VLANs (files/exporter/netplan.yaml)
 labgrid_netplan_file: /etc/netplan/labnet.yaml
-# Optional extra PDU device groups for pdudaemon (e.g. [gpio, i2c])
+# DUT VLANs on vlan_interface. VLAN N gets 192.168.N.1/24 (TFTP, WAN upstream)
+# and 192.168.1.N/24 (to reach the DUT), so N must be below 255 and
+# 192.168.N.0/24 must not be a network the host already uses (e.g. its
+# management network). A lab with more switch ports lists more in host_vars.
+labgrid_dut_vlans: "{{ range(101, 125) | list + [200] }}"
+# Lab equipment to name in the host's /etc/hosts (name: address), so
+# pdudaemon.conf and exporter.yaml can call a PDU by name
+labgrid_hosts: {}
+# System account running pdudaemon
+pdudaemon_user: pdudaemon
+# Optional extra PDU device groups for pdudaemon (e.g. [gpio, i2c]); they must
+# exist on the host
 # pdudaemon_groups: []
+# PDUs switched over Bluetooth LE (pdudaemon's shelly_ble driver): installs
+# BlueZ and bleak and lets pdudaemon use the host's Bluetooth adapter
+pdudaemon_bluetooth: false
 
 # CH348 octal serial adapters (ch9344 out-of-tree driver)
 ch348_module_enabled: false

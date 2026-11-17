@@ -1,0 +1,14 @@
+- name: Install QEMU and UEFI firmware
+  ansible.builtin.apt:
+    name: "{{ labgrid_lab_qemu_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# Developers run the QEMU targets as labgrid-dev; the kernelci agent role adds
+# its own account to kvm
+- name: Let the developer account use KVM
+  ansible.builtin.user:
+    name: "{{ labgrid_dev_user }}"
+    groups: [kvm]
+    append: true

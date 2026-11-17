@@ -32,6 +32,26 @@
     line: "127.0.0.1 localhost"
     state: present
 
+# cloud-init (manage_etc_hosts) rewrites /etc/hosts from this template at boot
+- name: Look for cloud-init's /etc/hosts template
+  ansible.builtin.stat:
+    path: /etc/cloud/templates/hosts.debian.tmpl
+  register: _hosts_tmpl
+
+# Names for lab equipment, e.g. the PDUs: pdudaemon passes a PDU's name in
+# pdudaemon.conf to the driver as the address to connect to
+- name: Name the lab's equipment in /etc/hosts
+  ansible.builtin.lineinfile:
+    path: "{{ item.1 }}"
+    regexp: '\s{{ item.0.key | regex_escape }}$'
+    line: "{{ item.0.value }} {{ item.0.key }}"
+    state: present
+  loop: "{{ labgrid_hosts | dict2items | product(_files) }}"
+  loop_control:
+    label: "{{ item.0.key }} in {{ item.1 }}"
+  vars:
+    _files: "{{ ['/etc/hosts'] + ([_hosts_tmpl.stat.path] if _hosts_tmpl.stat.exists else []) }}"
+
 # sshd uses the first value it sees, so the 00- prefix wins over other
 # drop-ins (e.g. cloud-init's 50-cloud-init.conf enabling passwords).
 - name: Allow only key-based SSH logins

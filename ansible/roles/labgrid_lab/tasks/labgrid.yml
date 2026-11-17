@@ -25,7 +25,7 @@
 
 - name: Record the tool sources
   ansible.builtin.copy:
-    content: "{{ item.value }}\n"
+    content: "{{ ([item.value] + (labgrid_uv_tools_with[item.key] | default([]))) | join(' ') }}\n"
     dest: "{{ uv_tool_dir }}/.{{ item.key }}.source"
     mode: "0644"
   loop: "{{ labgrid_uv_tools | dict2items }}"
@@ -35,12 +35,13 @@
 
 - name: Install the changed tools
   ansible.builtin.command:
-    argv:
-      - "{{ uv_install_dir }}/uv"
-      - tool
-      - install
-      - --force
-      - "{{ item.item.key if item.item.value == item.item.key else item.item.key ~ ' @ ' ~ item.item.value }}"
+    argv: >-
+      {{ [uv_install_dir ~ '/uv', 'tool', 'install', '--force']
+         + (labgrid_uv_tools_with[item.item.key] | default([])
+            | map('regex_replace', '^', '--with=') | list)
+         + [_spec] }}
+  vars:
+    _spec: "{{ item.item.key if item.item.value == item.item.key else item.item.key ~ ' @ ' ~ item.item.value }}"
   environment:
     UV_TOOL_DIR: "{{ uv_tool_dir }}"
     UV_TOOL_BIN_DIR: "{{ uv_tool_bin_dir }}"
@@ -55,12 +56,130 @@
     - Restart labgrid-coordinator
     - Restart pdudaemon
 
+# A tool that follows a git branch (pdudaemon: ...@staging) is resolved only
+# when it's installed, so a push to the branch changes nothing above. Bring
+# such tools to the branch's current head on every run, and with
+# `--tags agent-code` together with the agent's code, restarting pdudaemon
+# only when the head moved. Commit pins, tags and releases are left alone.
+# labgrid never follows a branch here: it stays pinned to the tests' commit,
+# and restarting the coordinator would drop every reservation.
+- name: Look up the branch heads of tools that follow a git branch
+  ansible.builtin.command:
+    argv: [git, ls-remote, --exit-code, "{{ _repo }}", "refs/heads/{{ _branch }}"]
+  vars:
+    _repo: "{{ item.value[4:].rsplit('@', 1)[0] }}"
+    _branch: "{{ item.value.rsplit('@', 1)[1] }}"
+  loop: >-
+    {{ labgrid_uv_tools | dict2items
+       | rejectattr('key', 'eq', 'labgrid')
+       | selectattr('value', 'match', 'git[+].+@')
+       | rejectattr('value', 'match', '.*@[0-9a-f]{40}$')
+       | list }}
+  loop_control:
+    label: "{{ item.key }}"
+  register: _uv_tool_heads
+  changed_when: false
+  # 2: no such branch (the ref is a tag), nothing to follow
+  failed_when: _uv_tool_heads.rc not in [0, 2]
+  check_mode: false
+  tags: agent-code
+
+- name: Read the commits these tools are installed at
+  ansible.builtin.command:
+    argv:
+      - "{{ uv_tool_dir }}/{{ item.item.key }}/bin/python"
+      - -c
+      - |
+        import importlib.metadata, json, sys
+        url = importlib.metadata.distribution(sys.argv[1]).read_text("direct_url.json")
+        print(json.loads(url or "{}").get("vcs_info", {}).get("commit_id", ""))
+      - "{{ item.item.key }}"
+  loop: "{{ _uv_tool_heads.results | selectattr('rc', 'defined') | selectattr('rc', 'eq', 0) | list }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  register: _uv_tool_installed
+  changed_when: false
+  # not installed yet (or no record of the commit): reinstalled below
+  failed_when: false
+  check_mode: false
+  tags: agent-code
+
+# Installed at the head's commit, not the branch name: uv caches what a branch
+# resolved to, and the commit makes the result checkable on the next run
+- name: Update the tools whose branch moved
+  ansible.builtin.command:
+    argv: >-
+      {{ [uv_install_dir ~ '/uv', 'tool', 'install', '--force']
+         + (labgrid_uv_tools_with[_name] | default([])
+            | map('regex_replace', '^', '--with=') | list)
+         + [_name ~ ' @ git+' ~ _repo ~ '@' ~ _head] }}
+  vars:
+    _name: "{{ item.item.item.key }}"
+    _repo: "{{ item.item.item.value[4:].rsplit('@', 1)[0] }}"
+    _head: "{{ item.item.stdout.split()[0] }}"
+  environment:
+    UV_TOOL_DIR: "{{ uv_tool_dir }}"
+    UV_TOOL_BIN_DIR: "{{ uv_tool_bin_dir }}"
+    UV_PYTHON_INSTALL_DIR: "{{ uv_python_dir }}"
+  loop: "{{ _uv_tool_installed.results }}"
+  loop_control:
+    label: "{{ item.item.item.key }} {{ (item.stdout | default('') | trim)[:12] or 'unknown' }} -> {{ item.item.stdout.split()[0][:12] }}"
+  when: (item.stdout | default('') | trim) != item.item.stdout.split()[0]
+  changed_when: true
+  notify: Restart pdudaemon
+  tags: agent-code
+
 # Earlier versions installed the tools with pipx; the uv entry points above
 # replaced its /usr/local/bin links (--force), so its venvs are unused now.
 - name: Remove the old pipx installation
   ansible.builtin.file:
     path: /opt/pipx
     state: absent
+
+# BlueZ also creates the bluetooth group the pdudaemon unit joins
+- name: Install BlueZ for Bluetooth PDUs
+  ansible.builtin.apt:
+    name: bluez
+    state: present
+  when: pdudaemon_bluetooth
+
+- name: Start and enable the Bluetooth daemon
+  ansible.builtin.systemd_service:
+    name: bluetooth
+    state: started
+    enabled: true
+  when: pdudaemon_bluetooth
+
+# A system account rather than DynamicUser: dbus-daemon resolves a client's
+# groups through NSS when it connects. It drops a dynamic user's connection
+# when it can't resolve it, and never sees the unit's SupplementaryGroups, so
+# BlueZ (group bluetooth) refused pdudaemon's shelly_ble driver. Created
+# after BlueZ, which creates the bluetooth group.
+# The old unit's DynamicUser=yes: usermod refuses to convert that user while
+# pdudaemon runs ("currently used by process")
+- name: Look for pdudaemon's account in /etc/passwd
+  ansible.builtin.command: grep -q "^{{ pdudaemon_user }}:" /etc/passwd
+  register: _pdudaemon_passwd
+  changed_when: false
+  failed_when: _pdudaemon_passwd.rc > 1
+
+- name: Stop pdudaemon running as a dynamic user
+  ansible.builtin.systemd_service:
+    name: pdudaemon
+    state: stopped
+  when: _pdudaemon_passwd.rc == 1
+  failed_when: false
+
+- name: Create pdudaemon's system account
+  ansible.builtin.user:
+    name: "{{ pdudaemon_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    home: /nonexistent
+    groups: "{{ (pdudaemon_groups | default([])) + (['bluetooth'] if pdudaemon_bluetooth else []) }}"
+    append: false
+  notify: Restart pdudaemon
 
 - name: Create the pdudaemon config directory
   ansible.builtin.file:
