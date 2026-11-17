@@ -1,33 +1,24 @@
-# Forget the agent's device health (health.json), so its next poll runs a
-# fresh health check of every device and reports the results. Used by
-# reset-health.yml.
+# Make the agent forget its device health, so it checks every device again
+# right away and reports the results. Used by reset-health.yml.
 #
-# The agent loads health.json when a poll starts and writes it back when the
-# poll ends, so the file is removed between two polls: a running poll (maybe
-# a job, up to TimeoutStartSec) is waited for, never killed.
+# The agent keeps the health state in memory (and in health.json): it looks
+# for health.reset next to it once per poll, removes it and starts over.
+# Running jobs aren't touched. Same on systemd and procd.
 
-- name: Reset the agent's health state
-  block:
-    - name: Pause the agent's polls
-      ansible.builtin.systemd_service:
-        name: labgrid-agent.timer
-        state: stopped
+- name: Ask the agent to reset its health state
+  ansible.builtin.file:
+    path: "{{ labgrid_agent_state_dir }}/health.reset"
+    state: touch
+    owner: "{{ labgrid_agent_user }}"
+    group: "{{ labgrid_agent_user }}"
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
 
-    - name: Wait for a running poll to finish
-      ansible.builtin.command: systemctl is-active labgrid-agent.service
-      register: _agent_active
-      changed_when: false
-      failed_when: false
-      until: _agent_active.rc != 0
-      retries: "{{ (labgrid_agent_reset_health_timeout / 30) | int }}"
-      delay: 30
-
-    - name: Remove the health state
-      ansible.builtin.file:
-        path: "{{ labgrid_agent_state_dir }}/health.json"
-        state: absent
-  always:
-    - name: Resume the agent's polls
-      ansible.builtin.systemd_service:
-        name: labgrid-agent.timer
-        state: started
+- name: Wait for the agent to pick it up
+  ansible.builtin.stat:
+    path: "{{ labgrid_agent_state_dir }}/health.reset"
+  register: _agent_reset
+  until: not _agent_reset.stat.exists
+  retries: "{{ (labgrid_agent_reset_health_timeout / 10) | int }}"
+  delay: 10

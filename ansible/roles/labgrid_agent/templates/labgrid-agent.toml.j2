@@ -1,5 +1,16 @@
-# Managed by Ansible (openwrt-tests, role labgrid_agent): settings of lab {{ labgrid_agent_lab_name }} that don't
-# fit on the command line (see labgrid-agent.service). Tokens are in env.
+# Managed by Ansible (openwrt-tests, role labgrid_agent): settings of lab {{ labgrid_agent_lab_name }}
+# that don't belong on the command line (see labgrid-agent.service). Holds the
+# lab's tokens: root:{{ labgrid_agent_user }} 0640.
+
+lab_name = "{{ labgrid_agent_lab_name }}"
+
+[api]
+url = {{ _agent_secrets.KCI_API_URL | to_json }}
+token = {{ _agent_secrets.LAB_API_TOKEN | to_json }}
+
+[storage]
+url = {{ _agent_secrets.KCI_STORAGE_URL | to_json }}
+token = {{ _agent_secrets.LAB_STORAGE_TOKEN | to_json }}
 {% if labgrid_agent_health_checks is mapping %}
 
 # health_checks of lab {{ labgrid_agent_lab_name }}: plain keys for all platforms (also the

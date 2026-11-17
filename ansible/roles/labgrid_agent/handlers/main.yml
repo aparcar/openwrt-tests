@@ -2,6 +2,20 @@
   ansible.builtin.systemd_service:
     daemon_reload: true
 
+- name: Restart labgrid-agent (procd)
+  community.general.openwrt_init:
+    name: labgrid-agent
+    state: restarted
+
+# SIGHUP: the agent claims nothing new, finishes its running jobs and exits;
+# systemd/procd start it again with the new code, config or tokens. Starts it
+# if it isn't running.
+- name: Drain labgrid-agent
+  ansible.builtin.command: >-
+    {{ '/etc/init.d/labgrid-agent reload' if _agent_openwrt
+       else 'systemctl reload-or-restart labgrid-agent.service' }}
+  changed_when: true
+
 - name: Stop the agent's old journal
   ansible.builtin.command: systemctl stop systemd-journald@labgrid-agent.service systemd-journald@labgrid-agent.socket systemd-journald-varlink@labgrid-agent.socket
   changed_when: true

@@ -1,4 +1,12 @@
-# labgrid-agent on a lab host, run by a systemd timer (one poll per run).
+# labgrid-agent on a lab host, a long-running systemd service, or on OpenWrt
+# a procd service. It polls on its own and runs jobs and health checks in the
+# background. labgrid_lab_openwrt has installed the packages and uv there
+# already.
+#
+# New agent code, config or tokens apply through a drain (handler "Drain
+# labgrid-agent": SIGHUP): the agent claims nothing new, exits once its
+# running jobs are done and starts again. openwrt-tests changes need none:
+# every job runs a fresh pytest from the checkout.
 #
 # Separation from the developers (labgrid_lab's labgrid-dev): the agent has
 # its own account and SSH key and logs in to the exporter as itself. Its
@@ -10,9 +18,11 @@
   ansible.builtin.assert:
     that:
       - labgrid_agent_lab_name is defined
-      - labgrid_agent_env_file is defined
+      - labgrid_agent_secrets_dir is defined or labgrid_agent_env_file is defined
       - labgrid_agent_pool is defined
-    fail_msg: "Set labgrid_agent_lab_name, labgrid_agent_env_file and labgrid_agent_pool (openwrtci's lab.yml does)"
+    fail_msg: >-
+      Set labgrid_agent_lab_name, labgrid_agent_pool and
+      labgrid_agent_secrets_dir (or labgrid_agent_env_file); see inventory.yaml
     quiet: true
 
 - name: Check the lab's token file exists on the controller
@@ -23,11 +33,19 @@
   become: false
   failed_when: not _agent_env_stat.stat.exists
 
+- name: Check an OpenWrt lab host runs no QEMU platforms
+  ansible.builtin.assert:
+    that: not _agent_qemu
+    fail_msg: QEMU platforms aren't supported on OpenWrt lab hosts (docs/openwrt-lab-host.md)
+    quiet: true
+  when: _agent_openwrt
+
 - name: Install packages
   ansible.builtin.apt:
     name: "{{ labgrid_agent_packages + (labgrid_agent_qemu_packages if _agent_qemu else []) }}"
     update_cache: true
     cache_valid_time: 3600
+  when: not _agent_openwrt
 
 - name: Install uv
   ansible.builtin.shell: >-
@@ -37,6 +55,7 @@
   args:
     creates: "{{ uv_install_dir }}/uv"
     executable: /bin/bash
+  when: not _agent_openwrt
 
 # Also created by labgrid_lab; QEMU-only labs don't run that role
 - name: Create the groups the agent joins
@@ -45,15 +64,24 @@
     system: true
   loop: "{{ labgrid_agent_groups }}"
 
+# Its own primary group (OpenWrt's useradd doesn't create one)
+- name: Create the agent's group
+  ansible.builtin.group:
+    name: "{{ labgrid_agent_user }}"
+    system: true
+
 - name: Create the agent account
   ansible.builtin.user:
     name: "{{ labgrid_agent_user }}"
+    group: "{{ labgrid_agent_user }}"
     system: true
-    shell: /bin/bash
+    shell: "{{ '/bin/ash' if _agent_openwrt else '/bin/bash' }}"
     create_home: true
     # exactly these groups (anything granted by hand is dropped)
     groups: "{{ labgrid_agent_groups + (['kvm'] if _agent_qemu else []) }}"
     append: false
+  # its home for the procd service (procd sets no HOME)
+  register: _agent_account
 
 - name: Keep the agent's home private
   ansible.builtin.file:
@@ -99,17 +127,35 @@
       loop: [/etc/ssh/ssh_host_ed25519_key.pub, /etc/ssh/ssh_host_ecdsa_key.pub, /etc/ssh/ssh_host_rsa_key.pub]
       register: _host_keys
       failed_when: false
+      when: not _agent_openwrt
+
+    # dropbear keeps private keys only; dropbearkey -y prints the public key
+    - name: Read this host's SSH host keys (dropbear)
+      ansible.builtin.shell: |
+        for t in ed25519 ecdsa rsa; do
+          f=/etc/dropbear/dropbear_${t}_host_key
+          [ -f "$f" ] && dropbearkey -y -f "$f" | grep -E '^(ssh-|ecdsa-)'
+        done
+        true
+      register: _dropbear_keys
+      changed_when: false
+      when: _agent_openwrt
 
     - name: Trust this host's SSH host keys
       ansible.builtin.copy:
         dest: "~{{ labgrid_agent_user }}/.ssh/known_hosts"
         content: |
-          {% for key in _host_keys.results if key.content is defined %}
-          {{ labgrid_agent_exporter_host }},localhost {{ (key.content | b64decode).split()[:2] | join(' ') }}
+          {% for key in _keys %}
+          {{ labgrid_agent_exporter_host }},localhost {{ key.split()[:2] | join(' ') }}
           {% endfor %}
         owner: "{{ labgrid_agent_user }}"
         group: "{{ labgrid_agent_user }}"
         mode: "0644"
+      vars:
+        _keys: >-
+          {{ _dropbear_keys.stdout_lines if _agent_openwrt else
+             _host_keys.results | selectattr('content', 'defined') | map(attribute='content')
+             | map('b64decode') | list }}
 
     - name: Remove the old SSH config (it logged in as labgrid-dev)
       ansible.builtin.file:
@@ -174,6 +220,20 @@
       # Managed by Ansible (openwrt-tests, role labgrid_agent): artifacts older than {{ labgrid_agent_artifacts_max_age }}
       e {{ labgrid_agent_state_dir }}/artifacts - - - {{ labgrid_agent_artifacts_max_age }}
     mode: "0644"
+  when: not _agent_openwrt
+
+# No systemd-tmpfiles on OpenWrt: cron, files only (labgrid_agent_artifacts_max_age in days)
+- name: Clean up old artifacts (cron)
+  ansible.builtin.cron:
+    name: labgrid-agent artifacts
+    # BusyBox crond (OpenWrt lab hosts) rejects @daily
+    minute: "0"
+    hour: "4"
+    job: >-
+      find {{ labgrid_agent_state_dir }}/artifacts -type f
+      -mtime +{{ labgrid_agent_artifacts_max_age | regex_replace('d$', '') }}
+      -exec rm -f {} \;
+  when: _agent_openwrt
 
 # The agent logs to the regular system journal (journalctl -u
 # labgrid-agent). Earlier versions used their own journal namespace; remove
@@ -183,11 +243,13 @@
     path: /etc/systemd/journald@labgrid-agent.conf
     state: absent
   notify: Stop the agent's old journal
+  when: not _agent_openwrt
 
 - name: Check out openwrt-tests and the agent
   ansible.builtin.git:
     repo: "{{ item.repo }}"
     dest: "{{ labgrid_agent_dir }}/{{ item.name }}"
+    force: true
     version: "{{ item.version }}"
   loop:
     - {name: openwrt-tests, repo: "{{ labgrid_agent_tests_repo }}", version: "{{ labgrid_agent_tests_version }}"}
@@ -202,19 +264,22 @@
   loop: [openwrt-tests, kernelci-labgrid]
   become: true
   become_user: "{{ labgrid_agent_user }}"
+  # OpenWrt: uv's musl Python (in the agent's home), as the procd service uses
+  environment: "{{ {'UV_PYTHON_PREFERENCE': 'only-managed', 'UV_PYTHON': labgrid_agent_openwrt_python} if _agent_openwrt else {} }}"
   when: _checkouts is changed
   changed_when: true
   tags: agent-code
 
-- name: Install the lab's tokens
-  ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.file', labgrid_agent_env_file) }}\n"
-    dest: "{{ labgrid_agent_config_dir }}/env"
-    owner: root
-    group: "{{ labgrid_agent_user }}"
-    mode: "0640"
-  no_log: true
+- name: Restart the agent with its new code
+  ansible.builtin.debug:
+    msg: kernelci-labgrid changed, draining the agent
+  changed_when: true
+  when: _checkouts.results | selectattr('item.name', 'eq', 'kernelci-labgrid') | selectattr('changed') | list | length > 0
+  notify: Drain labgrid-agent
+  tags: agent-code
 
+# The agent reads only its TOML file: lab name, URLs and tokens go there,
+# taken from openwrtci's lab secrets on the controller
 - name: Install the agent's config file
   ansible.builtin.template:
     src: labgrid-agent.toml.j2
@@ -222,25 +287,90 @@
     owner: root
     group: "{{ labgrid_agent_user }}"
     mode: "0640"
+  vars:
+    _agent_secrets:
+      KCI_API_URL: "{{ lookup('ansible.builtin.ini', 'KCI_API_URL', file=labgrid_agent_env_file, type='properties') }}"
+      LAB_API_TOKEN: "{{ lookup('ansible.builtin.ini', 'LAB_API_TOKEN', file=labgrid_agent_env_file, type='properties') }}"
+      KCI_STORAGE_URL: "{{ lookup('ansible.builtin.ini', 'KCI_STORAGE_URL', file=labgrid_agent_env_file, type='properties') }}"
+      LAB_STORAGE_TOKEN: "{{ lookup('ansible.builtin.ini', 'LAB_STORAGE_TOKEN', file=labgrid_agent_env_file, type='properties') }}"
+  no_log: true
+  notify: Drain labgrid-agent
+
+- name: Remove the old token file (the tokens are in config.toml now)
+  ansible.builtin.file:
+    path: "{{ labgrid_agent_config_dir }}/env"
+    state: absent
 
 - name: Remove the old per-device health check settings
   ansible.builtin.file:
     path: "{{ labgrid_agent_config_dir }}/health_checks"
     state: absent
 
-- name: Install the systemd service and timer
-  ansible.builtin.template:
-    src: "{{ item }}.j2"
-    dest: /etc/systemd/system/{{ item }}
-    mode: "0644"
-  loop: [labgrid-agent.service, labgrid-agent.timer]
-  notify: Reload systemd
+- name: Run the agent with systemd
+  when: not _agent_openwrt
+  block:
+    # Earlier versions ran one poll per timer run (--once), which waited for
+    # all of its jobs: a long job held up every other one. Let a running poll
+    # finish (its jobs) rather than kill it, then drop the timer.
+    - name: Look for the old poll timer
+      ansible.builtin.stat:
+        path: /etc/systemd/system/labgrid-agent.timer
+      register: _agent_timer
 
-- name: Apply systemd changes now
-  ansible.builtin.meta: flush_handlers
+    - name: Replace the old poll timer
+      when: _agent_timer.stat.exists
+      block:
+        - name: Stop the old poll timer
+          ansible.builtin.systemd_service:
+            name: labgrid-agent.timer
+            state: stopped
+            enabled: false
 
-- name: Enable the timer
-  ansible.builtin.systemd_service:
-    name: labgrid-agent.timer
-    enabled: true
-    state: started
+        - name: Wait for a running poll to finish
+          ansible.builtin.command: systemctl is-active labgrid-agent.service
+          register: _agent_active
+          changed_when: false
+          failed_when: false
+          until: _agent_active.rc != 0
+          retries: "{{ (labgrid_agent_drain_timeout / 30) | int }}"
+          delay: 30
+
+        - name: Remove the old poll timer
+          ansible.builtin.file:
+            path: /etc/systemd/system/labgrid-agent.timer
+            state: absent
+          notify: Reload systemd
+
+    - name: Install the systemd service
+      ansible.builtin.template:
+        src: labgrid-agent.service.j2
+        dest: /etc/systemd/system/labgrid-agent.service
+        mode: "0644"
+      notify: [Reload systemd, Drain labgrid-agent]
+
+    - name: Apply systemd changes now
+      ansible.builtin.meta: flush_handlers
+
+    - name: Start and enable the agent
+      ansible.builtin.systemd_service:
+        name: labgrid-agent.service
+        enabled: true
+        state: started
+
+# A restart ends the running jobs (they go back to the queue): only when the
+# service itself changed. Code, config and tokens apply through a drain.
+- name: Run the agent with procd
+  when: _agent_openwrt
+  block:
+    - name: Install the procd service
+      ansible.builtin.template:
+        src: labgrid-agent.init.j2
+        dest: /etc/init.d/labgrid-agent
+        mode: "0755"
+      notify: Restart labgrid-agent (procd)
+
+    - name: Start and enable the agent
+      community.general.openwrt_init:
+        name: labgrid-agent
+        state: started
+        enabled: true

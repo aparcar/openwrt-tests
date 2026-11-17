@@ -1,22 +1,27 @@
-# Managed by Ansible (openwrt-tests, role labgrid_agent). One poll per run: claim available jobs for
-# this lab's platforms, run them with openwrt-tests, report back. Hardware
-# platforms come from the lab's labgrid-coordinator (device=<platform> place
-# tags); only qemu_* platforms are passed. QEMU-only labs run without a
-# coordinator (--coordinator=). Health checks of all platforms (unless the
-# lab sets health_checks: false; settings in {{ labgrid_agent_config_dir }}/config.toml)
-# run when due.
+# Managed by Ansible (openwrt-tests, role labgrid_agent). The agent polls every
+# {{ labgrid_agent_poll_interval }}s and runs claimed jobs and due health checks in the background, so a
+# long job doesn't hold up the others. Hardware platforms come from the lab's
+# labgrid-coordinator (device=<platform> place tags); only qemu_* platforms
+# are passed. QEMU-only labs run without a coordinator (--coordinator=).
+# Health checks of all platforms (unless the lab sets health_checks: false;
+# settings in {{ labgrid_agent_config_dir }}/config.toml) run when due.
+#
+# `systemctl reload` drains: no new jobs, the agent exits once the running
+# ones are done and systemd starts it again (new code, config, tokens).
+# `systemctl stop`/`restart` stops at once: running jobs go back to the queue.
 [Unit]
 Description=OpenWrt CI labgrid-agent ({{ labgrid_agent_lab_name }})
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=oneshot
+Type=simple
 User={{ labgrid_agent_user }}
 WorkingDirectory={{ labgrid_agent_dir }}/kernelci-labgrid
-ExecStart={{ uv_install_dir }}/uv run --project {{ labgrid_agent_dir }}/kernelci-labgrid labgrid-agent \
+# The environment's own entry point, not `uv run`: signals (SIGHUP for the
+# drain) go straight to the agent
+ExecStart={{ labgrid_agent_dir }}/kernelci-labgrid/.venv/bin/labgrid-agent \
     --config {{ labgrid_agent_config_dir }}/config.toml \
-    --env-file {{ labgrid_agent_config_dir }}/env \
     --pool {{ labgrid_agent_pool }} \
 {% if not _agent_hardware %}
     --coordinator= \
@@ -33,9 +38,16 @@ ExecStart={{ uv_install_dir }}/uv run --project {{ labgrid_agent_dir }}/kernelci
     --no-health-checks \
 {% endif %}
     --health-state-file {{ labgrid_agent_state_dir }}/health.json \
-    --once
-# A full test run can take a while; never kill a run in progress early
-TimeoutStartSec=4h
-# Tokens only via --env-file, no privilege escalation. No restrictive UMask:
+    --poll-interval {{ labgrid_agent_poll_interval }}
+ExecReload=/bin/kill -HUP $MAINPID
+# Also after a drain (exit 0)
+Restart=always
+RestartSec=10
+# Stopping cancels the running jobs: kill pytest, power off, unlock the place
+TimeoutStopSec=180
+# Tokens only in config.toml, no privilege escalation. No restrictive UMask:
 # staged firmware must stay readable for the TFTP server.
 NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

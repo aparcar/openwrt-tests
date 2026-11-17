@@ -6,10 +6,15 @@
 
 # Lab name on the CI server
 # labgrid_agent_lab_name: aparcar-lab
-# File on the Ansible controller with the lab's tokens (KEY=value lines)
-# labgrid_agent_env_file: /path/to/secrets/<server>/labs/<lab>.env
+# openwrtci's secrets directory on the Ansible controller (inventory.yaml)
+# labgrid_agent_secrets_dir: /path/to/openwrtci/ansible/secrets/<server>
 # Shared runtime the lab claims jobs from
 # labgrid_agent_pool: openwrt-labs
+
+# File on the Ansible controller with the lab's URLs and tokens (KEY=value
+# lines), written by openwrtci's server.yml --tags labs. The role copies them
+# into the agent's config.toml; the agent reads no environment.
+labgrid_agent_env_file: "{{ labgrid_agent_secrets_dir }}/labs/{{ labgrid_agent_lab_name }}.env"
 
 # --- Optional inputs --------------------------------------------------------
 
@@ -21,17 +26,25 @@ labgrid_agent_platforms: []
 labgrid_agent_health_checks: true
 # At most this many jobs at once (0: one per platform)
 labgrid_agent_max_jobs: 0
-# reset-health.yml waits this many seconds for a running poll to finish
-labgrid_agent_reset_health_timeout: 14400
+# The lab's labgrid-coordinator (empty: the agent's default)
+labgrid_agent_coordinator: ""
+# reset-health.yml waits this many seconds for the agent to pick up the reset
+# (it looks once per poll)
+labgrid_agent_reset_health_timeout: 600
+# Replacing the old poll timer waits this many seconds for its running poll
+# (and its jobs) to finish
+labgrid_agent_drain_timeout: 14400
 
 # --- Accounts and paths -----------------------------------------------------
 
 labgrid_agent_user: labgrid-agent
 # Shared with the developers (labgrid_lab role): TFTP tree, staging cache,
-# labgrid-bound-connect; plus device access for SD-mux and USB tooling
-labgrid_agent_groups: [labgrid, dialout, plugdev]
+# labgrid-bound-connect; plus device access for SD-mux and USB tooling. On
+# OpenWrt (no udev) the group labgrid also owns the serial ports and GPIOs.
+labgrid_agent_groups: "{{ ['labgrid'] if _agent_openwrt else ['labgrid', 'dialout', 'plugdev'] }}"
 labgrid_agent_dir: /opt/openwrtci-lab
-labgrid_agent_state_dir: /var/lib/labgrid-agent
+# /var is a tmpfs on OpenWrt
+labgrid_agent_state_dir: "{{ '/srv/labgrid-agent' if _agent_openwrt else '/var/lib/labgrid-agent' }}"
 labgrid_agent_config_dir: /etc/labgrid-agent
 # The exporter's hostname (labgrid-exporter --hostname): labgrid reaches the
 # exporter's resources over SSH, also on this host
@@ -46,13 +59,20 @@ labgrid_agent_version: main
 
 # --- Behaviour --------------------------------------------------------------
 
-# Seconds between polls (systemd timer, measured from the end of a run)
+# Seconds between polls (jobs and health checks run in the background)
 labgrid_agent_poll_interval: 60
 # Delete artifacts (firmware, job outputs) older than this (tmpfiles.d age)
 labgrid_agent_artifacts_max_age: 7d
 
+# Debian/Ubuntu only; on OpenWrt labgrid_lab_openwrt installs git, curl, ...
 labgrid_agent_packages: [git, curl, ca-certificates, acl, python3]
 # Only on labs with qemu_* platforms
-labgrid_agent_qemu_packages: [qemu-system-arm, qemu-system-x86, qemu-system-mips]
+# (qemu-system-misc: loongarch64, with its UEFI firmware qemu-efi-loongarch64)
+labgrid_agent_qemu_packages:
+  [qemu-system-arm, qemu-system-x86, qemu-system-mips, qemu-system-misc, qemu-efi-loongarch64]
 
-uv_install_dir: /usr/local/bin
+# labgrid_lab_openwrt installs uv in /usr/bin (dropbear's non-interactive PATH)
+uv_install_dir: "{{ '/usr/bin' if _agent_openwrt else '/usr/local/bin' }}"
+# OpenWrt: the agent's venvs run on uv's own musl Python (OpenWrt's python3 is
+# only for Ansible). Every dependency needs a prebuilt musl wheel for it.
+labgrid_agent_openwrt_python: "3.13"
