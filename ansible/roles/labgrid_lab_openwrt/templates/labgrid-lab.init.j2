@@ -25,6 +25,13 @@ start() {
 	chown root:{{ labgrid_group }} {{ labgrid_cache_dir }}
 	chmod 2775 {{ labgrid_cache_dir }}
 
+	# /dev/serial/by-id links for adapters plugged in before the hotplug
+	# script was installed (idempotent; coldplug at boot already ran it)
+	for tty in /sys/class/tty/ttyUSB* /sys/class/tty/ttyACM*; do
+		[ -e "$tty" ] || continue
+		ACTION=add DEVNAME="${tty##*/}" /bin/sh {{ labgrid_openwrt_serial_hotplug }}
+	done
+
 	for port in $PORTS; do
 		[ -e "$port" ] || { logger -t labgrid-lab "missing serial port $port"; continue; }
 		chgrp {{ labgrid_group }} "$port"

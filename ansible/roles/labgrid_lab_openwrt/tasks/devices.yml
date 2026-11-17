@@ -1,7 +1,22 @@
-# No udev on OpenWrt: the labgrid-lab init script hands the serial ports and
-# GPIOs named in exporter.yaml to the group `labgrid` at boot (exporting the
-# GPIOs, so labgrid finds them exported and leaves them alone), and recreates
-# the staging cache on the tmpfs.
+# No udev on OpenWrt: a hotplug script creates the /dev/serial/by-id links
+# udev would and gives USB serial adapters to the group `labgrid` (also on
+# replug). The labgrid-lab init script hands the serial ports and GPIOs named
+# in exporter.yaml to `labgrid` at boot (exporting the GPIOs, so labgrid finds
+# them exported and leaves them alone), and recreates the staging cache on the
+# tmpfs.
+
+- name: Create the tty hotplug directory
+  ansible.builtin.file:
+    path: "{{ labgrid_openwrt_serial_hotplug | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Install the hotplug script for /dev/serial/by-id links
+  ansible.builtin.template:
+    src: serial-by-id.hotplug.j2
+    dest: "{{ labgrid_openwrt_serial_hotplug }}"
+    mode: "0644"
+  register: _labgrid_serial_hotplug
 
 - name: Install the labgrid-lab init script
   ansible.builtin.template:
@@ -20,5 +35,5 @@
 # A oneshot: rerun it when it changed (it never toggles a GPIO's value)
 - name: Apply device permissions now
   ansible.builtin.command: /etc/init.d/labgrid-lab start
-  when: _labgrid_lab_init is changed
+  when: _labgrid_lab_init is changed or _labgrid_serial_hotplug is changed
   changed_when: true

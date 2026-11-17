@@ -43,6 +43,9 @@ labgrid_cache_max_age_days: 1
 
 labgrid_lab_data_dir: "{{ playbook_dir }}/files/exporter"
 
+# procd's hotplug-call runs /etc/hotplug.d/<subsystem>/* (sourced, so no +x)
+labgrid_openwrt_serial_hotplug: /etc/hotplug.d/tty/10-labgrid-serial-by-id
+
 # --- System -----------------------------------------------------------------
 
 # Allow only key logins in dropbear (after checking root has a key)
@@ -74,5 +77,11 @@ labgrid_openwrt_packages:
   - shadow-groupadd
   - shadow-groupmod      # ansible.builtin.group on an existing group
   - nmap-full            # test_network_security (NSE scripts need the Lua build)
+  # USB serial adapters for the DUT consoles (each pulls in kmod-usb-serial)
+  - kmod-usb-serial-ftdi     # FT232 and friends (0403:*)
+  - kmod-usb-serial-ch341    # CH340/CH341 (1a86:7523)
+  - kmod-usb-serial-cp210x   # CP210x (10c4:ea60)
+  - kmod-usb-serial-pl2303   # Prolific PL2303
+  - kmod-usb-acm             # CDC-ACM (/dev/ttyACM*)
   # No microcom: OpenWrt doesn't package it. labgrid-client console on this
   # host falls back to telnet; developers run it from their own machine.

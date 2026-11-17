@@ -1,0 +1,76 @@
+#!/bin/sh
+# Managed by Ansible (openwrt-tests, role labgrid_lab_openwrt). No udev on
+# OpenWrt: create the /dev/serial/by-id/ links udev's 60-serial.rules would
+# (usb-<vendor>_<model>_<serial>-if<NN>[-port<N>]), so exporter.yaml can name
+# USB serial adapters stably, and hand the tty to the group
+# {{ labgrid_group }} (also on replug, the labgrid-lab init script only runs at
+# boot). Called by procd's hotplug-call with ACTION and DEVNAME, and by the
+# labgrid-lab init script for adapters plugged in before this was installed.
+
+case "$DEVNAME" in
+	ttyUSB*|ttyACM*) ;;
+	*) exit 0 ;;
+esac
+
+BYID=/dev/serial/by-id
+
+# udev's ID_VENDOR/ID_MODEL/ID_SERIAL_SHORT: trim, whitespace runs to "_",
+# anything outside [A-Za-z0-9#+-.:=@_] to "_"
+clean() {
+	sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+		-e 's/[[:space:]][[:space:]]*/_/g' \
+		-e 's/[^A-Za-z0-9#+.:=@_-]/_/g'
+}
+
+remove_links() {
+	[ -d "$BYID" ] || return 0
+	for link in "$BYID"/*; do
+		[ -L "$link" ] || continue
+		[ "$(readlink "$link")" = "/dev/$DEVNAME" ] && rm -f "$link"
+	done
+}
+
+add_link() {
+	dev=$(readlink -f "/sys/class/tty/$DEVNAME/device") || return 0
+	[ -n "$dev" ] || return 0
+
+	# ttyUSB: <interface>/ttyUSBn/ttyUSBn, ttyACM: <interface>/tty/ttyACMn.
+	# Walk up to the interface (bInterfaceNumber), then the device (idVendor).
+	ifnum=""
+	port=""
+	[ -f "$dev/port_number" ] && port=$(cat "$dev/port_number")
+	d=$dev
+	while [ "$d" != "/" ] && [ -n "$d" ]; do
+		if [ -z "$ifnum" ] && [ -f "$d/bInterfaceNumber" ]; then
+			ifnum=$(cat "$d/bInterfaceNumber")
+		fi
+		[ -f "$d/idVendor" ] && break
+		d=${d%/*}
+	done
+	[ -f "$d/idVendor" ] || return 0
+
+	vendor=$(cat "$d/manufacturer" 2>/dev/null | clean)
+	[ -n "$vendor" ] || vendor=$(cat "$d/idVendor")
+	model=$(cat "$d/product" 2>/dev/null | clean)
+	[ -n "$model" ] || model=$(cat "$d/idProduct")
+	serial=$(cat "$d/serial" 2>/dev/null | clean)
+
+	name="usb-${vendor}_${model}${serial:+_$serial}-if${ifnum:-00}"
+	[ -n "$port" ] && name="$name-port$port"
+
+	mkdir -p "$BYID"
+	ln -sfn "/dev/$DEVNAME" "$BYID/$name"
+}
+
+case "$ACTION" in
+	add)
+		[ -e "/dev/$DEVNAME" ] || exit 0
+		remove_links
+		add_link
+		chgrp {{ labgrid_group }} "/dev/$DEVNAME"
+		chmod 0660 "/dev/$DEVNAME"
+		;;
+	remove)
+		remove_links
+		;;
+esac
