@@ -16,16 +16,18 @@ targets:
       - TFTPProviderDriver: {}
       - SerialDriver:
           txdelay: 0.01
-      - UBootDriver:
+      # No hush shell in this U-Boot: "$?" isn't expanded, so UBootDriver
+      # can't read return codes
+      - SmallUBootDriver:
           # "stop autoboot" appears twice (U-Boot countdown, then the boot
           # menu); only interrupt the menu, where "0" selects the U-Boot
           # console. A second "0" would be left on the "=>" command line.
-          autoboot: "U-Boot Boot Menu"
-          interrupt: "0"
+          boot_expression: "U-Boot Boot Menu"
+          boot_secret: "0"
+          boot_secret_nolf: true
           prompt: "=>"
           init_commands:
             - tftpboot
-          boot_command: bootm $loadaddr
       - ShellDriver:
           prompt: 'root@[\w()]+:[^ ]+ '
           login_prompt: Please press Enter to activate this console.
