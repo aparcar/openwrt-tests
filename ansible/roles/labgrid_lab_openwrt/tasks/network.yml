@@ -1,0 +1,35 @@
+# Replaces each section listed in labgrid_openwrt_uci as a whole; unlisted
+# sections (wan, firewall defaults, …) stay as they are. Commits only if the
+# result differs, so a rerun changes nothing.
+- name: UCI sections from labgrid_openwrt_uci
+  ansible.builtin.shell: |
+    before="$(uci export {{ item.key }})"
+    {% for section, options in item.value.items() %}
+    {% set stype, sname = section.split(' ') %}
+    uci -q delete {{ item.key }}.{{ sname }}
+    uci set {{ item.key }}.{{ sname }}={{ stype }}
+    {% for key, value in options.items() %}
+    {% if value is string or value is not iterable %}
+    uci set {{ item.key }}.{{ sname }}.{{ key }}='{{ value }}'
+    {% else %}
+    {% for v in value %}
+    uci add_list {{ item.key }}.{{ sname }}.{{ key }}='{{ v }}'
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+    if [ "$before" = "$(uci export {{ item.key }})" ]; then
+      uci revert {{ item.key }}
+      exit 0
+    fi
+    uci commit {{ item.key }}
+    echo CHANGED
+  loop: "{{ labgrid_openwrt_uci | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: _openwrt_uci
+  changed_when: "'CHANGED' in _openwrt_uci.stdout"
+  notify:
+    - Reload config (procd)
+    # dnsmasq binds the TFTP addresses at start
+    - Restart labgrid-tftp (procd)

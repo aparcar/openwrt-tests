@@ -48,6 +48,12 @@ labgrid_lab_data_dir: "{{ playbook_dir }}/files/exporter"
 # Allow only key logins in dropbear (after checking root has a key)
 labgrid_openwrt_key_only: true
 
+# UCI sections to set, per config, keyed like the file ("interface lan");
+# lists become add_list. Each listed section is replaced as a whole. Used for
+# the DUT network (docs/openwrt-lab-host.md); leave wan out, it carries the
+# host's own uplink.
+labgrid_openwrt_uci: {}
+
 labgrid_openwrt_packages:
   - python3              # Ansible, labgrid-bound-connect
   - sudo                 # Ansible become_user, labgrid-bound-connect

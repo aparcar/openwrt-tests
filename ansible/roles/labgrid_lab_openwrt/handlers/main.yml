@@ -14,6 +14,12 @@
     name: dnsmasq
     state: restarted
 
+# Before labgrid-tftp's restart (handlers run in this order), so it binds
+# the new addresses
+- name: Reload config (procd)
+  ansible.builtin.command: reload_config
+  changed_when: true
+
 - name: Restart labgrid-tftp (procd)
   community.general.openwrt_init:
     name: labgrid-tftp

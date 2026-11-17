@@ -35,3 +35,8 @@
 
 - name: TFTP
   ansible.builtin.import_tasks: tftp.yml
+
+# After TFTP: its handler restarts labgrid-tftp, which must be installed
+- name: DUT network (labgrid_openwrt_uci)
+  ansible.builtin.import_tasks: network.yml
+  tags: network
