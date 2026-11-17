@@ -28,8 +28,9 @@ targets:
         prompt: "db12x>"
         boot_secret: "tpl"
         boot_secret_nolf: true
-        init_commands:
-          - tftp 0x82000000
+        # init_commands time out after 30 s, too short for this TFTP (~100 KB/s)
+        boot_command: tftp 0x82000000; bootm 0x82000000
+        boot_timeout: 180
       UBootTFTPStrategy: {}
       SSHDriver:
         connection_timeout: 120.0
