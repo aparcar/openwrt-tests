@@ -45,8 +45,8 @@
 | 1     | ⬜ Inactive | D-Link DAP-X1860 A1 WAN (Raspberry GPIO) | ttyCH9344USB4 | BCM 9     | Vlan 109 |
 | 2     | 🟩 Active   | Aruba AP_325 WAN (PoE)                   | USB 2.2.2     |           | Vlan 110 |
 | 3     | 🟩 Active   | Enterasys WS-AP3710i WAN (PoE)           | USB 2.2.3     |           | Vlan 111 |
-| 4     | 🟩 Active   | Unifi U7-Pro-XGS WAN (PoE)               | ttyCH9344USB5 |           | Vlan 112 |
-| 5     | ⬜ Inactive | TP-Link RE650 v1 WAN (Raspberry GPIO)    | ttyCH9344USB6 | BCM 23    | Vlan 113 |
+| 4     | ⬜ Inactive | TP-Link RE650 v1 WAN (Raspberry GPIO)    | ttyCH9344USB6 | BCM 23    | Vlan 112 |
+| 5     | 🟩 Active   | Unifi U7-Pro-XGS WAN (PoE)               | ttyCH9344USB5 |           | Vlan 113 |
 | 6     | ⬜ Inactive |                                          |               |           | Vlan 114 |
 | 7     | ⬜ Inactive |                                          |               |           | Vlan 115 |
 | 8     | ⬜ Inactive |                                          |               |           | Vlan 116 |
