@@ -103,11 +103,33 @@ def band_params(*extra_features, encryptions=False):
     return params
 
 
+def radio_supports_band(ssh_command, radio, band):
+    """Whether the phy of `radio` has a channel in `band`.
+
+    shortcut: checks the whole phy, so on a multi-radio wiphy (one phy, several
+    wifi-devices with `radio`) it may pick the wrong one; check per-radio then."""
+    phy = ssh_command.run(f"iwinfo nl80211 phyname {radio}")[0]
+    if not phy:
+        return False
+    info = "\n".join(ssh_command.run(f"iw phy {phy[0].strip()} info")[0])
+    low, high = WIFI_BANDS[band]["mhz"]
+    return any(
+        low <= float(mhz) <= high for mhz in re.findall(r"\* ([\d.]+) MHz", info)
+    )
+
+
 def wifi_radio_for_band(ssh_command, band):
     """The radio (wireless.radioN) whose band is `band`, and its default
-    interface section, or (None, None)."""
+    interface section, or (None, None).
+
+    If no radio is configured for `band`, a radio whose hardware supports it:
+    dual-band radios default to their highest band (5g), so a device with two
+    of them has no 2g radio until one is switched (open_ap sets the band)."""
     config = "\n".join(ssh_command.run("uci show wireless")[0])
     radios = re.findall(rf"^wireless\.(\w+)\.band='{band}'$", config, re.MULTILINE)
+    if not radios:
+        devices = re.findall(r"^wireless\.(\w+)=wifi-device$", config, re.MULTILINE)
+        radios = [r for r in devices if radio_supports_band(ssh_command, r, band)]
     if not radios:
         return None, None
     radio = radios[0]
@@ -150,6 +172,7 @@ def open_ap(
     settings_cmds = [
         f"uci delete wireless.{radio}.disabled",
         f"uci delete wireless.{iface}.disabled",
+        f"uci set wireless.{radio}.band={band}",
         f"uci set wireless.{radio}.channel={channel or settings['channel']}",
         f"uci set wireless.{iface}.mode=ap",
         f"uci set wireless.{iface}.ssid={ssid}",
