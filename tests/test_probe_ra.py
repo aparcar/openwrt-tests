@@ -138,9 +138,10 @@ def test_odhcpd_ra_with_device_default_route(
     also in later RAs, and odhcpd logs no "No default route present".
     """
     uci.set("dhcp.lan.ra_default", "1")
+    restart_odhcpd(shell_command)
+    # after the restart: the old odhcpd still logs the warning while it stops
     marker = f"labgrid-probe-{time.time_ns()}"
     shell_command.run_check(f"logger -t labgrid-probe {marker}")
-    restart_odhcpd(shell_command)
 
     lifetimes = []
     for _ in range(3):
