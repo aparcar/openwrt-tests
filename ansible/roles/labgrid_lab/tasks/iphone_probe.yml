@@ -1,0 +1,84 @@
+# iPhone Wi-Fi probe (contrib/iphone-probe, docs/iphone-probe.md): a
+# supervised iPhone on USB at this host, driven by `iprobe` through
+# pymobiledevice3 and usbmuxd. labnet.yaml:
+#
+#   iphone_probe:
+#     udid: <UDID>   # pymobiledevice3 usbmux list
+#
+# The supervision keybag (/etc/iprobe/keybag.pem) is made by hand once, when
+# the phone is supervised; this only fixes its owner and mode.
+
+- name: Check the iPhone probe's settings
+  ansible.builtin.assert:
+    that: _iphone_probe.udid is defined
+    fail_msg: "labnet.yaml: iphone_probe needs the phone's UDID (iphone_probe: {udid: ...})"
+    quiet: true
+
+# usbmuxd's socket is open to every user, so the account needs no group
+- name: Install usbmuxd and Python venv support
+  ansible.builtin.apt:
+    name: [usbmuxd, python3-venv]
+    state: present
+
+- name: Create the iPhone probe's account
+  ansible.builtin.user:
+    name: "{{ iphone_probe_user }}"
+    shell: /bin/bash
+    create_home: true
+
+# iprobe uses pymobiledevice3's async API, which changes between releases
+- name: Install pymobiledevice3 into iprobe's venv
+  ansible.builtin.pip:
+    name: "pymobiledevice3=={{ iphone_probe_pymobiledevice3_version }}"
+    virtualenv: /opt/iprobe
+    virtualenv_command: python3 -m venv
+
+- name: Install iprobe
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../contrib/iphone-probe/iprobe.py"
+    dest: /opt/iprobe/iprobe.py
+    mode: "0644"
+
+- name: Install the iprobe command
+  ansible.builtin.copy:
+    content: |
+      #!/bin/sh
+      exec /opt/iprobe/bin/python -I /opt/iprobe/iprobe.py "$@"
+    dest: /usr/local/bin/iprobe
+    mode: "0755"
+
+# The keybag lets whoever reads it install profiles on the phone silently
+- name: Create iprobe's config directory
+  ansible.builtin.file:
+    path: /etc/iprobe
+    state: directory
+    owner: root
+    group: "{{ iphone_probe_user }}"
+    mode: "0750"
+
+- name: Install iprobe's config
+  ansible.builtin.copy:
+    content: "{{ {'udid': _iphone_probe.udid | string, 'keybag': '/etc/iprobe/keybag.pem'} | to_json }}\n"
+    dest: /etc/iprobe/iprobe.json
+    owner: root
+    group: "{{ iphone_probe_user }}"
+    mode: "0640"
+
+- name: Look for the supervision keybag
+  ansible.builtin.stat:
+    path: /etc/iprobe/keybag.pem
+  register: _iprobe_keybag
+
+- name: Let iprobe read the supervision keybag
+  ansible.builtin.file:
+    path: /etc/iprobe/keybag.pem
+    owner: root
+    group: "{{ iphone_probe_user }}"
+    mode: "0640"
+  when: _iprobe_keybag.stat.exists
+
+- name: The iPhone probe's SSH login
+  ansible.builtin.import_tasks: probe_login.yml
+  vars:
+    _probe_user: "{{ iphone_probe_user }}"
+    _probe_command: iprobe

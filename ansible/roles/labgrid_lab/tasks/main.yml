@@ -26,3 +26,10 @@
 
 - name: Devices (udev, serial drivers)
   ansible.builtin.import_tasks: devices.yml
+
+- name: iPhone Wi-Fi probe (pymobiledevice3, iprobe)
+  ansible.builtin.import_tasks: iphone_probe.yml
+  when: labnet.labs[inventory_hostname].iphone_probe is defined
+  vars:
+    _iphone_probe: "{{ labnet.labs[inventory_hostname].iphone_probe }}"
+  tags: iphone-probe
