@@ -43,16 +43,21 @@ probe: the phone has a single network configuration at a time.
 
 iPhone 7 (iOS 15.8.8) on an IgniteNet SS-W2-AC2600 (QCA9984, 5 GHz,
 channel 36): it joins open and WPA2/WPA3 mixed (`sae-mixed`, PMF on) APs
-within about 7 s, gets a lease and answers pings. It doesn't join a
-WPA3-only (`sae`) AP: auto-join finds `no scan candidate network`, with
-the profile's EncryptionType `WPA3` as well as `Any`. The cause is open.
-`test_iphone_joins[*-sae]` is marked xfail (not strict) until it's
-understood.
+within about 7 s, gets a lease and answers pings. On the mixed AP it
+authenticates with SAE and PMF, with the profile's EncryptionType `Any` as
+well as `WPA3`. It doesn't join a WPA3-only (`sae`) AP on either band:
+wifid filters it out of the scan (`Filtered networks - <ssid>`, then `no
+scan candidate network`) and never tries, so hostapd logs nothing. Ruled
+out, one change at a time: SAE-H2E (`sae_pwe=0`), PMF required
+(`ieee80211w=2` on a mixed and a WPA2 AP: joins), beacon protection
+(`beacon_prot=0`: still filtered). What's left is the AKM list with SAE
+alone. `test_iphone_joins[*-sae]` and `test_iphone_joins_wpa3_without_h2e`
+are marked xfail (not strict).
 
 PMF on a mixed AP doesn't prove SAE: a WPA2 client that supports PMF
-negotiates it too. Which AKM was used only shows on the DUT with
-`hostapd_cli -i <ap> sta <mac>` (package `hostapd-utils`, not in default
-images): `000fac-8` is SAE, `000fac-2` PSK.
+negotiates it too. hostapd's debug log shows the AKM: with the radio's
+`log_level` at 1, an SAE client's lines mention `SAE`, a WPA2 one's
+`open system` authentication.
 
 ## Phone
 
@@ -84,7 +89,8 @@ Set it up once, with the phone in reach:
 4. Settings → Display & Brightness → Auto-Lock: **Never**. A sleeping phone
    drops off Wi-Fi and stops answering pings.
 5. Accept "Trust this computer" when the host pairs for the first time
-   (`sudo -u iprobe iprobe info`).
+   (`sudo -u iprobe iprobe info`). Under sudo pymobiledevice3 keeps its
+   state in `SUDO_USER`'s home; the `iprobe` wrapper unsets it.
 6. Remove any other Wi-Fi network the phone knows, so it only ever joins
    the test AP.
 

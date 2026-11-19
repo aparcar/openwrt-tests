@@ -117,23 +117,25 @@ class PhoneBed:
         target,
         band,
         encryption="psk2",
-        sta_encryption="any",
+        sta_encryption=None,
         key=AP_KEY,
         sta_key=None,
         options=None,
         hidden=False,
     ):
         """Open an AP on the DUT (open_ap(): `encryption`, `key`, `options`)
-        and have the phone join it with `sta_encryption` (default "any": the
-        phone picks, like a user typing the password) and `sta_key`
-        (default: the AP's). Returns at once; wait() for it."""
+        and have the phone join it with `sta_encryption` and `sta_key`
+        (default: the AP's). iprobe maps the AP's encryption to the
+        profile's EncryptionType a user's phone ends up with: WPA2, WPA3 on
+        a WPA3-only AP, Any on a transition AP. Returns at once; wait() for
+        it."""
         if band not in PHONE_BANDS:
             pytest.skip(f"the iPhone probe has no {band} radio")
         dut_dhcp_pool(ssh_command)
         ssid = bed_ssid(target, band)
         open_ap(ssh_command, band, encryption, ssid=ssid, key=key, options=options)
-        if encryption == "none":
-            sta_encryption = "none"
+        if encryption == "none" or sta_encryption is None:
+            sta_encryption = encryption
         reply = phone.join(
             ssid,
             sta_encryption,

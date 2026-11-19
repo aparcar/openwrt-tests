@@ -91,11 +91,12 @@ and refuses everything else; no terminal, no forwarding. The playbook
 checks with `sshd -T` that only `aprobe` gets the forced command.
 
 Once, with the phone in front of you: adb keeps its key in `~aprobe/.android/`,
-so the phone must allow it.
+so the phone must allow it. `-H`: without it sudo may keep your `HOME`, and
+adb would use your key instead.
 
 ```shell
-sudo -u aprobe adb devices     # accept "Allow USB debugging?", always allow
-sudo -u aprobe aprobe info
+sudo -H -u aprobe adb devices     # accept "Allow USB debugging?", always allow
+sudo -H -u aprobe aprobe info
 ```
 
 One adb server serves the host (port 5037), started by whoever runs adb

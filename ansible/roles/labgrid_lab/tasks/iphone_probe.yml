@@ -20,6 +20,13 @@
     name: [usbmuxd, python3-venv]
     state: present
 
+# udev starts usbmuxd when an iPhone is plugged in; a phone that was there
+# before usbmuxd was installed never triggered it
+- name: Start usbmuxd for an iPhone already plugged in
+  ansible.builtin.systemd_service:
+    name: usbmuxd
+    state: started
+
 - name: Create the iPhone probe's account
   ansible.builtin.user:
     name: "{{ iphone_probe_user }}"
@@ -43,6 +50,9 @@
   ansible.builtin.copy:
     content: |
       #!/bin/sh
+      # Under sudo, pymobiledevice3 keeps its state in SUDO_USER's home and
+      # chowns it to SUDO_UID; iprobe's state belongs to the user running it
+      unset SUDO_USER SUDO_UID SUDO_GID
       exec /opt/iprobe/bin/python -I /opt/iprobe/iprobe.py "$@"
     dest: /usr/local/bin/iprobe
     mode: "0755"

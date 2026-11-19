@@ -14,8 +14,9 @@ roams and sleeps differently.
 - iPhone 7 or newer: 802.11ac, 2.4 and 5 GHz, WPA3. Each test runs per
   band the target
   declares (wifi-2g, wifi-5g).
-- The phone joins through a configuration profile with encryption "Any",
-  as when a user types the password, unless a test pins it.
+- The phone joins through a configuration profile with the AP's
+  encryption (WPA2, WPA3, or Any on a transition AP), unless a test pins
+  it.
 
 Join and lease times go to record_property.
 """
@@ -43,19 +44,18 @@ REJECT_SECONDS = 45
 WRONG_KEY = "not-the-key-42"
 AP_ENCRYPTIONS = ["none", "psk2", "psk-mixed", "sae-mixed", "sae"]
 # Seen with an iPhone 7 (iOS 15.8) on an IgniteNet SS-W2-AC2600 (QCA9984,
-# 5 GHz): it joins sae-mixed with PMF, but on a WPA3-only AP its auto-join
-# finds "no scan candidate network" and never tries, with EncryptionType
-# WPA3 as well as Any. Cause unknown (iOS 15, or what hostapd's WPA3-only
-# setup adds); not strict, so a pass shows up as XPASS.
-KNOWN = {
-    "sae": [
-        pytest.mark.xfail(
-            reason="iPhone 7 / iOS 15 doesn't consider a WPA3-only AP a "
-            "join candidate (cause unknown)",
-            strict=False,
-        )
-    ],
-}
+# 2.4 and 5 GHz): on sae-mixed it authenticates with SAE and PMF (hostapd
+# debug log), but wifid filters a WPA3-only AP out of its scan ("Filtered
+# networks - <ssid>", then "no scan candidate network") and never tries.
+# Not H2E (sae_pwe=0), PMF required (ieee80211w=2 on sae-mixed and psk2
+# joins) or beacon protection (beacon_prot=0); what's left is the AKM list
+# with SAE alone. Not strict, so a pass shows up as XPASS.
+WPA3_ONLY_XFAIL = pytest.mark.xfail(
+    reason="iPhone 7 / iOS 15 does SAE on a WPA2/WPA3 AP but filters a "
+    "WPA3-only AP out of its join candidates",
+    strict=False,
+)
+KNOWN = {"sae": [WPA3_ONLY_XFAIL]}
 
 
 def per_band(values, known=None):
@@ -101,7 +101,7 @@ def test_iphone_joins(
     On a WPA3-only AP the phone must use PMF (WPA3 requires it). On a
     WPA2/WPA3 mixed AP PMF is optional and is recorded: on there doesn't
     prove SAE, since a WPA2 client that supports PMF negotiates it too.
-    The DUT can't tell which (no hostapd_cli in default images).
+    Only hostapd's debug log tells which (docs/iphone-probe.md).
     """
     bed = PhoneBed.start(ssh_command, iphone_probe, target, band, encryption)
     state = bed.wait()
@@ -114,6 +114,32 @@ def test_iphone_joins(
         assert state["mfp"], f"WPA3 client without MFP: {bed.dut_client()}"
     if encryption == "sae-mixed":
         record_property("iphone_sae_mixed_pmf", state["mfp"])
+
+
+@WPA3_ONLY_XFAIL
+@pytest.mark.parametrize("band", BANDS)
+def test_iphone_joins_wpa3_without_h2e(
+    ssh_command, iphone_probe, target, band, record_property
+):
+    """
+    For each band, an iPhone joins a WPA3-only AP with SAE-H2E off
+    (sae_pwe=0, hunting and pecking only), gets an address and the device
+    reaches it. If it fails, the setting OpenWrt offers for clients that
+    trip over its H2E default (sae_pwe=2) locks iPhones out too; iPhones
+    before the 11, and iOS before 16, have no H2E (Apple Platform Security,
+    WPA3 R3 features).
+    """
+    bed = PhoneBed.start(
+        ssh_command, iphone_probe, target, band, "sae", options={"sae_pwe": 0}
+    )
+    # An image whose wifi-scripts ignore uci sae_pwe would test the default
+    hostapd = ssh_command.run_check("grep -h '^sae_pwe=' /var/run/hostapd-*.conf")
+    assert "sae_pwe=0" in hostapd, f"sae_pwe not applied: {hostapd}"
+    state = bed.wait()
+    record_property("iphone_join_s", state["after_s"])
+    assert_joined(bed, state)
+    assert_ping(bed, state["ip"])
+    assert state["mfp"], f"WPA3 client without MFP: {bed.dut_client()}"
 
 
 @pytest.mark.parametrize("band,encryption", per_band(["psk2", "sae"]))

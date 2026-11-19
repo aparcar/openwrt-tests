@@ -30,7 +30,8 @@ WIFI_BANDS = {
 # ciphers, which depend on the cipher option, so it matches any PSK.
 IWINFO_ENCRYPTION = {
     "none": r"Encryption: none",
-    "psk2": r"Encryption: (WPA2 PSK|WPA-PSK) \(CCMP\)",
+    # With PMF on (ieee80211w) OpenWrt adds WPA-PSK-SHA256
+    "psk2": r"Encryption: (WPA2 PSK|WPA-PSK)( / WPA-PSK-SHA256)? \(CCMP\)",
     "psk-mixed": r"Encryption: (mixed WPA/WPA2 PSK|WPA2? PSK|WPA-PSK) \(",
     "sae": r"Encryption:.*\bSAE\b.*\(CCMP\)",
     "sae-mixed": r"Encryption:.*(PSK.*\bSAE\b|\bSAE\b.*PSK)",
@@ -39,7 +40,7 @@ IWINFO_ENCRYPTION = {
 AP_KEY = "openwrt4all"
 # wifi-iface options open_ap(options=...) may set. Every open_ap() clears
 # them first, so they don't carry over from an earlier test.
-AP_OPTIONS = ("hidden", "isolate", "maxassoc", "sae_pwe")
+AP_OPTIONS = ("hidden", "isolate", "maxassoc", "sae_pwe", "ieee80211w", "beacon_prot")
 WIRELESS_BACKUP = "/tmp/wireless.pre-test"
 # How long wifi_reset waits for netifd to finish bringing the radios down/up
 WIFI_SETTLE_TIMEOUT = 30
