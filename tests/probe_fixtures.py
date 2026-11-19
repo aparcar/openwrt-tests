@@ -208,8 +208,9 @@ def hold_probe_place(env, target, tags, driver, name, needs=()):
 
     Skips without a coordinator (QEMU) or if no place has `tags`. `target`
     (the DUT's) has opened the coordinator session through its RemotePlace.
-    Used by `probe`, wifi_probe_fixtures.py's `wifi_probe` and
-    iphone_probe_fixtures.py's `iphone_probe`.
+    Used by `probe`, wifi_probe_fixtures.py's `wifi_probe`,
+    iphone_probe_fixtures.py's `iphone_probe` and android_probe_fixtures.py's
+    `android_probe`.
     """
     manager = RemotePlaceManager.get()
     if manager.session is None:
