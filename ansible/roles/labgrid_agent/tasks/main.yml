@@ -121,6 +121,19 @@
         key: "{{ _agent_key.public_key }}"
         comment: "{{ labgrid_agent_user }} (kernelci agent)"
 
+    # The accounts come from labgrid_lab (tasks/<probe>_probe.yml), which
+    # OpenWrt lab hosts don't run
+    - name: Let the agent log in to the phone probes
+      ansible.posix.authorized_key:
+        user: "{{ item.user }}"
+        key: "{{ _agent_key.public_key }}"
+        comment: "{{ labgrid_agent_user }} (kernelci agent)"
+      loop:
+        - {probe: iphone_probe, user: "{{ labgrid_agent_iphone_probe_user }}"}
+      when:
+        - not _agent_openwrt
+        - labnet.labs[inventory_hostname][item.probe] is defined
+
     - name: Read this host's SSH host keys
       ansible.builtin.slurp:
         src: "{{ item }}"

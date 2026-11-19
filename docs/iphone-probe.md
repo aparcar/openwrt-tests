@@ -67,11 +67,12 @@ Set it up once, with the phone in reach:
 1. Update to the latest iOS it gets (iPhone 7: 15.8.x), then erase the phone
    (Settings → General → Transfer or Reset → Erase All Content and
    Settings) and leave it at the first setup screen.
-2. On the host, plug it in and create the keybag, then supervise the phone:
+2. Deploy the host first (see Host below), then plug the phone in, create
+   the keybag and supervise the phone, as root on the host:
 
    ```shell
-   pymobiledevice3 profile create-keybag /etc/iprobe/keybag.pem openwrt-tests
-   pymobiledevice3 profile supervise openwrt-tests --keybag /etc/iprobe/keybag.pem
+   /opt/iprobe/bin/python -m pymobiledevice3 profile create-keybag /etc/iprobe/keybag.pem openwrt-tests
+   /opt/iprobe/bin/python -m pymobiledevice3 profile supervise openwrt-tests --keybag /etc/iprobe/keybag.pem
    ```
 
    `supervise` activates the phone if needed and skips most setup screens.
@@ -83,7 +84,7 @@ Set it up once, with the phone in reach:
 4. Settings → Display & Brightness → Auto-Lock: **Never**. A sleeping phone
    drops off Wi-Fi and stops answering pings.
 5. Accept "Trust this computer" when the host pairs for the first time
-   (`pymobiledevice3 lockdown info`).
+   (`sudo -u iprobe iprobe info`).
 6. Remove any other Wi-Fi network the phone knows, so it only ever joins
    the test AP.
 
@@ -97,52 +98,57 @@ makes joins slower but still within `JOIN_TIMEOUT` on channel 36.
 
 ## Host
 
-Any Linux host in the lab with USB and SSH, normally the lab host itself:
+The phone hangs off the lab host. Give the lab its UDID
+(`pymobiledevice3 usbmux list`, e.g. `uv run --extra iphone pymobiledevice3
+usbmux list` in a checkout on a laptop) in `labnet.yaml`:
 
-```shell
-apt install usbmuxd
-uv venv /opt/iprobe
-uv pip install --python /opt/iprobe pymobiledevice3
-install -m 0755 contrib/iphone-probe/iprobe.py /opt/iprobe/iprobe.py
+```yaml
+labs:
+  labgrid-<lab>:
+    iphone_probe:
+      udid: <UDID>
 ```
 
-pymobiledevice3 is the `iphone` extra in openwrt-tests' `pyproject.toml`,
-not a default dependency: the tests don't import it, only `iprobe` does. In
-an openwrt-tests checkout, `uv sync --extra iphone` installs it into its
-venv (e.g. to try `iprobe` on a laptop with the phone attached).
+and deploy the lab (`uv run ansible-playbook lab.yml --limit labgrid-<lab>`,
+or `--tags iphone-probe,export` for this alone). The `labgrid_lab` role
+installs `usbmuxd`, pymobiledevice3 (pinned,
+`iphone_probe_pymobiledevice3_version`: `iprobe` uses its async API, which
+changes between releases) in `/opt/iprobe`, `/usr/local/bin/iprobe`,
+`/etc/iprobe/iprobe.json`, the `iprobe` user, and creates the place.
+`/etc/iprobe` and the keybag are readable by `iprobe` only (and root): the
+keybag lets whoever has it install profiles on the phone. usbmuxd's socket
+is open to all users, so `iprobe` needs no group. Debian lab hosts only:
+`labgrid_lab_openwrt` doesn't set the probe up.
 
-`/usr/local/bin/iprobe`:
+pymobiledevice3 is also the `iphone` extra in openwrt-tests'
+`pyproject.toml`, not a default dependency: the tests don't import it, only
+`iprobe` does. `uv sync --extra iphone` installs it into a checkout's venv
+(e.g. to try `iprobe` on a laptop with the phone attached).
 
-```sh
-#!/bin/sh
-exec /opt/iprobe/bin/python -I /opt/iprobe/iprobe.py "$@"
-```
-
-`/etc/iprobe/iprobe.json` (the UDID is shown by `pymobiledevice3 usbmux list`):
-
-```json
-{"udid": "<UDID>", "keybag": "/etc/iprobe/keybag.pem"}
-```
-
-Create an `iprobe` user with the lab's SSH keys that can read the config
-and keybag. usbmuxd's socket is open to all users, so no sudo is needed.
-Pin the pymobiledevice3 version once it works: `iprobe` uses its async
-Python API (`create_using_usbmux`, `MobileConfigService`), which has
-changed between releases.
+Who may log in as `iprobe`: the keys that log in as `labgrid-dev` (copied on
+every run; a key removed there must be removed from
+`~iprobe/.ssh/authorized_keys` by hand) and the agent's key (the
+`labgrid_agent` role). That login runs nothing but `iprobe`: sshd forces
+`/usr/local/sbin/probe-ssh iprobe` (`contrib/probe-ssh/probe_ssh.py`) on it,
+which runs `iprobe <args>` or labgrid's keepalive `cat`, without a shell,
+and refuses everything else; no terminal, no forwarding. The playbook
+checks with `sshd -T` that only `iprobe` gets the forced command.
 
 ## labgrid
 
-The phone is a place of its own, tagged `role=iphone-probe`. Set
-`iphone_probe: true` for the lab in `labnet.yaml`, and the `labgrid_lab`
-role creates the place. In the exporter config:
+The phone is a place of its own, tagged `role=iphone-probe`. In the
+exporter config (`ansible/files/exporter/labgrid-<lab>/exporter.yaml`):
 
 ```yaml
 labgrid-<lab>-iphone-probe:
   NetworkService:
-    address: <host the phone is plugged into>
+    address: localhost
     port: 22
     username: iprobe
 ```
+
+`localhost`: the exporter's own sshd. The agent trusts its host keys under
+that name.
 
 ## Running the tests
 
@@ -152,3 +158,4 @@ tests/.venv/bin/pytest -c tests/pyproject.toml tests/tests/test_wifi_iphone.py \
 ```
 
 Without a `role=iphone-probe` place, or on QEMU, the module is skipped.
+`contrib/probe-ssh/test_probe_ssh.py` checks the login's command filter.

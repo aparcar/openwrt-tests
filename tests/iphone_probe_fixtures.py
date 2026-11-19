@@ -4,7 +4,7 @@ docs/iphone-probe.md).
 `iphone_probe`: the IPhoneProbeDriver, reserved and locked for the test
 module that uses it, like `wifi_probe`: a place of its own,
 labgrid-<lab>-iphone-probe, tag role=iphone-probe (labnet.yaml
-`iphone_probe: true`). Skips on QEMU and in labs without one. The phone
+`iphone_probe: {udid: ...}`). Skips on QEMU and in labs without one. The phone
 leaves its network before and after the module.
 
 `PhoneBed`: one AP on the DUT and the phone on it:

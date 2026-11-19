@@ -1,0 +1,57 @@
+# The SSH login of a phone probe's account (_probe_user) that runs its probe
+# CLI (_probe_command in /usr/local/bin) and nothing else: sshd forces
+# probe-ssh (contrib/probe-ssh) on it. Behind that, the keys that log in as
+# labgrid-dev may log in as _probe_user too; the labgrid_agent role adds the
+# agent's key.
+
+- name: Install probe-ssh, the only command a probe's login runs
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../contrib/probe-ssh/probe_ssh.py"
+    dest: /usr/local/sbin/probe-ssh
+    mode: "0755"
+
+# A Match block in an included file ends with the file
+- name: Restrict {{ _probe_user }}'s SSH login to {{ _probe_command }}
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible (openwrt-tests): this login runs {{ _probe_command }} only
+      Match User {{ _probe_user }}
+          ForceCommand /usr/local/sbin/probe-ssh {{ _probe_command }}
+          DisableForwarding yes
+          PermitTTY no
+    dest: /etc/ssh/sshd_config.d/50-{{ _probe_user }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload sshd
+
+# The effective config: the forced command reaches the probe's user and no
+# one else (a Match block that leaked past its file would capture the rest
+# of sshd_config)
+- name: Check sshd forces probe-ssh on {{ _probe_user }} only
+  ansible.builtin.command: /usr/sbin/sshd -T -C user={{ item.user }},host=localhost,addr=127.0.0.1
+  loop:
+    - {user: "{{ _probe_user }}", forced: true}
+    - {user: root, forced: false}
+    - {user: "{{ labgrid_dev_user }}", forced: false}
+  register: _sshd_effective
+  changed_when: false
+  failed_when: >-
+    _sshd_effective.rc != 0
+    or ('/usr/local/sbin/probe-ssh ' ~ _probe_command in _sshd_effective.stdout) != item.forced
+
+- name: Read the developers' SSH keys
+  ansible.builtin.slurp:
+    src: "~{{ labgrid_dev_user }}/.ssh/authorized_keys"
+  register: _labgrid_dev_keys
+  failed_when: false
+
+# Not exclusive: keeps the agent's key (labgrid_agent role) and keys added by
+# hand. shortcut: a key removed from labgrid-dev stays here, remove it by
+# hand too; make this exclusive (with the agent's key) if that bites.
+- name: Let the developers' keys run {{ _probe_command }}
+  ansible.posix.authorized_key:
+    user: "{{ _probe_user }}"
+    key: "{{ _labgrid_dev_keys.content | b64decode }}"
+  when: (_labgrid_dev_keys.content | default('') | b64decode | trim) != ''
