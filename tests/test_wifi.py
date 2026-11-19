@@ -39,7 +39,7 @@ IWINFO_ENCRYPTION = {
 AP_KEY = "openwrt4all"
 # wifi-iface options open_ap(options=...) may set. Every open_ap() clears
 # them first, so they don't carry over from an earlier test.
-AP_OPTIONS = ("hidden", "isolate", "maxassoc")
+AP_OPTIONS = ("hidden", "isolate", "maxassoc", "sae_pwe")
 WIRELESS_BACKUP = "/tmp/wireless.pre-test"
 # How long wifi_reset waits for netifd to finish bringing the radios down/up
 WIFI_SETTLE_TIMEOUT = 30

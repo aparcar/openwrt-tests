@@ -33,3 +33,10 @@
   vars:
     _iphone_probe: "{{ labnet.labs[inventory_hostname].iphone_probe }}"
   tags: iphone-probe
+
+- name: Android Wi-Fi probe (adb, aprobe)
+  ansible.builtin.import_tasks: android_probe.yml
+  when: labnet.labs[inventory_hostname].android_probe is defined
+  vars:
+    _android_probe: "{{ labnet.labs[inventory_hostname].android_probe }}"
+  tags: android-probe

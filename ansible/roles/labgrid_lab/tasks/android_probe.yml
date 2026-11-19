@@ -1,0 +1,60 @@
+# Android Wi-Fi probe (contrib/android-probe, docs/android-probe.md): a rooted
+# phone on USB at this host, driven by `aprobe` over adb. labnet.yaml:
+#
+#   android_probe:
+#     serial: 11201FDD40021Q   # adb devices
+#
+# The tests log in over SSH (the place's NetworkService) as
+# android_probe_user and run aprobe, and nothing else (probe_login.yml).
+
+- name: Check the Android probe's settings
+  ansible.builtin.assert:
+    that: _android_probe.serial is defined
+    fail_msg: "labnet.yaml: android_probe needs the phone's adb serial (android_probe: {serial: ...})"
+    quiet: true
+
+# Debian's adb brings udev rules that give plugdev the phone
+- name: Install adb
+  ansible.builtin.apt:
+    name: adb
+    state: present
+
+- name: Create the Android probe's account
+  ansible.builtin.user:
+    name: "{{ android_probe_user }}"
+    shell: /bin/bash
+    create_home: true
+    groups: [plugdev]
+    append: false
+
+- name: Create aprobe's config directory
+  ansible.builtin.file:
+    path: /etc/aprobe
+    state: directory
+    mode: "0755"
+
+- name: Install aprobe's config
+  ansible.builtin.copy:
+    content: "{{ {'serial': _android_probe.serial | string} | to_json }}\n"
+    dest: /etc/aprobe/aprobe.json
+    mode: "0644"
+
+- name: Install aprobe
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../contrib/android-probe/aprobe.py"
+    dest: /usr/local/bin/aprobe
+    mode: "0755"
+
+# Replaced by probe_login.yml's 50-<user>.conf
+- name: Remove the old aprobe-ssh login
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: [/etc/ssh/sshd_config.d/50-android-probe.conf, /usr/local/sbin/aprobe-ssh]
+  notify: Reload sshd
+
+- name: The Android probe's SSH login
+  ansible.builtin.import_tasks: probe_login.yml
+  vars:
+    _probe_user: "{{ android_probe_user }}"
+    _probe_command: aprobe
