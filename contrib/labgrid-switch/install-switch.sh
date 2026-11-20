@@ -23,7 +23,8 @@
 #
 #   --first-vlan <id>   VLAN of lan1; lan<N> is the untagged member of VLAN
 #                       <id> + N - 1
-#   --ports <count>     number of DUT ports (lan1..lan<count>)
+#   --ports <count>     number of DUT ports (lan1..lan<count>, minus the
+#                       trunk and management ports among them)
 #   --trunk <port>      carries every DUT and transit VLAN tagged and the
 #                       management network untagged: the lab host, the probe,
 #                       the link to another switch. At least one.
@@ -166,14 +167,13 @@ fi
 dut_ports=""
 i=1
 while [ "$i" -le "$ports" ]; do
-	dut_ports="$dut_ports lan$i"
+	# a trunk or management port in lan1..lan<count> keeps its role (and leaves
+	# its VLAN unused), e.g. the uplink on lan1
+	case " $trunks $mgmts " in *" lan$i "*) ;; *) dut_ports="$dut_ports lan$i" ;; esac
 	i=$((i + 1))
 done
 for p in $dut_ports $trunks $mgmts; do
 	[ -e "/sys/class/net/$p" ] || fail "no port $p on this switch"
-done
-for p in $trunks $mgmts; do
-	case " $dut_ports " in *" $p "*) fail "$p is a DUT port (lan1..lan$ports) and can't be a trunk or management port" ;; esac
 done
 for p in $trunks; do
 	case " $mgmts " in *" $p "*) fail "$p is both --trunk and --mgmt" ;; esac
@@ -220,10 +220,8 @@ add_vlan() {
 		uci add_list "network.vlan_$1.ports=$t:t"
 	done
 }
-i=1
-while [ "$i" -le "$ports" ]; do
-	add_vlan "$((first_vlan + i - 1))" "lan$i"
-	i=$((i + 1))
+for p in $dut_ports; do
+	add_vlan "$((first_vlan + ${p#lan} - 1))" "$p"
 done
 if [ -n "$transit" ]; then
 	v=$transit_first
@@ -331,7 +329,7 @@ fi
 
 echo "$(cat /tmp/sysinfo/model 2>/dev/null || echo switch)${name:+ ($name)}: config written, not applied yet"
 echo "  management  $address on VLAN $mgmt_vlan${gateway:+, gateway $gateway}"
-echo "  DUT ports   lan1..lan$ports = VLAN $first_vlan..$last_vlan (untagged)"
+echo "  DUT ports   lan<N> = VLAN $first_vlan + N - 1 (untagged):$dut_ports"
 [ -z "$transit" ] || echo "  transit     VLAN $transit_first..$transit_last (trunks only)"
 echo "  trunks      $(echo $trunks) (all VLANs tagged, management untagged)"
 [ -z "$mgmts" ] || echo "  management  $(echo $mgmts) (untagged)"

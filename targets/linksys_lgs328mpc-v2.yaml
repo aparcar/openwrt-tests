@@ -1,0 +1,46 @@
+## Linksys LGS328MPC v2: RTL9301, 512M RAM, 128M NAND, 24x 1G PoE+ and
+## 4x 10G SFP+, console on the RJ45 port (115200 8N1). Boots the initramfs
+## from U-Boot over TFTP (openwrt/openwrt commit 8e724fc3b3).
+## shortcut: prompt not checked on the board yet, fix it from a boot log.
+openwrt:
+  name: Linksys LGS328MPC v2
+  target: realtek-rtl930x_nand
+  profile: linksys_lgs328mpc-v2
+  # in no release yet (not in 25.12)
+  snapshots_only: true
+targets:
+  main:
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      PDUDaemonDriver: {}
+      TFTPProviderDriver: {}
+      SerialDriver:
+        txdelay: 0.01
+      UBootDriver:
+        ## Linksys U-Boot only stops on the key sequence "acp"
+        autoboot: "Enter correct key to stop autoboot"
+        interrupt: "acp"
+        prompt: 'RTL93\d\d# '
+        init_commands:
+          - rtk network on
+          - tftpboot
+        boot_command: bootm
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 120
+        post_login_settle_time: 5
+        username: root
+      UBootTFTPStrategy: {}
+      SSHDriver:
+        connection_timeout: 120.0
+        explicit_scp_mode: True
+
+images:
+  root: !template $LG_IMAGE
+
+imports:
+  - ../strategies/tftpstrategy.py

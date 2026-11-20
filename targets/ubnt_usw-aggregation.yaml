@@ -1,0 +1,46 @@
+## Ubiquiti UniFi USW Aggregation: RTL9303, 256M RAM, 16M NOR, 8x 10G
+## SFP+, internal 3.3V TTL header (115200 8N1). Boots the initramfs from
+## U-Boot over TFTP (openwrt/openwrt commit e4ed8e7fe7).
+## shortcut: prompt not checked on the board yet (U-Boot usw-US_v1.0.25.77),
+## fix it once autoboot was stopped.
+openwrt:
+  name: Ubiquiti UniFi USW Aggregation
+  target: realtek-rtl930x
+  profile: ubnt_usw-aggregation
+  # in no release yet (not in 25.12)
+  snapshots_only: true
+targets:
+  main:
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      PDUDaemonDriver: {}
+      TFTPProviderDriver: {}
+      SerialDriver:
+        txdelay: 0.01
+      UBootDriver:
+        autoboot: "Hit Esc key to stop autoboot"
+        interrupt: "\x1b"
+        prompt: 'RTL93\d\d# '
+        init_commands:
+          - rtk network on
+          - tftpboot 0x82000000
+        boot_command: bootm 0x82000000
+      ShellDriver:
+        prompt: 'root@[\w()]+:[^ ]+ '
+        login_prompt: Please press Enter to activate this console.
+        await_login_timeout: 15
+        login_timeout: 120
+        post_login_settle_time: 5
+        username: root
+      UBootTFTPStrategy: {}
+      SSHDriver:
+        connection_timeout: 120.0
+        explicit_scp_mode: True
+
+images:
+  root: !template $LG_IMAGE
+
+imports:
+  - ../strategies/tftpstrategy.py

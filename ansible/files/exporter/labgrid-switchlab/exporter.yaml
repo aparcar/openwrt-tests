@@ -1,0 +1,54 @@
+## Each DUT has one uplink to the lab's Zyxel XS1930-10 (OpenWrt,
+## 192.168.128.2; lan1 = VLAN 1 to the lab host), in VLAN 100 + XS1930 port.
+## Power: NETIO 4KF (192.168.128.3), outlets are labelled with the DUT names.
+
+labgrid-switchlab-linksys_lgs328mpc-v2:
+  ## XS1930 lan2 (copper)
+  USBSerialPort:
+    match:
+      ID_PATH: pci-0000:00:14.0-usb-0:1.2:1.0
+    speed: 115200
+  PDUDaemonPort:
+    host: localhost:16421
+    pdu: 192.168.128.3
+    index: 4
+  TFTPProvider:
+    internal: "/srv/tftp/linksys_lgs328mpc-v2/"
+    external: "tftp://192.168.102.1/linksys_lgs328mpc-v2/"
+  NetworkService:
+    address: "192.168.1.1%vlan102"
+    username: "root"
+
+labgrid-switchlab-xikestor_sks8300-12x-v1:
+  ## XS1930 lan9 (10G SFP+). The bootloader runs at 9600, OpenWrt at 115200.
+  USBSerialPort:
+    match:
+      ID_PATH: pci-0000:00:14.0-usb-0:1.3:1.0
+    speed: 115200
+  PDUDaemonPort:
+    host: localhost:16421
+    pdu: 192.168.128.3
+    index: 2
+  TFTPProvider:
+    internal: "/srv/tftp/xikestor_sks8300-12x-v1/"
+    external: "tftp://192.168.109.1/xikestor_sks8300-12x-v1/"
+  NetworkService:
+    address: "192.168.1.1%vlan109"
+    username: "root"
+
+labgrid-switchlab-ubnt_usw-aggregation:
+  ## XS1930 lan10 (10G SFP+, LR fibre to the USW's lan1)
+  USBSerialPort:
+    match:
+      ID_PATH: pci-0000:00:14.0-usb-0:1.4:1.0
+    speed: 115200
+  PDUDaemonPort:
+    host: localhost:16421
+    pdu: 192.168.128.3
+    index: 3
+  TFTPProvider:
+    internal: "/srv/tftp/ubnt_usw-aggregation/"
+    external: "tftp://192.168.110.1/ubnt_usw-aggregation/"
+  NetworkService:
+    address: "192.168.1.1%vlan110"
+    username: "root"
