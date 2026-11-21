@@ -96,7 +96,7 @@ management untagged, every DUT LAN and WAN VLAN tagged.
 On an OpenWrt lab host: `install-probe.sh local --parent <dev>... root@<lab
 host>` (local mode: slots are macvlans on the host's own DUT interfaces).
 
-Either way: `probe: true` in the lab's `labnet.yaml` entry and the probe's
+Either way: `probe: true` in the lab's `labs/<lab>/lab.yaml` and the probe's
 uhttpd in its `exporter.yaml`:
 
 ```yaml
@@ -160,7 +160,7 @@ counters, the probe's own counters and the AP's isolation settings.
    labgrid-<lab>`. Not Ansible: python3 doesn't fit in its 8 MB of flash. It
    disables the radios for netifd, adds the firewall zone for the stations
    and sets ath9k's software crypto (one reboot).
-3. `wifi_probe: true` in the lab's `labnet.yaml` entry, and in its
+3. `wifi_probe: true` in the lab's `labs/<lab>/lab.yaml`, and in its
    `exporter.yaml`:
 
    ```yaml

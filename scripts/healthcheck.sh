@@ -6,7 +6,7 @@
 # Usage:
 #   ./scripts/healthcheck.sh <lab> <device>
 #
-#   <lab>     proxy name as in labnet.yaml, e.g. labgrid-aparcar
+#   <lab>     proxy name as in labs/<lab>/lab.yaml, e.g. labgrid-aparcar
 #   <device>  device name (a targets/<device>.yaml must exist), e.g. openwrt_one
 #
 # Environment:
@@ -45,11 +45,11 @@ done
 TARGET_FILE="targets/${DEVICE}.yaml"
 [ -f "$TARGET_FILE" ] || die "no such target file: $TARGET_FILE"
 
-# Sanity-check that the device is actually declared for this lab in labnet.yaml.
-if ! LAB="$LAB" DEVICE="$DEVICE" \
-    yq -e '.labs[strenv(LAB)].devices[] | select(. == strenv(DEVICE))' \
-    labnet.yaml >/dev/null 2>&1; then
-    die "device '$DEVICE' is not listed under lab '$LAB' in labnet.yaml"
+# Sanity-check that the device is actually declared for this lab.
+if ! DEVICE="$DEVICE" \
+    yq -e '.devices[] | select(. == strenv(DEVICE))' \
+    "labs/$LAB/lab.yaml" >/dev/null 2>&1; then
+    die "device '$DEVICE' is not listed in labs/$LAB/lab.yaml"
 fi
 
 export LG_PROXY="$LAB"

@@ -10,7 +10,7 @@
   toggles PoE on the switches below via its `ubus` driver; each device's
   `PDUDaemonPort.pdu` is the switch (`labgrid-switch-1` or `labgrid-switch-2`)
   and `.index` the port that powers it
-  (`ansible/files/exporter/labgrid-aparcar/pdudaemon.conf`). The names resolve
+  (`labs/labgrid-aparcar/pdudaemon.conf`). The names resolve
   through the exporter's `/etc/hosts` (`labgrid_hosts` in
   `ansible/host_vars/labgrid-aparcar.yml`).
 
@@ -219,7 +219,7 @@ its port 1, which is the `USBSDMuxDevice` `ID_PATH` (e.g. `…:1.4.1`).
 
 ## Devices
 
-Derived from `ansible/files/exporter/labgrid-aparcar/exporter.yaml`. Each row is
+Derived from `labs/labgrid-aparcar/exporter.yaml`. Each row is
 a labgrid place named `labgrid-aparcar-<device>`.
 
 ### Switch 1 (`labgrid-switch-1`)
@@ -278,4 +278,4 @@ Notes:
 - **LAN access:** the `NetworkService` reaches each device at
   `192.168.1.1%vlan<LAN VLAN>` as `root`.
 - The devices the lab offers (its places' `device=` tags) come from the
-  `devices:` list for `labgrid-aparcar` in `labnet.yaml`, not from this file.
+  `devices:` list in `labs/labgrid-aparcar/lab.yaml`, not from this file.

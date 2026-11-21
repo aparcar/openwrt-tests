@@ -7,7 +7,7 @@
 #       /abs/openwrt-25.12.6-mediatek-filogic-openwrt_one-initramfs.itb \
 #       tests/tests/test_wifi_clients.py -k clients_many -v --lg-log /tmp/lg
 #
-# <lab> is the lab's proxy (labnet.yaml), <device> the place suffix and target
+# <lab> is the lab's proxy (labs/<lab>/lab.yaml), <device> the place suffix and target
 # file (targets/<device>.yaml), <image> the boot image (RAM-booted by the
 # strategy; nothing is flashed). Sets LG_PROXY, LG_PLACE, LG_ENV and LG_IMAGE,
 # so callers don't need environment variables. Pytest arguments are passed

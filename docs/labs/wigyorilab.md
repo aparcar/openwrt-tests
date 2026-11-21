@@ -23,7 +23,7 @@
 
 ## Devices
 
-Derived from `ansible/files/exporter/labgrid-wigyori/exporter.yaml`. Each row is
+Derived from `labs/labgrid-wigyori/exporter.yaml`. Each row is
 a labgrid place named `labgrid-wigyori-<device>`.
 
 | Device                 | Power         | VLAN | Serial `ID_PATH` suffix | TFTP server     |
@@ -50,4 +50,4 @@ Notes:
 - **VLAN:** the `NetworkService` reaches each device at
   `192.168.1.1%vlan<VLAN>` as `root`.
 - The devices the lab offers (its places' `device=` tags) come from the
-  `devices:` list for `labgrid-wigyori` in `labnet.yaml`, not from this file.
+  `devices:` list in `labs/labgrid-wigyori/lab.yaml`, not from this file.

@@ -1,6 +1,6 @@
 # The coordinator runs as its own system account and keeps its state
 # (places.yaml) in its state directory. Developers can't edit it; place
-# changes go through labgrid-client (or labnet.yaml + --tags export).
+# changes go through labgrid-client (or lab.yaml + --tags export).
 
 - name: Create the coordinator's state directory
   ansible.builtin.file:
@@ -10,7 +10,7 @@
     group: "{{ labgrid_coordinator_user }}"
     mode: "0750"
 
-- name: Generate places.yaml from labnet.yaml
+- name: Generate places.yaml from lab.yaml
   ansible.builtin.template:
     src: places.yaml.j2
     dest: "{{ labgrid_coordinator_dir }}/places.yaml"

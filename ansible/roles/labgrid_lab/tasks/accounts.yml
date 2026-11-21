@@ -27,6 +27,11 @@
     state: directory
     mode: "0750"
 
+- name: Developer SSH keys from GitHub
+  ansible.builtin.import_tasks: github_keys.yml
+  vars:
+    _keys_user: "{{ labgrid_dev_user }}"
+
 - name: Create the exporter's system account
   ansible.builtin.user:
     name: "{{ labgrid_exporter_user }}"
@@ -66,9 +71,8 @@
     mode: "2775"
   loop: "{{ _instances | flatten | unique }}"
   vars:
-    _lab: "{{ labnet.labs[inventory_hostname] }}"
     _instances: >-
-      [{% for device in _lab.devices %}{{ _lab.get('device_instances', {}).get(device, [device]) | to_json }},{% endfor %}]
+      [{% for device in lab.devices %}{{ lab.get('device_instances', {}).get(device, [device]) | to_json }},{% endfor %}]
   tags: export
 
 - name: Create labgrid's staging cache

@@ -2,7 +2,7 @@
 
 `wifi_probe`: the probe's LabgridWifiProbeDriver, reserved and locked for the
 test module that uses it, like `probe` (probe_fixtures.py): a place of its
-own, labgrid-<lab>-wifi-probe, tag role=wifi-probe (labnet.yaml
+own, labgrid-<lab>-wifi-probe, tag role=wifi-probe (lab.yaml
 `wifi_probe: true`). Skips on QEMU and in labs without one. Its stations are
 removed before and after the module.
 

@@ -106,13 +106,11 @@ makes joins slower but still within `JOIN_TIMEOUT` on channel 36.
 
 The phone hangs off the lab host. Give the lab its UDID
 (`pymobiledevice3 usbmux list`, e.g. `uv run --extra iphone pymobiledevice3
-usbmux list` in a checkout on a laptop) in `labnet.yaml`:
+usbmux list` in a checkout on a laptop) in `labs/labgrid-<lab>/lab.yaml`:
 
 ```yaml
-labs:
-  labgrid-<lab>:
-    iphone_probe:
-      udid: <UDID>
+iphone_probe:
+  udid: <UDID>
 ```
 
 and deploy the lab (`uv run ansible-playbook lab.yml --limit labgrid-<lab>`,
@@ -131,10 +129,10 @@ pymobiledevice3 is also the `iphone` extra in openwrt-tests'
 `iprobe` does. `uv sync --extra iphone` installs it into a checkout's venv
 (e.g. to try `iprobe` on a laptop with the phone attached).
 
-Who may log in as `iprobe`: the keys that log in as `labgrid-dev` (copied on
-every run; a key removed there must be removed from
-`~iprobe/.ssh/authorized_keys` by hand) and the agent's key (the
-`labgrid_agent` role). That login runs nothing but `iprobe`: sshd forces
+Who may log in as `iprobe`: the lab's `maintainers` and `access` with their
+GitHub keys, as for `labgrid-dev` (an Ansible-managed block of
+`~iprobe/.ssh/authorized_keys`), and the agent's key (the `labgrid_agent`
+role). That login runs nothing but `iprobe`: sshd forces
 `/usr/local/sbin/probe-ssh iprobe` (`contrib/probe-ssh/probe_ssh.py`) on it,
 which runs `iprobe <args>` or labgrid's keepalive `cat`, without a shell,
 and refuses everything else; no terminal, no forwarding. The playbook
@@ -143,7 +141,7 @@ checks with `sshd -T` that only `iprobe` gets the forced command.
 ## labgrid
 
 The phone is a place of its own, tagged `role=iphone-probe`. In the
-exporter config (`ansible/files/exporter/labgrid-<lab>/exporter.yaml`):
+exporter config (`labs/labgrid-<lab>/exporter.yaml`):
 
 ```yaml
 labgrid-<lab>-iphone-probe:

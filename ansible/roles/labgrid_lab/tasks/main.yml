@@ -1,7 +1,7 @@
-- name: Check this host is a lab in labnet.yaml
+- name: Check this host is a lab in labs/
   ansible.builtin.assert:
-    that: inventory_hostname in labnet.labs
-    fail_msg: "{{ inventory_hostname }} is not a lab in labnet.yaml"
+    that: (labgrid_lab_dir ~ '/lab.yaml') is file
+    fail_msg: "{{ inventory_hostname }} has no labs/{{ inventory_hostname }}/lab.yaml"
     quiet: true
   tags: always
 
@@ -29,14 +29,14 @@
 
 - name: iPhone Wi-Fi probe (pymobiledevice3, iprobe)
   ansible.builtin.import_tasks: iphone_probe.yml
-  when: labnet.labs[inventory_hostname].iphone_probe is defined
+  when: lab.iphone_probe is defined
   vars:
-    _iphone_probe: "{{ labnet.labs[inventory_hostname].iphone_probe }}"
+    _iphone_probe: "{{ lab.iphone_probe }}"
   tags: iphone-probe
 
 - name: Android Wi-Fi probe (adb, aprobe)
   ansible.builtin.import_tasks: android_probe.yml
-  when: labnet.labs[inventory_hostname].android_probe is defined
+  when: lab.android_probe is defined
   vars:
-    _android_probe: "{{ labnet.labs[inventory_hostname].android_probe }}"
+    _android_probe: "{{ lab.android_probe }}"
   tags: android-probe

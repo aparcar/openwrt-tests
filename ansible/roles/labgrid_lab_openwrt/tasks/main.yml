@@ -1,7 +1,7 @@
-- name: Check this host is a lab in labnet.yaml
+- name: Check this host is a lab in labs/
   ansible.builtin.assert:
-    that: inventory_hostname in labnet.labs
-    fail_msg: "{{ inventory_hostname }} is not a lab in labnet.yaml"
+    that: (labgrid_lab_dir ~ '/lab.yaml') is file
+    fail_msg: "{{ inventory_hostname }} has no labs/{{ inventory_hostname }}/lab.yaml"
     quiet: true
   tags: always
 

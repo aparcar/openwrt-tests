@@ -1,8 +1,8 @@
 {# maintenance: {<device or instance>: <reason>}: the agent skips these places; a
    tag set with labgrid-client set-tags is gone after the next deploy #}
-{% set maintenance = labnet["labs"][inventory_hostname].get("maintenance", {}) %}
-{% for device in labnet["labs"][inventory_hostname]["devices"] %}
-{% set device_instances = labnet["labs"][inventory_hostname].get("device_instances", {}).get(device, [device]) %}
+{% set maintenance = lab.get("maintenance", {}) %}
+{% for device in lab["devices"] %}
+{% set device_instances = lab.get("device_instances", {}).get(device, [device]) %}
 {% for instance in device_instances %}
 {{ inventory_hostname }}-{{ instance }}:
   acquired: null
@@ -25,7 +25,7 @@
 {% endif %}
 {% endfor %}
 {% endfor %}
-{% if labnet["labs"][inventory_hostname].get("probe") %}
+{% if lab.get("probe") %}
 {{ inventory_hostname }}-probe:
   acquired: null
   acquired_resources: []
@@ -44,7 +44,7 @@
     role: probe
 {% endif %}
 {# wifi_probe: true (one) or the number of Wi-Fi probes: -wifi-probe, -wifi-probe-2, ... #}
-{% set wifi_probes = labnet["labs"][inventory_hostname].get("wifi_probe", 0) | int %}
+{% set wifi_probes = lab.get("wifi_probe", 0) | int %}
 {% for n in range(1, wifi_probes + 1) %}
 {% set wifi_place = inventory_hostname ~ "-wifi-probe" ~ ("" if n == 1 else "-" ~ n) %}
 {{ wifi_place }}:
@@ -64,7 +64,7 @@
   tags:
     role: wifi-probe
 {% endfor %}
-{% if labnet["labs"][inventory_hostname].get("iphone_probe") %}
+{% if lab.get("iphone_probe") %}
 {{ inventory_hostname }}-iphone-probe:
   acquired: null
   acquired_resources: []
@@ -82,7 +82,7 @@
   tags:
     role: iphone-probe
 {% endif %}
-{% if labnet["labs"][inventory_hostname].get("android_probe") %}
+{% if lab.get("android_probe") %}
 {{ inventory_hostname }}-android-probe:
   acquired: null
   acquired_resources: []

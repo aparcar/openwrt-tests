@@ -5,7 +5,7 @@ A lab host can run OpenWrt instead of Debian/Ubuntu. Role
 labgrid coordinator and exporter, the `labgrid-dev` developer account, TFTP.
 Role `labgrid_agent` runs the kernelci agent on it as on any other lab host.
 `lab.yml` picks the role by `ansible_os_family`, so nothing else changes:
-add the host to `labnet.yaml` and the inventory as usual.
+add `labs/<lab>/lab.yaml` for the host and the inventory as usual.
 
 ## Requirements
 

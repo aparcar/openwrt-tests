@@ -1,0 +1,40 @@
+# The GitHub keys (github.com/<user>.keys) of a lab's maintainers and access
+# list (labs/<lab>/lab.yaml, as `lab`) in a marked block of _keys_user's
+# authorized_keys. Removing someone from lab.yaml removes their keys from the
+# block; keys outside it (the agent's, added by hand) stay. Used for
+# labgrid-dev, the phone probes' accounts and dprobe (contrib/debian-probe).
+#   _keys_user: the account
+#   _keys_lab: the lab's name, for the marker (default inventory_hostname)
+# The host fetches the keys, not the controller: a url lookup in a forked
+# worker crashes Ansible on macOS (proxy lookup, objc fork safety). If GitHub
+# can't be reached, the fetch fails and the old keys stay.
+- name: GitHub keys for {{ _keys_user }}
+  vars:
+    _users: "{{ (lab.maintainers | default([]) + lab.access | default([])) | unique }}"
+  block:
+    - name: Fetch the GitHub keys of the lab's users
+      ansible.builtin.uri:
+        url: "https://github.com/{{ item }}.keys"
+        return_content: true
+      loop: "{{ _users }}"
+      register: _github_keys
+      check_mode: false
+
+    - name: Create {{ _keys_user }}'s .ssh directory
+      ansible.builtin.file:
+        path: "~{{ _keys_user }}/.ssh"
+        state: directory
+        owner: "{{ _keys_user }}"
+        mode: "0700"
+
+    - name: Authorize the lab's GitHub users as {{ _keys_user }}
+      ansible.builtin.blockinfile:
+        path: "~{{ _keys_user }}/.ssh/authorized_keys"
+        marker: "# {mark} openwrt-tests: GitHub keys of labs/{{ _keys_lab | default(inventory_hostname) }}/lab.yaml"
+        create: true
+        owner: "{{ _keys_user }}"
+        mode: "0600"
+        # one key per line, the GitHub user as comment
+        block: |-
+          {% for r in _github_keys.results %}{% for key in r.content.splitlines() if key | trim %}{{ key | trim }} {{ r.item }}
+          {% endfor %}{% endfor %}

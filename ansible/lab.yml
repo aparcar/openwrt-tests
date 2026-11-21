@@ -15,7 +15,7 @@
 #
 # Probes (wired, Wi-Fi, or the wired one on an OpenWrt lab host) aren't
 # managed here: contrib/labgrid-probe/install-probe.sh. The iPhone and Android
-# phone probes are (labnet.yaml iphone_probe/android_probe,
+# phone probes are (lab.yaml iphone_probe/android_probe,
 # docs/iphone-probe.md, docs/android-probe.md).
 
 # OpenWrt lab hosts need python3 (and sudo) before Ansible can gather facts
@@ -34,7 +34,10 @@
   hosts: labs
   become: true
   vars:
-    labnet: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../labnet.yaml') | from_yaml }}"
+    # Everything specific to this lab: lab.yaml (devices, access, probes),
+    # exporter.yaml, and optionally pdudaemon.conf and dnsmasq.conf
+    labgrid_lab_dir: "{{ playbook_dir }}/../labs/{{ inventory_hostname }}"
+    lab: "{{ lookup('ansible.builtin.file', labgrid_lab_dir ~ '/lab.yaml') | from_yaml }}"
   roles:
     - role: labgrid_lab
       when: ansible_os_family != 'OpenWrt'

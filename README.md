@@ -125,7 +125,9 @@ labgrid-aparcar -> openwrt-one
 ```
 
 You can request access to existing labs or contribute your own. To do this,
-submit a pull request modifying the `labnet.yaml` file. To add a device, see
+submit a pull request modifying the lab's `labs/<lab>/lab.yaml`: everyone in
+its `maintainers` and `access` lists gets their GitHub SSH keys
+(`github.com/<user>.keys`) authorized on the lab host. To add a device, see
 [docs/adding-a-device.md](docs/adding-a-device.md). If you have multiple
 devices of the same model, see [docs/sharing-target-files.md](docs/sharing-target-files.md)
 for how to avoid duplicate target files. For repository-specific metadata under
@@ -142,11 +144,9 @@ export LG_ENV=targets/tplink_tl-wdr3600-v1.yaml # Environment definition
 ```
 
 **Notes:**
-- Always set `LG_ENV`. `conftest.py` is meant to resolve it from `LG_PLACE`
-  via `labnet.yaml`, but that lookup doesn't work with the current
-  `labnet.yaml` layout. See
-  [docs/sharing-target-files.md](docs/sharing-target-files.md) for target files
-  shared by several devices.
+- Without `LG_ENV`, `conftest.py` uses `targets/<device>.yaml` for
+  `LG_PLACE=<lab>-<device>`, also for the instances of a target file shared by
+  several devices ([docs/sharing-target-files.md](docs/sharing-target-files.md)).
 - `LG_PLACE` may be the short `<lab>-<device>`. labgrid matches it against the
   full place name `labgrid-<lab>-<device>`.
 - On macOS, `export TMPDIR=/tmp`. labgrid's SSH control sockets otherwise
@@ -247,8 +247,8 @@ each device with a known-good image and only takes jobs for healthy devices.
 If several labs have the same device, the first one to claim a job runs it.
 Developers can still lock a device and use it directly, see
 [Remote Access](#remote-access); the agent skips places that are locked or
-tagged `maintenance=<reason>` (set per lab in `labnet.yaml`, `maintenance:
-{<device>: <reason>}`).
+tagged `maintenance=<reason>` (set per lab in `labs/<lab>/lab.yaml`,
+`maintenance: {<device>: <reason>}`).
 
 ### Requirements
 
@@ -313,9 +313,10 @@ flowchart LR
 The controller is set up via Ansible, see [ansible/README.md](ansible/README.md):
 - **`ansible/lab.yml` (role `labgrid_lab`):** installs `labgrid` (the same
   pinned version the tests use), `pdudaemon`, a TFTP-only `dnsmasq`, the DUT
-  VLANs, the per-lab exporter configuration from
-  `ansible/files/exporter/<lab>/`, and the shared developer account
-  `labgrid-dev`.
+  VLANs, the per-lab configuration from `labs/<lab>/` (`lab.yaml`,
+  `exporter.yaml`, `pdudaemon.conf`, `dnsmasq.conf`), and the shared developer
+  account `labgrid-dev` with the GitHub keys of the lab's `maintainers` and
+  `access`.
 - **Role `labgrid_agent`** (also in this repository): sets up the
   [`labgrid-agent`](https://github.com/aparcar/kernelci-labgrid). OpenWrt CI's
   Ansible applies it, because it holds the lab's credentials. The agent runs

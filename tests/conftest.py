@@ -56,35 +56,19 @@ def _resolve_target_from_place():
     device_instance = parts[2]
 
     try:
-        repo_root = Path(__file__).parent.parent
-        labnet_path = repo_root / "labnet.yaml"
-
-        if not labnet_path.exists():
-            return None
-
         import yaml
 
-        with open(labnet_path, "r") as f:
-            labnet = yaml.safe_load(f)
-
-        if device_instance in labnet.get("devices", {}):
-            device_config = labnet["devices"][device_instance]
-            target_name = device_config.get("target_file", device_instance)
-            target_file = f"targets/{target_name}.yaml"
-            if (repo_root / target_file).exists():
-                return str(repo_root / target_file)
-
-        for lab_config in labnet.get("labs", {}).values():
-            device_instances = lab_config.get("device_instances", {})
-            for base_device, instances in device_instances.items():
-                if device_instance in instances and base_device in labnet.get(
-                    "devices", {}
-                ):
-                    device_config = labnet["devices"][base_device]
-                    target_name = device_config.get("target_file", base_device)
-                    target_file = f"targets/{target_name}.yaml"
-                    if (repo_root / target_file).exists():
-                        return str(repo_root / target_file)
+        repo_root = Path(__file__).parent.parent
+        device = device_instance
+        # an instance of device_instances (labs/<lab>/lab.yaml) uses its base device's target
+        for lab_yaml in (repo_root / "labs").glob("*/lab.yaml"):
+            lab = yaml.safe_load(lab_yaml.read_text()) or {}
+            for base, instances in lab.get("device_instances", {}).items():
+                if device_instance in instances:
+                    device = base
+        target_file = repo_root / "targets" / f"{device}.yaml"
+        if target_file.exists():
+            return str(target_file)
 
     except Exception:
         logger.exception("Failed to resolve LG_ENV from LG_PLACE")

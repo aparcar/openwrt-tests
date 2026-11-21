@@ -4,7 +4,8 @@
 # --- Accounts -----------------------------------------------------------------
 
 # Shared developer login: device access and labgrid, nothing else. Its SSH
-# keys are set up by the lab's admin; this role never touches them.
+# keys include the GitHub keys of the lab's maintainers and access list, in
+# an Ansible-managed block (tasks/github_keys.yml); other keys are left alone.
 labgrid_dev_user: labgrid-dev
 # Group shared by everyone who runs labgrid on this host (developers and the
 # kernelci agent): owns the TFTP tree and labgrid's staging cache.
@@ -47,9 +48,8 @@ labgrid_tftp_root: /srv/tftp
 labgrid_cache_dir: /var/cache/labgrid
 labgrid_cache_max_age_days: 7
 
-# Per-lab data (exporter.yaml, dnsmasq.conf, pdudaemon.conf) lives next to the
-# playbook in files/exporter/<inventory_hostname>/ (podman/config-sync.sh reads
-# the same paths).
+# Files shared by all labs (dnsmasq.conf and pdudaemon.conf defaults, netplan,
+# udev rules). Per-lab files are in labs/<lab>/ (labgrid_lab_dir, lab.yml).
 labgrid_lab_data_dir: "{{ playbook_dir }}/files/exporter"
 
 # --- Lab network ------------------------------------------------------------
@@ -76,11 +76,11 @@ pdudaemon_user: pdudaemon
 # BlueZ and bleak and lets pdudaemon use the host's Bluetooth adapter
 pdudaemon_bluetooth: false
 
-# Account the tests log in as to run iprobe (labnet.yaml iphone_probe,
+# Account the tests log in as to run iprobe (lab.yaml iphone_probe,
 # tasks/iphone_probe.yml); the exporter's NetworkService uses it
 iphone_probe_user: iprobe
 iphone_probe_pymobiledevice3_version: "11.60.0"
-# Account the tests log in as to run aprobe (labnet.yaml android_probe,
+# Account the tests log in as to run aprobe (lab.yaml android_probe,
 # tasks/android_probe.yml); the exporter's NetworkService uses it
 android_probe_user: aprobe
 

@@ -10,7 +10,7 @@
     group: "{{ labgrid_coordinator_user }}"
     mode: "0750"
 
-- name: Generate places.yaml from labnet.yaml
+- name: Generate places.yaml from lab.yaml
   ansible.builtin.template:
     src: "{{ role_path }}/../labgrid_lab/templates/places.yaml.j2"
     dest: "{{ labgrid_coordinator_dir }}/places.yaml"
@@ -30,7 +30,7 @@
 
 - name: Install the exporter configuration
   ansible.builtin.template:
-    src: "{{ labgrid_lab_data_dir }}/{{ inventory_hostname }}/exporter.yaml"
+    src: "{{ labgrid_lab_dir }}/exporter.yaml"
     dest: "{{ labgrid_config_dir }}/exporter.yaml"
     owner: root
     group: root

@@ -3,7 +3,7 @@ docs/android-probe.md).
 
 `android_probe`: the AndroidProbeDriver, reserved and locked for the test
 module that uses it, like `wifi_probe`: a place of its own,
-labgrid-<lab>-android-probe, tag role=android-probe (labnet.yaml
+labgrid-<lab>-android-probe, tag role=android-probe (lab.yaml
 `android_probe: {serial: ...}`). Skips on QEMU and in labs without one. The
 phone forgets its networks before and after the module.
 

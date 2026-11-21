@@ -2,7 +2,7 @@
 
 `probe`: the probe, reserved and locked for the test module that uses it.
 The probe is a labgrid place of its own (labgrid-<lab>-probe, tag
-role=probe; labnet.yaml `probe: true`). The fixture reserves any place with
+role=probe; lab.yaml `probe: true`). The fixture reserves any place with
 that tag through the coordinator, waits until it's allocated, acquires it, and
 holds it for the module: other DUTs' probe tests queue at the coordinator
 (`labgrid-client reservations`/`who`). With several probes later, the

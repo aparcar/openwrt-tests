@@ -47,7 +47,7 @@ uclient-fetch on the DUT just work, nothing to configure there.
 ## In labgrid
 
 The probe is a place of its own, `labgrid-<lab>-probe`, tagged `role=probe`.
-The lab's `labnet.yaml` entry says `probe: true`, and its `exporter.yaml`
+The lab's `labs/<lab>/lab.yaml` says `probe: true`, and its `exporter.yaml`
 exports the HTTP endpoint:
 
 ```yaml
@@ -122,7 +122,7 @@ and `nft` (fw4) come with the default image.
 ## On the lab host
 
 An OpenWrt lab host (role `labgrid_lab_openwrt`) can be the probe itself:
-`probe: true` in `labnet.yaml`, and in `exporter.yaml`:
+`probe: true` in `labs/<lab>/lab.yaml`, and in `exporter.yaml`:
 
 ```yaml
 labgrid-<lab>-probe:
@@ -267,7 +267,7 @@ associate in about 28 s (batches of 8) and cost about 225 kB of RAM each.
   the `wifi_probe` fixture and `WifiBed` (`tests/wifi_probe_fixtures.py`),
   the tests in `tests/test_wifi_clients.py`.
 - In labgrid: a place of its own, `labgrid-<lab>-wifi-probe`, tagged
-  `role=wifi-probe` (`wifi_probe: true` in `labnet.yaml`); the exporter
+  `role=wifi-probe` (`wifi_probe: true` in `labs/<lab>/lab.yaml`); the exporter
   exports its uhttpd:
 
   ```yaml

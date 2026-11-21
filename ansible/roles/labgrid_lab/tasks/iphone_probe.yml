@@ -1,6 +1,6 @@
 # iPhone Wi-Fi probe (contrib/iphone-probe, docs/iphone-probe.md): a
 # supervised iPhone on USB at this host, driven by `iprobe` through
-# pymobiledevice3 and usbmuxd. labnet.yaml:
+# pymobiledevice3 and usbmuxd. lab.yaml:
 #
 #   iphone_probe:
 #     udid: <UDID>   # pymobiledevice3 usbmux list
@@ -11,7 +11,7 @@
 - name: Check the iPhone probe's settings
   ansible.builtin.assert:
     that: _iphone_probe.udid is defined
-    fail_msg: "labnet.yaml: iphone_probe needs the phone's UDID (iphone_probe: {udid: ...})"
+    fail_msg: "lab.yaml: iphone_probe needs the phone's UDID (iphone_probe: {udid: ...})"
     quiet: true
 
 # usbmuxd's socket is open to every user, so the account needs no group

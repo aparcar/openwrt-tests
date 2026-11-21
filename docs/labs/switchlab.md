@@ -42,7 +42,7 @@ Health checks use the snapshot initramfs (none of the three is in a release).
   check grounding/wiring of both adapters together. Tagged
   `maintenance=serial`.
 
-The tags come from `maintenance:` of the lab in `labnet.yaml`: a deploy
+The tags come from `maintenance:` of the lab in `labs/labgrid-switchlab/lab.yaml`: a deploy
 regenerates the coordinator's places, so a tag set with `labgrid-client
 set-tags` only lasts until the next one.
 
@@ -50,6 +50,6 @@ set-tags` only lasts until the next one.
 
 1. Fix the USW and LGS serial wiring. Then USW: fix the U-Boot prompt and
    load address from its console; LGS: check the `acp` interrupt and the
-   U-Boot prompt. Drop each from `maintenance:` in `labnet.yaml` once it
+   U-Boot prompt. Drop each from `maintenance:` in `labs/labgrid-switchlab/lab.yaml` once it
    passes its health check, and deploy (`lab.yml --limit labgrid-switchlab
    --tags export`).

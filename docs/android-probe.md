@@ -65,13 +65,11 @@ battery protection (charge limit at 80%) if it has one, or a USB hub port
 ## Host
 
 The phone hangs off the lab host. Give the lab its serial (`adb devices`)
-in `labnet.yaml`:
+in `labs/labgrid-<lab>/lab.yaml`:
 
 ```yaml
-labs:
-  labgrid-<lab>:
-    android_probe:
-      serial: 11201FDD40021Q
+android_probe:
+  serial: 11201FDD40021Q
 ```
 
 and deploy the lab (`uv run ansible-playbook lab.yml --limit labgrid-<lab>`,
@@ -81,10 +79,10 @@ installs `adb` (its udev rules give `plugdev` the phone), the `aprobe` user
 creates the place. Debian lab hosts only: `labgrid_lab_openwrt` doesn't
 set the probe up.
 
-Who may log in as `aprobe`: the keys that log in as `labgrid-dev` (copied
-on every run; a key removed there must be removed from
-`~aprobe/.ssh/authorized_keys` by hand) and the agent's key (the
-`labgrid_agent` role). That login runs nothing but `aprobe`: sshd forces
+Who may log in as `aprobe`: the lab's `maintainers` and `access` with their
+GitHub keys, as for `labgrid-dev` (an Ansible-managed block of
+`~aprobe/.ssh/authorized_keys`), and the agent's key (the `labgrid_agent`
+role). That login runs nothing but `aprobe`: sshd forces
 `/usr/local/sbin/probe-ssh aprobe` (`contrib/probe-ssh/probe_ssh.py`) on it,
 which runs `aprobe <args>` or labgrid's keepalive `cat`, without a shell,
 and refuses everything else; no terminal, no forwarding. The playbook
@@ -105,7 +103,7 @@ first, with that user's key. Run adb only as `aprobe` there.
 ## labgrid
 
 The phone is a place of its own, tagged `role=android-probe`. In the
-exporter config (`ansible/files/exporter/labgrid-<lab>/exporter.yaml`):
+exporter config (`labs/labgrid-<lab>/exporter.yaml`):
 
 ```yaml
 labgrid-<lab>-android-probe:

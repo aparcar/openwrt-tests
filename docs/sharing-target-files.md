@@ -2,24 +2,23 @@
 
 When a lab has multiple physical devices of the same model (e.g., three Belkin RT3200 routers), creating separate target configuration files for each device leads to unnecessary duplication and maintenance overhead.
 
-If this is your situation, you can use the `device_instances` field in `labnet.yaml` to define multiple physical instances sharing a single target file:
+If this is your situation, you can use the `device_instances` field in the lab's `labs/<lab>/lab.yaml` to define multiple physical instances sharing a single target file:
 
 ```yaml
-labs:
-  labgrid-example:
-    proxy: labgrid-example
-    hostkey: ssh-ed25519 AAAA...
-    maintainers:
-      - maintainer
-    access:
-      - maintainer
-    devices:
-      - linksys_e8450
-    device_instances:
-      linksys_e8450:
-        - router_1
-        - router_2
-        - router_3
+# labs/labgrid-example/lab.yaml
+proxy: labgrid-example
+hostkey: ssh-ed25519 AAAA...
+maintainers:
+  - maintainer
+access:
+  - maintainer
+devices:
+  - linksys_e8450
+device_instances:
+  linksys_e8450:
+    - router_1
+    - router_2
+    - router_3
 ```
 
 Device metadata (name, OpenWrt target, profile, image selection) lives in the labgrid target file (`targets/linksys_e8450.yaml`):
@@ -43,7 +42,7 @@ This will create three different labgrid places from the same configuration file
 ## Configuration Separation
 
 - **Generic configuration** (drivers, prompts, strategies) → `targets/linksys_e8450.yaml` (shared)
-- **Device-specific details** (serial ports, IPs, power) → `ansible/files/exporter/<lab>/exporter.yaml` (per device)
+- **Device-specific details** (serial ports, IPs, power) → `labs/<lab>/exporter.yaml` (per device)
 
 ## Automatic Target Resolution
 
