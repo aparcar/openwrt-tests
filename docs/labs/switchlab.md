@@ -32,8 +32,7 @@ Health checks use the snapshot initramfs (none of the three is in a release).
   `Booting kernel` line. The vendor CLI's `baudrate 115200` (and
   `writeconfig`) doesn't survive a reboot, and this U-Boot has no
   `saveenv` (see the DTS in openwrt/openwrt commit 81b148fd38), so the
-  switch stays in the strategy. Still tagged `maintenance=bring-up` until the lab
-  host runs this openwrt-tests revision (the agent uses the deployed one).
+  switch stays in the strategy.
 - **USW Aggregation**: no console. Power works (NETIO outlet 3 draws ~4 W),
   but ttyUSB2 gets no byte at all through a power cycle: TX not wired or
   TX/RX swapped. Tagged `maintenance=serial`. The U-Boot prompt in the
@@ -43,13 +42,14 @@ Health checks use the snapshot initramfs (none of the three is in a release).
   check grounding/wiring of both adapters together. Tagged
   `maintenance=serial`.
 
-Remove a tag with
-`labgrid-client -P labgrid-switchlab -p labgrid-switchlab-<device> set-tags maintenance=`.
+The tags come from `maintenance:` of the lab in `labnet.yaml`: a deploy
+regenerates the coordinator's places, so a tag set with `labgrid-client
+set-tags` only lasts until the next one.
 
 ## Next steps
 
-1. Deploy this revision to the lab host (`lab.yml --limit
-   labgrid-switchlab`), then remove `maintenance` from the SKS8300.
-2. Fix the USW and LGS serial wiring. Then USW: fix the U-Boot prompt and
+1. Fix the USW and LGS serial wiring. Then USW: fix the U-Boot prompt and
    load address from its console; LGS: check the `acp` interrupt and the
-   U-Boot prompt. Remove `maintenance` once each passes its health check.
+   U-Boot prompt. Drop each from `maintenance:` in `labnet.yaml` once it
+   passes its health check, and deploy (`lab.yml --limit labgrid-switchlab
+   --tags export`).

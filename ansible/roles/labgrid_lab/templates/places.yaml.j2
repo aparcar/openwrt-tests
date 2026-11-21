@@ -1,3 +1,6 @@
+{# maintenance: {<device or instance>: <reason>}: the agent skips these places; a
+   tag set with labgrid-client set-tags is gone after the next deploy #}
+{% set maintenance = labnet["labs"][inventory_hostname].get("maintenance", {}) %}
 {% for device in labnet["labs"][inventory_hostname]["devices"] %}
 {% set device_instances = labnet["labs"][inventory_hostname].get("device_instances", {}).get(device, [device]) %}
 {% for instance in device_instances %}
@@ -17,6 +20,9 @@
     rename: null
   tags:
     device: {{ device }}
+{% if instance in maintenance %}
+    maintenance: {{ maintenance[instance] }}
+{% endif %}
 {% endfor %}
 {% endfor %}
 {% if labnet["labs"][inventory_hostname].get("probe") %}

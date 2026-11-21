@@ -247,7 +247,8 @@ each device with a known-good image and only takes jobs for healthy devices.
 If several labs have the same device, the first one to claim a job runs it.
 Developers can still lock a device and use it directly, see
 [Remote Access](#remote-access); the agent skips places that are locked or
-tagged `maintenance=<reason>`.
+tagged `maintenance=<reason>` (set per lab in `labnet.yaml`, `maintenance:
+{<device>: <reason>}`).
 
 ### Requirements
 
