@@ -36,6 +36,16 @@ class UBootTFTPStrategy(Strategy):
     }
     tftp: TFTPProviderDriver
 
+    # For bootloaders at another speed than Linux (XikeStor: 9600, Linux
+    # 115200): the exporter's speed is Linux's, the console runs at this one
+    # until boot (RFC 2217 lets ser2net change the tty's speed)
+    uboot_baudrate = attr.ib(default=0)
+
+    # [expect regex, text to send] pairs worked through after power-on, before
+    # the UBootDriver looks for its prompt: for vendor CLIs in front of U-Boot
+    # (XikeStor: Ctrl+B, menu, Ctrl+F, password)
+    console_unlock = attr.ib(default=attr.Factory(list))
+
     status = attr.ib(default=Status.unknown)
 
     def __attrs_post_init__(self):
@@ -66,6 +76,8 @@ class UBootTFTPStrategy(Strategy):
             self.transition(Status.off)
             self.target.activate(self.tftp)
             self.target.activate(self.console)
+            if self.uboot_baudrate:
+                self.console.serial.baudrate = self.uboot_baudrate
 
             staged = self._stage(self.target.env.config.get_image_path("root"))
             parsed = urlparse(staged)
@@ -83,6 +95,9 @@ class UBootTFTPStrategy(Strategy):
                 tftp_server_ip = None
 
             self.power.cycle()
+            for expect, send in self.console_unlock:
+                self.console.expect(expect, timeout=60)
+                self.console.write(send.encode())
             # interrupt uboot
 
             self.uboot.init_commands = (
@@ -106,6 +121,11 @@ class UBootTFTPStrategy(Strategy):
             self.transition(Status.uboot)
 
             self.uboot.boot("")
+            if self.uboot_baudrate:
+                # switch once the bootloader took the whole command (sent at
+                # its speed), before the kernel prints its version
+                self.console.expect("Booting kernel")
+                self.console.serial.baudrate = self.console.port.speed
             self.uboot.await_boot()
             self.target.activate(self.shell)
         else:

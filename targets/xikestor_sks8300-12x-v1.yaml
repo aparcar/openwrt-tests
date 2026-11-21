@@ -1,16 +1,13 @@
 ## XikeStor SKS8300-12X V1 (19" case): RTL9313, 512M RAM, 32M NOR, 12x 10G
 ## SFP+, RS-232 console on the RJ45 port. Boots the initramfs from U-Boot
 ## over TFTP on SFP+ port 1 (openwrt/openwrt commit 81b148fd38).
-## The bootloader runs at 9600 baud, OpenWrt at 115200: switch the bootloader
-## once by hand (Ctrl+B, Ctrl+F, password, `baudrate 115200`) so one serial
-## speed fits both.
-## U-Boot sits behind the vendor CLI: Ctrl+B stops autoboot, Ctrl+F asks for
-## the password, then `debug_unish_env` opens the U-Boot prompt.
-## Bootloader "U-boot version: V2.00" prints "Hit Ctrl+B to stop autoboot"
-## (1 s), at 9600 until switched.
-## shortcut: password prompt, both prompts and the debug_unish_env step
-## aren't covered or checked yet; likely needs a strategy step that runs
-## debug_unish_env before U-Boot's prompt.
+## The bootloader ("U-boot version: V2.00") runs at 9600 baud, OpenWrt (the
+## exporter's speed) at 115200: the strategy switches (uboot_baudrate).
+## U-Boot sits behind the vendor CLI (console_unlock): Ctrl+B at "Hit Ctrl+B
+## to stop autoboot" (1 s) opens a menu, Ctrl+F there asks for the password,
+## which gives a "Boot# " prompt; `debug_unish_env` there (SmallUBootDriver's
+## boot_secret) opens U-Boot's "RTL9310# ". Send each key once: queued ones
+## end up as menu choices.
 openwrt:
   name: XikeStor SKS8300-12X V1
   target: realtek-rtl931x
@@ -27,16 +24,16 @@ targets:
       TFTPProviderDriver: {}
       SerialDriver:
         txdelay: 0.01
-      UBootDriver:
-        autoboot: "Hit Ctrl+B to stop autoboot"
-        interrupt: "\x02\x06"
-        password: diagshell_unipoe_env
+      ## no `echo` in this U-Boot; boot_secret leaves the vendor shell
+      SmallUBootDriver:
+        boot_expression: "Boot# "
+        boot_secret: debug_unish_env
         prompt: 'RTL93\d\d# '
         init_commands:
-          ## SFP+ port 1: fiber1g for a 1G module, fiber10g for 10GBase-*R
-          ## (or the DAC type); then the RTL8231 holding the SFP GPIOs, then
-          ## tx-disable of port 1 low
-          - rtk 10g 0 fiber1g
+          ## SFP+ port 1 (the lab's uplink: a 10GBase-R module, fiber1g for a
+          ## 1G one); then the RTL8231 holding the SFP GPIOs, then tx-disable
+          ## of port 1 low
+          - rtk 10g 0 fiber10g
           - rtk ext-devInit 0
           - rtk ext-pinSet 2 0
           - tftpboot 0x82000000
@@ -48,7 +45,12 @@ targets:
         login_timeout: 120
         post_login_settle_time: 5
         username: root
-      UBootTFTPStrategy: {}
+      UBootTFTPStrategy:
+        uboot_baudrate: 9600
+        console_unlock:
+          - ["Hit Ctrl\\+B to stop autoboot", "\x02"]
+          - ["Enter your selection: ", "\x06"]
+          - ["Enter the password:", "diagshell_unipoe_env\r"]
       SSHDriver:
         connection_timeout: 120.0
         explicit_scp_mode: True
