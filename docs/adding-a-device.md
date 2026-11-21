@@ -7,7 +7,7 @@ A device in a lab is made of four pieces:
 | `targets/<device>.yaml` | labgrid drivers, prompts, strategy, `openwrt:` metadata | yes, by every lab with this model |
 | `labs/<lab>/exporter.yaml` | serial port, power outlet, network, TFTP/SD-Mux of this one board | no, per lab |
 | `labs/<lab>/lab.yaml` | which devices a lab offers to CI | per lab |
-| `docs/labs/<lab>.md` | human-readable wiring table | per lab |
+| `labs/<lab>/README.md` | human-readable wiring table | per lab |
 
 `<device>` is `<vendor>_<openwrt profile>` (e.g. `openwrt_one`,
 `starfive_visionfive2-v1.2a`). If the model already has a target file, skip to
@@ -157,7 +157,7 @@ labgrid-aparcar-starfive_visionfive2-v1.2a:
 
 Add the device to the lab's `devices:` list in `labs/<lab>/lab.yaml`. This is what makes
 CI and the healthcheck pick it up, so do it once the device boots. Add a row to
-`docs/labs/<lab>.md` as well.
+`labs/<lab>/README.md` as well.
 
 Then deploy the exporter config (this also creates `/srv/tftp/<device>/`):
 

@@ -186,9 +186,9 @@ uv run labgrid-client unlock
 
 ## Lab Setup
 
-![A lab on a cork board: a Raspberry Pi 4 as controller, USB-to-serial adapters, a switch and six single-board computers under test.](docs/labs/wigyorilab.jpg)
+![A lab on a cork board: a Raspberry Pi 4 as controller, USB-to-serial adapters, a switch and six single-board computers under test.](labs/labgrid-wigyori/wigyorilab.jpg)
 
-*[wigyorilab](docs/labs/wigyorilab.md): a Raspberry Pi 4 controlling six
+*[wigyorilab](labs/labgrid-wigyori/README.md): a Raspberry Pi 4 controlling six
 single-board computers.*
 
 Setting up a new lab involves several steps and is a fun and curious process,
@@ -279,7 +279,7 @@ reaches each DUT's console via a USB-to-serial adapter.
 - **WAN VLAN:** the controller is the DUT's upstream (IP forwarding). It's
   declared per place as a `wan` interface in `exporter.yaml`; see
   [docs/adding-a-device.md](docs/adding-a-device.md) and
-  [docs/labs/aparcar.md](docs/labs/aparcar.md).
+  [labs/labgrid-aparcar/README.md](labs/labgrid-aparcar/README.md).
 
 > [!NOTE]
 > Larger setups may run multiple exporters, each connected to a separate PoE

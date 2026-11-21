@@ -88,7 +88,8 @@ Kept in `labs/<lab>/` at the repo root (`<lab>` is the inventory host name)
 and shared with `podman/config-sync.sh`:
 - `lab.yaml`: maintainers, access, devices, probes, maintenance tags;
 - `exporter.yaml` (Jinja: comment with `##`);
-- optional `dnsmasq.conf`, `pdudaemon.conf`.
+- optional `dnsmasq.conf`, `pdudaemon.conf`;
+- `README.md`: the lab's wiring for humans (not deployed).
 
 The generic `files/exporter/{netplan.yaml,dnsmasq.conf,pdudaemon.conf,usbsdmux.rules}`
 apply when a lab has no file of its own.
