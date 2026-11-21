@@ -36,3 +36,27 @@ def test_refuses_everything_else():
         assert allowed("iprobe", original) is None, original
     # No shell: ";" stays an argument, which the probe's argparse rejects
     assert allowed("iprobe", "iprobe info; sh") == [IPROBE, "info;", "sh"]
+
+
+def test_dprobe_through_sudo():
+    # DebianProbeDriver's command_prefix plus shlex.join'ed arguments
+    sent = shlex.join(["sudo", "-n", "/usr/local/sbin/dprobe", "slot", "up", "102"])
+    assert allowed("dprobe", sent) == [
+        "/usr/bin/sudo",
+        "-n",
+        "/usr/local/sbin/dprobe",
+        "slot",
+        "up",
+        "102",
+    ]
+    assert allowed("dprobe", "cat") == ["cat"]
+    for original in (
+        None,
+        "sh",
+        "sudo -n sh",
+        "sudo /usr/local/sbin/dprobe slot list",  # without -n
+        "sudo -n -u root /usr/local/sbin/dprobe slot list",
+        "sudo -n /usr/local/sbin/iprobe info",  # another probe
+        "sudo -n /tmp/dprobe slot list",
+    ):
+        assert allowed("dprobe", original) is None, original

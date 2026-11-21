@@ -1,0 +1,177 @@
+- name: Check the OS
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family == "Debian"
+      - ansible_facts.python.version.major == 3
+      - ansible_facts.python.version.minor >= 12
+    fail_msg: dprobe needs Debian with Python >= 3.12 (os.setns), e.g. Debian 13
+
+- name: Check the network settings
+  ansible.builtin.assert:
+    that: dprobe_trunk | length > 0
+    fail_msg: dprobe_manage_network needs dprobe_trunk
+  when: dprobe_manage_network
+
+- name: Install packages
+  ansible.builtin.apt:
+    name: "{{ dprobe_packages }}"
+    update_cache: true
+    install_recommends: false
+
+- name: Mask package services dprobe runs per slot instead
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+  loop: "{{ dprobe_masked_services }}"
+
+- name: Load the 802.1Q module at boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/dprobe.conf
+    content: |
+      # Managed by Ansible (openwrt-tests contrib/debian-probe)
+      8021q
+    mode: "0644"
+
+- name: Load the 802.1Q module now
+  community.general.modprobe:
+    name: 8021q
+    state: present
+
+# kea and chrony normally get these from their (masked/unused) units
+- name: Runtime directories for the per-slot daemons
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/dprobe.conf
+    content: |
+      # Managed by Ansible (openwrt-tests contrib/debian-probe)
+      d /run/dprobe 0755 root root -
+      d /run/kea 0755 root root -
+      d /run/lock/kea 0755 root root -
+      d /run/chrony 0755 _chrony _chrony -
+    mode: "0644"
+  notify: Create runtime directories
+
+# --- the dprobe code --------------------------------------------------------
+
+- name: Install dprobe
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../dprobe"
+    dest: "{{ dprobe_prefix }}/"
+    owner: root
+    group: root
+    mode: u=rwX,go=rX
+    directory_mode: "0755"
+
+- name: Install the dprobe command
+  ansible.builtin.template:
+    src: dprobe.j2
+    dest: /usr/local/sbin/dprobe
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Probe configuration directory
+  ansible.builtin.file:
+    path: /etc/dprobe
+    state: directory
+    mode: "0755"
+
+- name: Probe configuration
+  ansible.builtin.copy:
+    dest: /etc/dprobe/dprobe.json
+    content: "{{ _config | to_nice_json }}\n"
+    mode: "0644"
+  vars:
+    _config:
+      trunk: "{{ dprobe_trunk }}"
+      mgmt_vlan: "{{ dprobe_mgmt_vlan | int }}"
+      allowed_vlans: "{{ dprobe_allowed_vlans }}"
+
+# --- the account labgrid logs in as ------------------------------------------
+
+- name: Create the dprobe account
+  ansible.builtin.user:
+    name: "{{ dprobe_user }}"
+    shell: /bin/sh
+    create_home: true
+    groups: []
+    append: false
+
+- name: Create dprobe's .ssh directory
+  ansible.builtin.file:
+    path: "~{{ dprobe_user }}/.ssh"
+    state: directory
+    owner: "{{ dprobe_user }}"
+    mode: "0700"
+
+# Each source of keys has its own marked block; keys outside them stay
+- name: Authorize dprobe_authorized_keys
+  ansible.builtin.blockinfile:
+    path: "~{{ dprobe_user }}/.ssh/authorized_keys"
+    marker: "# {mark} openwrt-tests: dprobe_authorized_keys"
+    create: true
+    owner: "{{ dprobe_user }}"
+    mode: "0600"
+    block: "{{ dprobe_authorized_keys | join('\n') }}"
+
+# As the phone probes on lab hosts: sshd forces probe-ssh on this account, so
+# a login runs `sudo -n /usr/local/sbin/dprobe <args>` (or labgrid's
+# keepalive `cat`) and nothing else, no shell. The lab's GitHub users get
+# their keys in their own block.
+- name: Restrict dprobe's SSH login to dprobe, authorize the lab's GitHub users
+  ansible.builtin.include_tasks: "{{ role_path }}/../../../../../ansible/roles/labgrid_lab/tasks/probe_login.yml"
+  vars:
+    _probe_user: "{{ dprobe_user }}"
+    _probe_command: dprobe
+    _probe_ssh_src: "{{ role_path }}/../../../../probe-ssh/probe_ssh.py"
+    _keys_lab: "{{ dprobe_lab }}"
+    # no lab: an empty key block
+    lab: >-
+      {{ (lookup('ansible.builtin.file', role_path ~ '/../../../../../labs/' ~ dprobe_lab ~ '/lab.yaml') | from_yaml)
+         if dprobe_lab else {} }}
+
+- name: Let the dprobe account run dprobe (and nothing else) as root
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/dprobe
+    content: |
+      # Managed by Ansible (openwrt-tests contrib/debian-probe)
+      {{ dprobe_user }} ALL = (root) NOPASSWD: /usr/local/sbin/dprobe
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s
+
+# --- network -----------------------------------------------------------------
+
+# dprobe creates dpl<N>/dpw<N> on the trunk and moves them into a namespace
+# right away; keep networkd's hands off them in between.
+- name: Leave the slot VLAN devices alone (networkd)
+  ansible.builtin.copy:
+    dest: /etc/systemd/network/05-dprobe-slots.network
+    content: |
+      # Managed by Ansible (openwrt-tests contrib/debian-probe)
+      [Match]
+      Name=dpl* dpw*
+
+      [Link]
+      Unmanaged=yes
+    mode: "0644"
+  notify: Reload networkd
+
+- name: Management address on the trunk
+  ansible.builtin.template:
+    src: trunk.network.j2
+    dest: /etc/systemd/network/10-dprobe-trunk.network
+    mode: "0644"
+  when: dprobe_manage_network
+  notify: Reload networkd
+
+- name: Run systemd-networkd
+  ansible.builtin.systemd_service:
+    name: systemd-networkd
+    enabled: true
+    state: started
+  when: dprobe_manage_network
+
+- name: Check that dprobe runs
+  ansible.builtin.command: /usr/local/sbin/dprobe slot list
+  changed_when: false

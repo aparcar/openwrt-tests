@@ -38,6 +38,13 @@ logger = logging.getLogger(__name__)
 # Fixtures shared by several modules:
 # - hwsim radios on QEMU targets with the `hwsim` feature
 # - the lab's labgrid-probe (contrib/labgrid-probe)
+# - the lab's Debian probe (contrib/debian-probe)
+from debian_probe_fixtures import (  # noqa: F401
+    dprobe,
+    dprobe_lan_lease,
+    dprobe_slot,
+    dprobe_wan,
+)
 from hwsim_setup import hwsim  # noqa: F401
 from probe_fixtures import probe  # noqa: F401
 

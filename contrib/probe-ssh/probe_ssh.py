@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""probe-ssh: the only command an SSH login as a phone probe's user runs
-(sshd ForceCommand, ansible role labgrid_lab, tasks/probe_login.yml).
+"""probe-ssh: the only command an SSH login as a probe's user runs (sshd
+ForceCommand, ansible role labgrid_lab, tasks/probe_login.yml; also the
+debian_probe role in contrib/debian-probe).
 
     ForceCommand /usr/local/sbin/probe-ssh iprobe
 
 It runs the command the client asked for (SSH_ORIGINAL_COMMAND) only if it
-is `<probe> <args>` (here /usr/local/bin/iprobe) or a bare `cat`: labgrid's
-SSHDriver keeps its connection alive with a remote `cat`. Both run without a
-shell. Anything else, an interactive login included, is refused with exit 2.
+is `<probe> <args>` (here /usr/local/bin/iprobe), `sudo -n
+/usr/local/sbin/<probe> <args>` (dprobe, which runs as root through a
+sudoers rule for that one command) or a bare `cat`: labgrid's SSHDriver
+keeps its connection alive with a remote `cat`. All run without a shell.
+Anything else, an interactive login included, is refused with exit 2.
 """
 
 import os
@@ -15,6 +18,8 @@ import shlex
 import sys
 
 BIN = "/usr/local/bin"
+SBIN = "/usr/local/sbin"
+SUDO = "/usr/bin/sudo"
 
 
 def allowed(probe, original):
@@ -27,6 +32,8 @@ def allowed(probe, original):
         return ["cat"]
     if argv and argv[0] in (probe, f"{BIN}/{probe}"):
         return [f"{BIN}/{probe}", *argv[1:]]
+    if argv[:3] in (["sudo", "-n", f"{SBIN}/{probe}"], [SUDO, "-n", f"{SBIN}/{probe}"]):
+        return [SUDO, "-n", f"{SBIN}/{probe}", *argv[3:]]
     return None
 
 

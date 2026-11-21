@@ -1,0 +1,47 @@
+# Interface carrying management (untagged) and the DUT VLANs (tagged).
+# Empty: dprobe uses the default route's interface at run time.
+dprobe_trunk: ""
+# Never attach a slot to this VLAN (0: none)
+dprobe_mgmt_vlan: 0
+# VLANs slots may use, e.g. ["101-124", "301-324"]; empty: any
+dprobe_allowed_vlans: []
+
+# SSH account the labgrid driver logs in as (NetworkService username)
+dprobe_user: dprobe
+# The lab this probe serves (e.g. labgrid-aparcar): its maintainers and access
+# (labs/<lab>/lab.yaml) may log in with their GitHub keys; empty: nobody
+dprobe_lab: ""
+# Further keys, e.g. the lab's labgrid-agent key (not on GitHub)
+dprobe_authorized_keys: []
+
+dprobe_prefix: /opt/dprobe
+
+# systemd-networkd config for the trunk's management address. Off: the
+# probe's existing network config stays as it is.
+dprobe_manage_network: false
+dprobe_mgmt_address: ""   # e.g. 192.168.128.4/24; empty: DHCP
+dprobe_mgmt_gateway: ""
+dprobe_mgmt_dns: []
+
+dprobe_packages:
+  - python3              # >= 3.12 (os.setns): Debian 13 "trixie" or newer
+  - python3-scapy
+  - iproute2
+  - iputils-ping
+  - dnsmasq-base         # the daemon only, no system service
+  - kea-dhcp6-server
+  - radvd
+  - chrony
+  - tcpdump
+  - ethtool
+  - iperf3
+  - pppoe                # pppoe-server, for the PPPoE tests to come
+  - sudo
+  - openssh-server
+
+# Package services that would grab the WAN ports in the main namespace;
+# dprobe starts its own instances per slot.
+dprobe_masked_services:
+  - kea-dhcp6-server.service
+  - radvd.service
+  - iperf3.service

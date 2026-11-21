@@ -1,0 +1,19 @@
+# Managed by Ansible (openwrt-tests contrib/debian-probe)
+# Management, untagged. The DUT VLANs on this port belong to dprobe's slots.
+[Match]
+Name={{ dprobe_trunk }}
+
+[Network]
+{% if dprobe_mgmt_address %}
+Address={{ dprobe_mgmt_address }}
+{% if dprobe_mgmt_gateway %}
+Gateway={{ dprobe_mgmt_gateway }}
+{% endif %}
+{% for dns in dprobe_mgmt_dns %}
+DNS={{ dns }}
+{% endfor %}
+{% else %}
+DHCP=ipv4
+{% endif %}
+IPv6AcceptRA=no
+LinkLocalAddressing=no

@@ -1,0 +1,66 @@
+#cloud-config
+# Debian lab probe (dprobe), provisioned by cloud-init (docs/debian-probe.md).
+#
+# For Debian 13 "trixie" or newer, e.g. the genericcloud/nocloud images or a
+# NoCloud seed on a bare-metal install. cloud-init installs Ansible and runs
+# contrib/debian-probe/ansible/probe.yml locally with ansible-pull, so the
+# debian_probe role stays the only description of a probe.
+#
+# Before use, edit the inventory below (trunk, VLANs, SSH keys) and, if
+# needed, the repository and branch in runcmd. To update the probe later,
+# run the same ansible-pull command again as root.
+#
+# By default the management network stays as cloud-init set it up
+# (dprobe_manage_network: false). Set it to true and fill in the
+# dprobe_mgmt_* values to let the role configure the trunk instead.
+
+package_update: true
+packages:
+  - ansible   # includes the community.general and ansible.posix collections
+  - git
+
+write_files:
+  - path: /etc/dprobe/inventory.yml
+    owner: root:root
+    permissions: "0600"
+    content: |
+      # Written by cloud-init, read by ansible-pull (docs/debian-probe.md)
+      debian_probes:
+        hosts:
+          localhost:
+            ansible_connection: local
+            ansible_python_interpreter: /usr/bin/python3
+            # Port carrying management (untagged) and the DUT VLANs (tagged).
+            # Empty: dprobe uses the default route's interface at run time.
+            dprobe_trunk: ""
+            # Never attach a slot to this VLAN (0: none)
+            dprobe_mgmt_vlan: 0
+            # VLANs tests may attach slots to (DUT LAN and WAN VLANs); empty: any
+            dprobe_allowed_vlans: ["101-124", "301-324"]
+            # Who may run dprobe: the lab's maintainers and access (GitHub
+            # keys, labs/<lab>/lab.yaml) and the lab's labgrid-agent key
+            dprobe_lab: labgrid-<lab>
+            dprobe_authorized_keys:
+              - "ssh-ed25519 AAAA... labgrid-agent@labgrid-<lab>"
+            # Management network on the trunk (systemd-networkd). false: keep
+            # the network config cloud-init or the image set up. true: the
+            # role writes /etc/systemd/network/10-dprobe-trunk.network and
+            # needs dprobe_trunk; an empty address means DHCP.
+            dprobe_manage_network: false
+            dprobe_mgmt_address: ""         # e.g. 192.168.128.4/24
+            dprobe_mgmt_gateway: ""         # e.g. 192.168.128.1
+            dprobe_mgmt_dns: []             # e.g. ["192.168.128.1"]
+
+runcmd:
+  - - ansible-pull
+    - --url
+    - https://github.com/aparcar/openwrt-tests.git
+    - --checkout
+    - main
+    - --directory
+    - /var/lib/dprobe/openwrt-tests
+    - --inventory
+    - /etc/dprobe/inventory.yml
+    - --limit
+    - localhost
+    - contrib/debian-probe/ansible/probe.yml

@@ -1,0 +1,19 @@
+# Copy to inventory.yml. One host per probe box.
+debian_probes:
+  hosts:
+    dprobe-aparcar:
+      ansible_host: 192.168.128.4
+      ansible_user: root
+      # Port carrying management (untagged) and the DUT VLANs (tagged)
+      dprobe_trunk: enp1s0
+      # VLANs tests may attach slots to (DUT LAN and WAN VLANs)
+      dprobe_allowed_vlans: ["101-124", "301-324"]
+      # Who may run dprobe: the lab's maintainers and access (GitHub keys,
+      # labs/<lab>/lab.yaml) and the lab's labgrid-agent key
+      dprobe_lab: labgrid-aparcar
+      dprobe_authorized_keys:
+        - "ssh-ed25519 AAAA... labgrid-agent@labgrid-aparcar"
+      # Let the role write the trunk's networkd config (else keep yours)
+      dprobe_manage_network: true
+      dprobe_mgmt_address: 192.168.128.4/24
+      dprobe_mgmt_gateway: 192.168.128.1

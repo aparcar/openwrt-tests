@@ -1,0 +1,12 @@
+- name: Create runtime directories
+  ansible.builtin.command: systemd-tmpfiles --create /etc/tmpfiles.d/dprobe.conf
+  changed_when: true
+
+- name: Reload sshd
+  ansible.builtin.systemd_service:
+    name: ssh
+    state: reloaded
+
+- name: Reload networkd
+  ansible.builtin.command: networkctl reload
+  changed_when: true
