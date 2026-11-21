@@ -64,8 +64,8 @@ the switch does.
 - **Model:** Shelly Power Strip 4 Gen4 (`ShellyPStripG4-D885ACEBBCB0`), for
   devices that can't be powered over PoE
 - **pdudaemon name:** `labgrid-strip-1`, driver `shelly_ble`. The exporter
-  switches it over Bluetooth LE (`pdudaemon_bluetooth` in
-  `ansible/inventory.yaml`), so the strip is on no network.
+  switches it over Bluetooth LE (`pdudaemon_bluetooth` in the
+  host's `ansible/host_vars`), so the strip is on no network.
 - **Outlets:** `PDUDaemonPort.index` 0–3, so index 3 is the fourth socket.
   Index 3 powers the UniFi Cloud Gateway Fiber (`ubnt_ucgfiber`, bring-up
   only: no published image yet, so its healthcheck fails and CI schedules

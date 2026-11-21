@@ -16,8 +16,9 @@ uv run ansible-playbook lab.yml --limit labgrid-<lab> --tags agent    # kernelci
 uv run ansible-playbook reset-health.yml                              # fresh health checks in all labs
 ```
 
-Connection settings and passwords go into `host_vars/<host>.yml`
-(gitignored), everything else into `inventory.yaml`.
+`inventory.yaml` only lists the hosts. Everything about a host (connection,
+passwords, agent, VLAN interface, PDUs) goes into `host_vars/<host>.yml`,
+which is gitignored; settings for all hosts are in `group_vars/all.yaml`.
 
 `labgrid_lab` needs **Debian 13 (trixie)**, also as Raspberry Pi OS (64-bit),
 and stops on other releases (`labgrid_lab_debian_version`). It also checks
@@ -31,7 +32,7 @@ The CI server (openwrtci) issues each lab's tokens: add the lab to
 `openwrtci_labs` there and run its `server.yml --tags labs`, which writes
 `ansible/secrets/<server>/labs/<lab>.env`. Here, set the host's
 `labgrid_agent_lab_name` to that lab name; `labgrid_agent_secrets_dir`
-(`inventory.yaml`) points to openwrtci's secrets directory, by default
+(`group_vars/all.yaml`) points to openwrtci's secrets directory, by default
 relative to this checkout inside openwrtci (`openwrtci/tests`). Optional per
 host: `labgrid_agent_platforms` (the `qemu_*` platforms of QEMU labs),
 `labgrid_agent_health_checks` (`false`, or a mapping of the agent's
