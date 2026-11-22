@@ -21,11 +21,17 @@ import pytest
 from probe_fixtures import lease, slot  # noqa: F401 (fixtures)
 
 
-def solicit_ra(slot, timeout=5):
-    """One RA from the DUT, solicited."""
-    ras = slot.ra_capture(timeout=timeout, solicit=True, count=1)["ras"]
-    assert ras, f"no RA from the DUT within {timeout}s after a Router Solicitation"
-    return ras[0]
+def solicit_ra(slot, timeout=5, tries=3):
+    """One RA from the DUT, solicited. Up to 3 Router Solicitations, as a
+    real host sends (RFC 4861 MAX_RTR_SOLICITATIONS): right after an odhcpd
+    restart the first one can go unanswered."""
+    for _ in range(tries):
+        ras = slot.ra_capture(timeout=timeout, solicit=True, count=1)["ras"]
+        if ras:
+            return ras[0]
+    assert False, (
+        f"no RA from the DUT after {tries} Router Solicitations, {timeout}s each"
+    )
 
 
 class UciChanges:
