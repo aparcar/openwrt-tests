@@ -73,7 +73,9 @@ def test_firmware_version(shell_command, record_property):
     the device booted an old or wrong image and the results describe a
     different firmware.
     """
-    [actual_version] = shell_command.run_check("source /etc/os-release; echo $BUILD_ID")
+    # the serial console mixes kernel messages into the output: the echo is last
+    output = shell_command.run_check("source /etc/os-release; echo $BUILD_ID")
+    actual_version = output[-1]
     record_property("firmware_version", actual_version)
 
     if "FIRMWARE_VERSION" in os.environ:
