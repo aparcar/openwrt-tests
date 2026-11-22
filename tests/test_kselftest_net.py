@@ -72,15 +72,20 @@ KERNEL_ERRORS = re.compile(r"WARNING:|BUG:|Oops|Call trace|Unable to handle")
 
 @pytest.fixture(scope="module")
 def ksft(strategy):
-    """The installed selftests; restarts the network after the module, as
-    the tests move ports into their own bridges and VRFs."""
+    """The installed selftests, with the firewall stopped: fw4 drops and
+    rejects traffic on interfaces outside its zones, which are all the veths
+    and VRFs the selftests create. Restarts the network and the firewall
+    after the module, as the tests move ports into their own bridges and
+    VRFs."""
     # shell_command is function scoped; the strategy's shell outlives a test
     strategy.transition("shell")
     shell = strategy.shell
     if shell.run(f"test -x {KSFT}/run_kselftest.sh")[2]:
         pytest.skip("image without kselftests-net")
+    shell.run("/etc/init.d/firewall stop")
     yield shell
     shell.run("/etc/init.d/network restart; sleep 10", timeout=120)
+    shell.run("/etc/init.d/firewall start")
 
 
 @pytest.fixture(scope="module")
@@ -121,7 +126,8 @@ def run_ksft(shell, cwd, command, timeout, record_property):
     """Run one selftest; returns its result (RC) and the new kernel warnings."""
     before = kernel_log_lines(shell)
     _, _, rc = shell.run(
-        f"cd {KSFT}/{cwd} && timeout {timeout} {command} >/tmp/ksft.log 2>&1",
+        # </dev/null: background helpers (ncat in tc_actions) would read the serial console
+        f"cd {KSFT}/{cwd} && timeout {timeout} {command} </dev/null >/tmp/ksft.log 2>&1",
         timeout=timeout + 60,
     )
     # TEST: lines of lib.sh, (not )ok lines of KTAP
@@ -132,8 +138,13 @@ def run_ksft(shell, cwd, command, timeout, record_property):
     warnings = shell.run(
         f"dmesg | tail -n +{before + 1} | grep -E '{KERNEL_ERRORS.pattern}'"
     )[0]
-    shell.run("rm -f /tmp/ksft.log")
     result = RC.get(rc, f"rc {rc}")
+    if result != "pass":
+        # the selftest prints the failing command's error just before its TEST line
+        record_property(
+            "kselftest_log", json.dumps(shell.run("tail -n 60 /tmp/ksft.log")[0])
+        )
+    shell.run("rm -f /tmp/ksft.log")
     record_property("kselftest_result", result)
     record_property("kselftest_details", json.dumps(lines))
     record_property("kernel_warnings", json.dumps(warnings))
@@ -147,15 +158,21 @@ def check(result, lines, warnings):
     assert result == "pass", "\n".join(lines)
 
 
+# pytest-timeout's default (300 s) would abort a selftest that still runs on
+# the console; give each test its selftest timeout plus the result collection
+@pytest.mark.timeout(1000)
 @pytest.mark.parametrize("test", FORWARDING)
 def test_kselftest_forwarding(ksft, test, record_property):
     """A net/forwarding selftest on veth pairs passes: the kernel's software
     bridge, routing, tc and tunnel paths behave as upstream expects on this
     CPU (endianness, alignment, word size). A failure the same kernel passes
     on other targets points to an arch or OpenWrt patch problem."""
-    check(*run_ksft(ksft, "net/forwarding", f"./{test}", 900, record_property))
+    # busybox's ping6 fails the selftests' pings; iputils (a dependency) works
+    command = f"env PING6='ping -6' ./{test}"
+    check(*run_ksft(ksft, "net/forwarding", command, 900, record_property))
 
 
+@pytest.mark.timeout(2400)
 @pytest.mark.parametrize("test", DRIVERS)
 def test_kselftest_drivers_net(ksft, netdevs, test, record_property):
     """A drivers/net selftest passes on each Ethernet interface with a link
@@ -183,6 +200,7 @@ def test_kselftest_drivers_net(ksft, netdevs, test, record_property):
         pytest.skip(f"skipped on {', '.join(results) or 'no interface with a link'}")
 
 
+@pytest.mark.timeout(400)
 def test_kselftest_dsa_fdb_stress(ksft, links, record_property):
     """Adding and removing an FDB entry on a DSA port in a tight loop while
     the FDB is dumped (drivers/net/dsa/test_bridge_fdb_stress.sh) leaves no
