@@ -150,6 +150,17 @@ def find_ap(ssh_command, ssid):
     return None, None
 
 
+def wifi_diagnostics(ssh_command):
+    """The radios the kernel has and the last driver and hostapd messages,
+    for failure messages: the console doesn't show them (dmesg -n 1)."""
+    out = ssh_command.run(
+        "ls /sys/class/ieee80211; "
+        "dmesg | grep -i -E 'mt7|ath1|eeprom|firmware|ieee80211|phy[0-9]' | tail -n 20; "
+        "logread -e hostapd | tail -n 20"
+    )[0]
+    return "\n".join(out)
+
+
 def open_ap(
     ssh_command, band, encryption, ssid=None, key=AP_KEY, options=None, channel=None
 ):
@@ -167,7 +178,10 @@ def open_ap(
     settings = WIFI_BANDS[band]
     ssid = ssid or f"OpenWrt-CI-{band}"
     radio, iface = wifi_radio_for_band(ssh_command, band)
-    assert radio, f"the target declares wifi-{band}, but the device has no {band} radio"
+    assert radio, (
+        f"the target declares wifi-{band}, but the device has no {band} radio\n"
+        f"{wifi_diagnostics(ssh_command)}"
+    )
     assert iface, f"no wifi-iface for {radio}"
 
     settings_cmds = [
@@ -203,7 +217,10 @@ def open_ap(
         time.sleep(2)
 
     iw = "\n".join(ssh_command.run("iw dev")[0])
-    assert freq, f"no AP with SSID {ssid} after 60 s; iw dev:\n{iw}"
+    assert freq, (
+        f"no AP with SSID {ssid} after 60 s; iw dev:\n{iw}\n"
+        f"{wifi_diagnostics(ssh_command)}"
+    )
     assert re.search(IWINFO_ENCRYPTION[encryption], info), (
         f"{ssid} not running with {encryption} after 60 s; "
         f"iwinfo {ifname} info:\n{info}"
