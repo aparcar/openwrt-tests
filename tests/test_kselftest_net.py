@@ -90,6 +90,10 @@ def ksft(strategy):
     shell = strategy.shell
     if shell.run(f"test -x {KSFT}/run_kselftest.sh")[2]:
         pytest.skip("image without kselftests-net")
+    # the tests' interface churn logs to the serial console (VisionFive 2)
+    # and garbles the shell driver's markers; warnings are read from dmesg
+    loglevel = shell.run_check("cat /proc/sys/kernel/printk")[0].split()[0]
+    shell.run("dmesg -n 1")
     services = "firewall smcroute"
     shell.run(f"for s in {services}; do /etc/init.d/$s stop; done 2>/dev/null")
     yield shell
@@ -98,6 +102,7 @@ def ksft(strategy):
         f"for s in {services}; do /etc/init.d/$s enabled && /etc/init.d/$s start; done"
         " 2>/dev/null"
     )
+    shell.run(f"dmesg -n {loglevel}")
 
 
 @pytest.fixture(scope="module")
