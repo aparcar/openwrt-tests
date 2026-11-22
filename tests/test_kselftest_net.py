@@ -82,9 +82,11 @@ def ksft(strategy):
     rejects traffic on interfaces outside its zones, which are all the veths
     and VRFs the selftests create. Also stops the system's smcrouted (the
     smcroute package starts one): it holds the kernel's multicast routing
-    socket, so the one router.sh starts gets no VIFs. Restarts the network
-    and both services after the module, as the tests move ports into their
-    own bridges and VRFs."""
+    socket, so the one router.sh starts gets no VIFs. Both are disabled
+    while the module runs, as the iface hotplug script reloads an enabled
+    firewall on every ifup (a late WAN DHCP lease). Restarts the network
+    and the services that were enabled after the module, as the tests move
+    ports into their own bridges and VRFs."""
     # shell_command is function scoped; the strategy's shell outlives a test
     strategy.transition("shell")
     shell = strategy.shell
@@ -94,14 +96,17 @@ def ksft(strategy):
     # and garbles the shell driver's markers; warnings are read from dmesg
     loglevel = shell.run_check("cat /proc/sys/kernel/printk")[0].split()[0]
     shell.run("dmesg -n 1")
-    services = "firewall smcroute"
-    shell.run(f"for s in {services}; do /etc/init.d/$s stop; done 2>/dev/null")
+    enabled = [
+        s
+        for s in ("firewall", "smcroute")
+        if shell.run(f"/etc/init.d/{s} enabled")[2] == 0
+    ]
+    for s in enabled:
+        shell.run(f"/etc/init.d/{s} disable; /etc/init.d/{s} stop")
     yield shell
     shell.run("/etc/init.d/network restart; sleep 10", timeout=120)
-    shell.run(
-        f"for s in {services}; do /etc/init.d/$s enabled && /etc/init.d/$s start; done"
-        " 2>/dev/null"
-    )
+    for s in enabled:
+        shell.run(f"/etc/init.d/{s} enable; /etc/init.d/{s} start")
     shell.run(f"dmesg -n {loglevel}")
 
 
