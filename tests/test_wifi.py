@@ -47,7 +47,7 @@ WIFI_SETTLE_TIMEOUT = 30
 
 
 @pytest.fixture(autouse=True)
-def wifi_reset(ssh_command):
+def wifi_reset(request, ssh_command):
     """Every Wi-Fi test starts with the radios as the test before it found
     them (the boot default) and with fresh APs: afterwards the wireless config
     goes back and `wifi` takes every radio down and up again, so hostapd
@@ -55,6 +55,9 @@ def wifi_reset(ssh_command):
     running BSS in place, and whatever survives that (the group keys of a
     WPA BSS turned open, test_wifi_client_open_after_wpa) makes the tests
     depend on their order. Also used by test_wifi_clients.py (imported)."""
+    # hwsim creates /etc/config/wireless, and autouse fixtures run first
+    if "hwsim" in request.fixturenames:
+        request.getfixturevalue("hwsim")
     ssh_command.run_check(f"cp /etc/config/wireless {WIRELESS_BACKUP}")
     yield
     for cmd in (
@@ -276,6 +279,10 @@ def test_wifi_hwsim_sae_mixed(hwsim, ssh_command):
     sets up the wireless configuration using the `ssh_command` fixture and relies on the
     "hwsim" driver to create the virtual radios (installed by the `hwsim` fixture).
     """
+    # `wifi config` makes the all-band hwsim radios 6g with country '00',
+    # which hostapd rejects ("Invalid country_code '00'")
+    ssh_command.run("uci set wireless.radio0.country=US")
+    ssh_command.run("uci set wireless.radio1.country=US")
     ssh_command.run("uci set wireless.radio0.channel=11")
     ssh_command.run("uci set wireless.radio0.band=2g")
     ssh_command.run("uci delete wireless.default_radio0.disabled")
@@ -303,63 +310,54 @@ def test_wifi_hwsim_sae_mixed(hwsim, ssh_command):
     ssh_command.run("uci commit")
     ssh_command.run("service network reload")
 
-    # wait till network reload finished
-    assert "timed out" not in "\n".join(
-        ssh_command.run("ubus -t 5 wait_for hostapd.phy0-ap0")[0]
-    )
+    # hwsim reloads (test_wifi_hwsim.py) renumber the phys
+    ap = ssh_command.run_check("iwinfo nl80211 phyname radio0")[0] + "-ap0"
+    sta = ssh_command.run_check("iwinfo nl80211 phyname radio1")[0] + "-sta0"
 
-    assert "Mode: Master  Channel: 11 (2.462 GHz)" in "\n".join(
-        ssh_command.run("iwinfo")[0]
-    )
+    # Poll instead of `ubus subscribe`: the AP comes up after its hostapd
+    # object (HT_SCAN), and the station may join before a subscription starts
+    def wait_for(cmd, text, timeout=60):
+        deadline = time.monotonic() + timeout
+        out = ""
+        while text not in out and time.monotonic() < deadline:
+            time.sleep(2)
+            out = "\n".join(ssh_command.run(cmd)[0])
+        return out
 
-    # Wait till the client associated
-    assert "auth" in "\n".join(
-        ssh_command.run(
-            "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"auth\":' | while read line; do echo auth && killall ubus; done"
-        )[0]
-    )
+    def debug():
+        return "\n".join(
+            f"--- {cmd}\n" + "\n".join(ssh_command.run(cmd)[0])
+            for cmd in ("iw dev", "uci show wireless", "logread | tail -n 40")
+        )
 
+    assert "Mode: Master  Channel: 11 (2.462 GHz)" in wait_for(
+        "iwinfo", "Master  Channel: 11 ("
+    ), debug()
+    assert "expected throughput" in wait_for(
+        f"iwinfo {ap} assoclist", "expected throughput"
+    ), debug()
     assert "Mode: Client  Channel: 11 (2.462 GHz)" in "\n".join(
         ssh_command.run("iwinfo")[0]
     )
-
     assert "expected throughput" in "\n".join(
-        ssh_command.run("iwinfo phy0-ap0 assoclist")[0]
-    )
-    assert "expected throughput" in "\n".join(
-        ssh_command.run("iwinfo phy1-sta0 assoclist")[0]
+        ssh_command.run(f"iwinfo {sta} assoclist")[0]
     )
 
     ssh_command.run("uci set wireless.default_radio1.encryption=psk2")
     assert "wireless.default_radio1.encryption='psk2'" in "\n".join(
         ssh_command.run("uci changes")[0]
     )
+    token = f"sae-mixed-{time.monotonic_ns()}"
+    ssh_command.run(f"logger -t wifi-test {token}")
     ssh_command.run("uci commit")
     ssh_command.run("service network reload")
 
-    # Wait till the wifi client is removed
-    assert "disassoc" in "\n".join(
-        ssh_command.run(
-            "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"disassoc\":' | while read line; do echo disassoc && killall ubus; done"
-        )[0]
-    )
-
-    # wait till network reload finished
-    assert "timed out" not in "\n".join(
-        ssh_command.run("ubus -t 5 wait_for wpa_supplicant.phy1-sta0")[0]
-    )
-
-    assert "expected throughput" not in "\n".join(
-        ssh_command.run("iwinfo phy0-ap0 assoclist")[0]
-    )
-
-    # Wait till the client associated
-    assert "auth" in "\n".join(
-        ssh_command.run(
-            "ubus -t 20 subscribe hostapd.phy0-ap0 | grep '\"auth\":' | while read line; do echo auth && killall ubus; done"
-        )[0]
-    )
-
-    assert "expected throughput" in "\n".join(
-        ssh_command.run("iwinfo phy0-ap0 assoclist")[0]
-    )
+    # The station leaves and joins again, now with WPA2 only
+    since = f"logread | sed -n '/{token}/,$p' | grep {ap}"
+    log = wait_for(since, "AP-STA-DISCONNECTED")
+    assert "AP-STA-DISCONNECTED" in log, debug()
+    log = wait_for(f"{since} | sed -n '/AP-STA-DISCONNECTED/,$p'", "AP-STA-CONNECTED")
+    assert "AP-STA-CONNECTED" in log, debug()
+    assert "expected throughput" in wait_for(
+        f"iwinfo {ap} assoclist", "expected throughput"
+    ), debug()
