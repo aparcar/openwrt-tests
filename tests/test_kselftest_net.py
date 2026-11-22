@@ -80,18 +80,24 @@ KERNEL_ERRORS = re.compile(r"WARNING:|BUG:|Oops|Call trace|Unable to handle")
 def ksft(strategy):
     """The installed selftests, with the firewall stopped: fw4 drops and
     rejects traffic on interfaces outside its zones, which are all the veths
-    and VRFs the selftests create. Restarts the network and the firewall
-    after the module, as the tests move ports into their own bridges and
-    VRFs."""
+    and VRFs the selftests create. Also stops the system's smcrouted (the
+    smcroute package starts one): it holds the kernel's multicast routing
+    socket, so the one router.sh starts gets no VIFs. Restarts the network
+    and both services after the module, as the tests move ports into their
+    own bridges and VRFs."""
     # shell_command is function scoped; the strategy's shell outlives a test
     strategy.transition("shell")
     shell = strategy.shell
     if shell.run(f"test -x {KSFT}/run_kselftest.sh")[2]:
         pytest.skip("image without kselftests-net")
-    shell.run("/etc/init.d/firewall stop")
+    services = "firewall smcroute"
+    shell.run(f"for s in {services}; do /etc/init.d/$s stop; done 2>/dev/null")
     yield shell
     shell.run("/etc/init.d/network restart; sleep 10", timeout=120)
-    shell.run("/etc/init.d/firewall start")
+    shell.run(
+        f"for s in {services}; do /etc/init.d/$s enabled && /etc/init.d/$s start; done"
+        " 2>/dev/null"
+    )
 
 
 @pytest.fixture(scope="module")
