@@ -228,10 +228,14 @@ def find_efi_firmware(arch):
     return _find_qemu_file(QEMU_EFI_FIRMWARE.get(arch, []))
 
 
-def ubus_call(command, namespace, method, params=None):
+def ubus_call(command, namespace, method, params=None, timeout=30):
+    """`ubus call`, parsed. A reply missing after `timeout` seconds (an
+    object going away mid-call) raises ExecutionError, like ubus' rc 7."""
     if params is None:
         params = {}
-    output = command.run_check(f"ubus call {namespace} {method} '{json.dumps(params)}'")
+    output = command.run_check(
+        f"ubus -t {timeout} call {namespace} {method} '{json.dumps(params)}'"
+    )
 
     try:
         return json.loads("\n".join(output))

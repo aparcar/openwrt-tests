@@ -606,12 +606,18 @@ def test_wifi_clients_follow_channel_change(ssh_command, wifi_probe, target):
         time.sleep(2)
     assert freq == 2462, f"AP on {freq} MHz, not channel 11 (2462 MHz)"
 
-    status = bed.wait(timeout=120)
-    assert_all_up(status)
-    status = bed.status(detail=True)
-    wrong = {s["ifname"]: s.get("link", {}).get("freq") for s in status["stations"]}
-    wrong = {i: f for i, f in wrong.items() if f != 2462}
+    # Right after the move the probe may still count the stations as
+    # connected while they have no link: wait for each to be on 2462 MHz
+    deadline = time.monotonic() + 120
+    while True:
+        status = bed.status(detail=True)
+        wrong = {s["ifname"]: s.get("link", {}).get("freq") for s in status["stations"]}
+        wrong = {i: f for i, f in wrong.items() if f != 2462}
+        if not wrong or time.monotonic() > deadline:
+            break
+        time.sleep(2)
     assert not wrong, f"stations not on 2462 MHz: {wrong}"
+    assert_all_up(bed.wait(timeout=120))
     assert_all_ping(bed)
 
 

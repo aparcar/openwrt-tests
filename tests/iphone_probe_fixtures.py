@@ -89,24 +89,27 @@ def iphone_probe(env, target, strategy):
 
 
 def dut_leases(ssh_command):
-    """dnsmasq's leases on the DUT: {mac: ip}"""
+    """dnsmasq's leases on the DUT: {mac: (expiry, ip)}"""
     stdout, _, _ = ssh_command.run("cat /tmp/dhcp.leases")
     leases = {}
     for line in stdout:
         fields = line.split()
         if len(fields) >= 3:
-            leases[fields[1].lower()] = fields[2]
+            leases[fields[1].lower()] = (fields[0], fields[2])
     return leases
 
 
 class PhoneBed:
-    def __init__(self, ssh, phone, band, ssid, encryption, mac):
+    def __init__(self, ssh, phone, band, ssid, encryption, mac, leases_before):
         self.ssh = ssh
         self.phone = phone
         self.band = band
         self.ssid = ssid
         self.encryption = encryption
         self.mac = mac
+        # The phone keeps its MAC, so its lease of an earlier test is still
+        # listed: only a lease written (or renewed) since start() counts
+        self.lease_before = leases_before.get(mac)
         self.started = time.monotonic()
 
     @classmethod
@@ -132,6 +135,7 @@ class PhoneBed:
         if band not in PHONE_BANDS:
             pytest.skip(f"the iPhone probe has no {band} radio")
         dut_dhcp_pool(ssh_command)
+        leases_before = dut_leases(ssh_command)
         ssid = bed_ssid(target, band)
         open_ap(ssh_command, band, encryption, ssid=ssid, key=key, options=options)
         if encryption == "none" or sta_encryption is None:
@@ -144,7 +148,9 @@ class PhoneBed:
         )
         if reply.get("warning"):
             logger.warning("iprobe join: %s", reply["warning"])
-        return cls(ssh_command, phone, band, ssid, encryption, reply["mac"])
+        return cls(
+            ssh_command, phone, band, ssid, encryption, reply["mac"], leases_before
+        )
 
     def ap_ifname(self):
         ifname, _ = find_ap(self.ssh, self.ssid)
@@ -158,11 +164,16 @@ class PhoneBed:
         if not ifname:
             return None
         try:
-            reply = ubus_call(self.ssh, f"hostapd.{ifname}", "get_clients")
+            reply = ubus_call(self.ssh, f"hostapd.{ifname}", "get_clients", timeout=5)
         except ExecutionError:  # hostapd went away in between (wifi down)
             return None
         clients = {m.lower(): c for m, c in reply.get("clients", {}).items()}
         return clients.get(self.mac)
+
+    def lease_ip(self):
+        """The phone's address if it got a lease since start(), else None"""
+        lease = dut_leases(self.ssh).get(self.mac)
+        return lease[1] if lease and lease != self.lease_before else None
 
     def state(self):
         client = self.dut_client()
@@ -171,7 +182,7 @@ class PhoneBed:
             "associated": client is not None,
             "authorized": bool(client and client.get("authorized")),
             "mfp": bool(client and client.get("mfp")),
-            "ip": dut_leases(self.ssh).get(self.mac),
+            "ip": self.lease_ip(),
             "after_s": round(time.monotonic() - self.started, 1),
         }
 

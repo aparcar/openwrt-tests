@@ -188,4 +188,6 @@ def test_android_reconnects_after_wifi_restart(
     state = bed.wait(timeout=180)
     record_property("android_reconnect_s", round(time.monotonic() - started, 1))
     assert_joined(bed, state)
-    assert_ping(bed, state["ip"])
+    # The phone may keep its lease without a new DHCP exchange, so nothing
+    # on the DUT says when its address is back up: ping for ~20 s
+    assert_ping(bed, state["ip"], count=20)
