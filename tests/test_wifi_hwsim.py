@@ -505,6 +505,8 @@ def test_wifi_ap_options(bed, option, record_property):
         line for line in log.splitlines() if "unknown configuration item" in line
     ]
     record_property("unknown_items", json.dumps(unknown))
+    if any(f"'{option}'" in line for line in unknown):
+        pytest.xfail(f"hostapd rejects {option} (openwrt/openwrt#23565)")
     assert ap, f"AP with {option} did not come up\n{bed.debug()}"
     assert not unknown, "hostapd rejected options:\n" + "\n".join(unknown)
 
@@ -766,6 +768,8 @@ def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
         "set dhcp.hwsimvlan.limit=50",
         "set dhcp.hwsimvlan.leasetime=1h",
         "set dhcp.hwsimvlan.force=1",
+        # without it main's dnsmasq init adds no dhcp-range (openwrt/openwrt#25067)
+        "set dhcp.hwsimvlan.dhcpv4=server",
         "add_list firewall.@zone[0].network=hwsimvlan",
     )
     bed.set_radio(dut, 1, band="2g", htmode="HT20")
@@ -781,6 +785,7 @@ def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
         "set wireless.t_sta.vid=150",
         f"set wireless.t_sta.key={KEY}",
     )
+    token = bed.mark()
     bed.apply()
     assert bed.wait_ap("hwsim-dvlan"), bed.debug()
 
@@ -798,7 +803,16 @@ def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
     assert wireless_ports, (
         f"no VLAN wifi iface in br-hwsim (ports {ports})\n{bed.debug()}"
     )
-    assert lease and lease.startswith("192.168.150."), f"DHCP in the VLAN gave {lease}"
+    if not (lease and lease.startswith("192.168.150.")):
+        state = bed.sh(
+            "ip addr show br-hwsim; "
+            "grep -h -e ^dhcp-range -e ^interface /var/etc/dnsmasq.conf.*; "
+            'ubus call service list \'{"name":"dnsmasq"}\''
+        )[0]
+        pytest.fail(
+            f"DHCP in the VLAN gave {lease}\n{state}\n"
+            f"--- logread\n{bed.log_since(token)}"
+        )
 
 
 def test_hostapd_survives_sta_reconnect_during_scan(bed, record_property):
