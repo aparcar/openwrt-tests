@@ -363,11 +363,16 @@ class Peer:
         self.ifname = f"{ns}w"
         self.pidfile = f"/tmp/{ns}.pid"
         self.conf = f"/tmp/{ns}.conf"
+        # The wiphy's own address may be one the DUT's hostapd has used for a
+        # BSS (hwsim gives every module load the same addresses), and hostapd
+        # (2.12) refuses a station with an address of its own BSSs
+        octets = uuid.uuid4().hex[:10]
+        addr = "02:" + ":".join(octets[i : i + 2] for i in range(0, 10, 2))
         bed.check(
             f"ip netns add {ns} && iw phy {phy} set netns name {ns} && "
             + self.x(f"iw phy {phy} interface add {self.ifname} type managed")
             + " && "
-            + self.x(f"ip link set {self.ifname} up")
+            + self.x(f"ip link set {self.ifname} address {addr} up")
         )
 
     def x(self, cmd):
@@ -606,9 +611,16 @@ def test_wifi_country_applies(bed, record_property):
             bed.add_iface(f"t_ap{i}", radio, ssid=f"hwsim-cc{i}")
         bed.apply()
         assert bed.wait_ap("hwsim-cc0") and bed.wait_ap("hwsim-cc1"), bed.debug()
-        reg = bed.sh("iw reg get")[0]
-        m = re.search(r"^global\s*\ncountry (\w\w):", reg, re.MULTILINE)
-        seen[country] = m.group(1) if m else None
+        # reload_config returns before the reload: the APs of the previous
+        # country are still up, so wait for the regdomain to follow
+        deadline = time.monotonic() + 30
+        while True:
+            reg = bed.sh("iw reg get")[0]
+            m = re.search(r"^global\s*\ncountry (\w\w):", reg, re.MULTILINE)
+            seen[country] = m.group(1) if m else None
+            if seen[country] == country or time.monotonic() > deadline:
+                break
+            time.sleep(2)
         record_property(f"regdomain_after_{country}", seen[country])
     assert seen == {"DE": "DE", "US": "US"}, f"set -> global regdomain: {seen}"
 
@@ -695,7 +707,9 @@ def test_wifi_vif_macs_unique(bed, record_property):
     bed.use_wpad("basic")
     radios = bed.load(radios=1, multi_radio=True)
     by_band = {r.band: r for r in radios}
-    settings = {"2g": (1, "psk2"), "5g": (36, "psk2"), "6g": (37, "sae")}
+    # no 6 GHz AP: the regdomain marks 6 GHz NO-IR for hwsim ("Could not
+    # select hw_mode and channel"), so it never comes up
+    settings = {"2g": (1, "psk2"), "5g": (36, "psk2")}
     ssids = []
     for band, (channel, encryption) in settings.items():
         if band not in by_band:
