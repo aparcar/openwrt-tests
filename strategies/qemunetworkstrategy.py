@@ -98,6 +98,10 @@ class QEMUNetworkStrategy(Strategy):
             self.target.activate(self.qemu)
             self.qemu.on()
             self.target.activate(self.shell)
+            # The ShellDriver's post-login "dmesg -n 1" sometimes loses bytes. Kernel
+            # output nobody reads (during SSH) fills the serial socket, and QEMU then
+            # stalls the whole guest (pl011 console waits with IRQs off).
+            self.shell.run_check("dmesg -n 1")
             self.update_network_service()
 
         self.status = state
