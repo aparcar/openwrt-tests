@@ -2,9 +2,11 @@ openwrt:
   name: Enterasys WS-AP3710i
   target: mpc85xx-p1020
   profile: enterasys_ws-ap3710i
-  # Newer OpenWrt (24.10+, Linux 6.x) hangs after the kernel loads on this
-  # board's ancient stock U-Boot; 23.05 (Linux 5.15) is the last that boots.
-  # See https://github.com/openwrt/openwrt/issues/23112
+  # 24.10/25.12 initramfs hangs after "Uncompressing Kernel Image ... OK": the
+  # simpleImage loader is linked at 0x1500000 and the kernel outgrew it
+  # (https://github.com/openwrt/openwrt/issues/25302; main relocated it to
+  # 0x3000000, 25.12 via #26565). 23.05 is the last release that boots here.
+  # Drop the pin once a 25.12 release with the fix boots.
   healthcheck_version: "23.05.5"
 targets:
   main:

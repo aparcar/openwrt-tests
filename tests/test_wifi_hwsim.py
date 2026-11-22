@@ -739,17 +739,9 @@ def test_wifi_vif_macs_unique(bed, record_property):
 # --- full wpad: dynamic VLANs, MLO -------------------------------------------
 
 
-def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
-    """A client using a per-VLAN Wi-Fi password ends up in that VLAN and gets
-    an address there. If it fails, password-based network separation
-    (e.g. guests or IoT devices on their own VLAN) doesn't work.
-
-    Regression: openwrt/openwrt#9944
-
-    Per-station VLANs from a PSK (wifi-station/wifi-vlan, no RADIUS): a
-    station with the VLAN's key lands in that VLAN's bridge and gets DHCP
-    there. With `vlan_no_bridge` the VLAN interface was not bridged.
-    """
+def dynamic_vlan_bed(bed):
+    """An AP whose wifi-station key puts a station into VLAN 150 (wifi-vlan
+    t_vlan, bridge br-hwsim with DHCP); returns the peer's radio."""
     bed.use_wpad("full")
     radios = bed.load(radios=2)
     dut, sta = radios[0], radios[1]
@@ -788,14 +780,32 @@ def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
     token = bed.mark()
     bed.apply()
     assert bed.wait_ap("hwsim-dvlan"), bed.debug()
+    return sta
 
-    peer = bed.peer(sta)
-    assert peer.connect("hwsim-dvlan", key=KEY), f"VLAN key rejected\n{bed.debug()}"
-    time.sleep(3)  # hostapd adds the VLAN iface on the station's association
+
+def vlan_wifi_ports(bed):
+    """(all ports of br-hwsim, the wireless ones among them)"""
     ports = bed.sh("ls /sys/class/net/br-hwsim/brif/ 2>/dev/null")[0].split()
-    wireless_ports = [
+    return ports, [
         p for p in ports if bed.sh(f"[ -d /sys/class/net/{p}/phy80211 ]")[1] == 0
     ]
+
+
+def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
+    """A client using a per-VLAN Wi-Fi password ends up in that VLAN and gets
+    an address there. If it fails, password-based network separation
+    (e.g. guests or IoT devices on their own VLAN) doesn't work.
+
+    Regression: openwrt/openwrt#9944
+
+    Per-station VLANs from a PSK (wifi-station/wifi-vlan, no RADIUS): a
+    station with the VLAN's key lands in that VLAN's bridge and gets DHCP
+    there. With `vlan_no_bridge` the VLAN interface was not bridged.
+    """
+    peer = bed.peer(dynamic_vlan_bed(bed))
+    assert peer.connect("hwsim-dvlan", key=KEY), f"VLAN key rejected\n{bed.debug()}"
+    time.sleep(3)  # hostapd adds the VLAN iface on the station's association
+    ports, wireless_ports = vlan_wifi_ports(bed)
     record_property("bridge_ports", json.dumps(ports))
     record_property("bridge_link", bed.sh("bridge link 2>/dev/null")[0])
     lease = peer.dhcp()
@@ -813,6 +823,101 @@ def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
             f"DHCP in the VLAN gave {lease}\n{state}\n"
             f"--- logread\n{bed.log_since(token)}"
         )
+
+
+@pytest.mark.xfail(
+    reason="openwrt/openwrt#26811: `wifi reload` does not apply wifi-vlan changes",
+    strict=False,
+)
+def test_wifi_reload_applies_wifi_vlan(bed, record_property):
+    """A changed wifi-vlan section (client isolation in the VLAN bridge)
+    takes effect on `wifi reload`, both when set and when removed. If it
+    fails, VLAN settings changed in the config (or LuCI) only apply after
+    a full Wi-Fi restart, so clients stay unisolated meanwhile.
+
+    Known issue: openwrt/openwrt#26811
+
+    `bridge_isolate` on wifi-vlan t_vlan must show in the brport/isolated
+    flag of the station's AP_VLAN netdev after `wifi reload`; netifd's
+    status has the new config, but the existing bridge port isn't updated.
+    """
+    peer = bed.peer(dynamic_vlan_bed(bed))
+    assert peer.connect("hwsim-dvlan", key=KEY), f"VLAN key rejected\n{bed.debug()}"
+    seen = {}
+    for change, want in (
+        ("set wireless.t_vlan.bridge_isolate=1", "1"),
+        ("delete wireless.t_vlan.bridge_isolate", "0"),
+    ):
+        bed.uci(change)
+        bed.check("uci commit wireless && wifi reload", timeout=90)
+        time.sleep(5)
+        peer.wait_connected()  # in case the reload took the station off
+        _, wifi_ports = vlan_wifi_ports(bed)
+        assert wifi_ports, f"no VLAN wifi iface in br-hwsim\n{bed.debug()}"
+        isolated = f"/sys/class/net/{wifi_ports[0]}/brport/isolated"
+        seen[want] = bed.sh(f"cat {isolated}")[0].strip()
+        record_property(f"isolated_want_{want}", seen[want])
+    assert seen == {"1": "1", "0": "0"}, f"want -> brport/isolated: {seen}"
+
+
+@pytest.mark.xfail(
+    reason="openwrt/openwrt#25662: station on a multi-radio wiphy joins its "
+    "network on another radio's band",
+    strict=False,
+)
+def test_wifi_multi_radio_sta_stays_on_band(bed, record_property):
+    """A Wi-Fi client (station) configured on the 2.4 GHz radio of a
+    multi-band chip never connects on 5 GHz, even when its network is only
+    on 5 GHz. If it fails, a repeater's uplink lands on the wrong band and
+    drags that band's own APs along.
+
+    Known issue: openwrt/openwrt#25662
+
+    hwsim multi_radio (one wiphy with 2.4/5/6 GHz radios, the model of
+    mt7996): the external AP is on 5 GHz only, the DUT has an AP on its 5 GHz
+    radio (scanned with `scan ap-force` as travelmate does) and a station on
+    its 2.4 GHz radio. supplicant.uc sets only the global freq_list, not the
+    network's, so the station takes the 5 GHz BSS from the shared scan
+    results. Not connecting at all is the correct outcome.
+    """
+    bed.use_wpad("basic")
+    radios = bed.load(radios=2, multi_radio=True)
+    paths = sorted({r.path for r in radios})
+    assert len(paths) == 2, f"expected two wiphys: {radios}"
+    by_band = {r.band: r for r in radios if r.path == paths[0]}
+    ext = next(r for r in radios if r.path == paths[1])
+    if "2g" not in by_band or "5g" not in by_band:
+        pytest.fail(f"multi_radio hwsim without 2g and 5g radios: {radios}")
+    bed.uci("set network.hwsimsta=interface", "set network.hwsimsta.proto=none")
+    bed.set_radio(by_band["2g"], 1, htmode="HT20")
+    bed.set_radio(by_band["5g"], 36, htmode="HT20")
+    bed.add_iface("t_ap5", by_band["5g"], ssid="hwsim-mr5g")
+    bed.add_iface(
+        "t_sta", by_band["2g"], mode="sta", ssid="hwsim-ext", network="hwsimsta"
+    )
+    peer = bed.peer(ext)
+    peer.start_ap("hwsim-ext", 36)
+    bed.apply()
+    ap5 = bed.wait_ap("hwsim-mr5g", timeout=90)
+    assert ap5, bed.debug()
+
+    def sta_link(ifs):
+        sta = next(
+            (i for i in ifs if i.type == "managed" and i.phy == ap5.phy and i.links),
+            None,
+        )
+        return sta and sta.links[0]
+
+    link = None
+    for _ in range(3):
+        bed.sh(f"iw dev {ap5.name} scan ap-force >/dev/null 2>&1")
+        link = bed.wait(sta_link, timeout=15)
+        if link:
+            break
+    record_property("sta_link", json.dumps(link))
+    assert not link or band_of(link[1]) == "2g", (
+        f"2.4 GHz station connected on {link[1]} MHz\n{bed.debug()}"
+    )
 
 
 def test_hostapd_survives_sta_reconnect_during_scan(bed, record_property):

@@ -204,7 +204,14 @@ def tx_timeouts(shell):
 
 @pytest.mark.parametrize("direction", ["upload", "download"])
 def test_lan_soak_no_tx_timeout(
-    slot, lease, dut_iperf_server, shell_command, direction, record_property
+    env,
+    request,
+    slot,
+    lease,
+    dut_iperf_server,
+    shell_command,
+    direction,
+    record_property,
 ):
     """Sustained LAN traffic to and from the DUT (one run per direction)
     causes no network driver transmit timeouts (NETDEV WATCHDOG). Such
@@ -215,8 +222,16 @@ def test_lan_soak_no_tx_timeout(
     TCP between the probe's LAN client and the DUT's own iperf3 server (no
     WAN port needed if the image has iperf3), then no NETDEV WATCHDOG tx
     timeout in dmesg.
-    PROBE_SOAK_SECONDS sets the duration (default 60 s).
+    PROBE_SOAK_SECONDS sets the duration (default 60 s). Known bug on the
+    Raspberry Pi 4 (bcmgenet), expected to fail there.
     """
+    if (env.config.data.get("openwrt") or {}).get("target") == "bcm27xx-bcm2711":
+        request.applymarker(
+            pytest.mark.xfail(
+                reason="openwrt/openwrt#20570: bcmgenet NETDEV WATCHDOG tx "
+                "timeout under load (RPi 4, 25.12; may XPASS on main)"
+            )
+        )
     before = tx_timeouts(shell_command)
     result = slot.speedtest(
         duration=SOAK_SECONDS,
