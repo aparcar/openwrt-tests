@@ -52,18 +52,24 @@ FORWARDING = [
     "vxlan_bridge_1q.sh",
 ]
 
-# drivers/net tests with a local device only (NetDrvEnv, no REMOTE_*)
+# drivers/net tests with a local device only (NetDrvEnv, no REMOTE_*). Not
+# shaper.py: the net-shaper family (CONFIG_NET_SHAPER) is only built when a
+# driver selects it, none in OpenWrt's targets do
 DRIVERS = [
     "hds.py",
     "napi_threaded.py",
     "queues.py",
-    "shaper.py",
     "stats.py",
     "hw/irq.py",
     "hw/nic_timestamp.py",
     "hw/rss_api.py",
     "hw/xsk_reconfig.py",
 ]
+
+# Selftest timeouts (s) above the default 900: no_forwarding waits out ~200
+# unanswered pings (5 s each) and reads the capture once per check (~350
+# tcpdump runs): 17 min on a BPi-R4 Lite (Cortex-A53)
+SLOW = {"no_forwarding.sh": 2700}
 
 # kselftest exit codes; 124 is timeout(1)'s
 RC = {0: "pass", 1: "fail", 4: "skip", 124: "timeout"}
@@ -160,8 +166,13 @@ def check(result, lines, warnings):
 
 # pytest-timeout's default (300 s) would abort a selftest that still runs on
 # the console; give each test its selftest timeout plus the result collection
-@pytest.mark.timeout(1000)
-@pytest.mark.parametrize("test", FORWARDING)
+@pytest.mark.parametrize(
+    "test",
+    [
+        pytest.param(t, marks=pytest.mark.timeout(SLOW.get(t, 900) + 100))
+        for t in FORWARDING
+    ],
+)
 def test_kselftest_forwarding(ksft, test, record_property):
     """A net/forwarding selftest on veth pairs passes: the kernel's software
     bridge, routing, tc and tunnel paths behave as upstream expects on this
@@ -169,7 +180,8 @@ def test_kselftest_forwarding(ksft, test, record_property):
     on other targets points to an arch or OpenWrt patch problem."""
     # busybox's ping6 fails the selftests' pings; iputils (a dependency) works
     command = f"env PING6='ping -6' ./{test}"
-    check(*run_ksft(ksft, "net/forwarding", command, 900, record_property))
+    timeout = SLOW.get(test, 900)
+    check(*run_ksft(ksft, "net/forwarding", command, timeout, record_property))
 
 
 @pytest.mark.timeout(2400)
