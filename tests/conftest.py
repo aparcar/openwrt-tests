@@ -298,9 +298,12 @@ def shell_command(env, strategy):
     try:
         strategy.transition("shell")
         return strategy.shell
-    except Exception:
+    except Exception as e:
         logger.exception("Failed to transition to state shell")
-        pytest.exit("Failed to transition to state shell", returncode=3)
+        # The exit message is the last line of pytest's output, which CI keeps
+        # as the error: name the cause there (the traceback only goes to logging)
+        cause = f"{type(e).__name__}: {str(e).splitlines()[0] if str(e) else ''}"[:300]
+        pytest.exit(f"Failed to transition to state shell: {cause}", returncode=3)
     finally:
         if budget:
             signal.setitimer(signal.ITIMER_REAL, remaining, interval)
