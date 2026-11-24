@@ -1,22 +1,29 @@
-# The GitHub keys (github.com/<user>.keys) of a lab's maintainers and access
-# list (labs/<lab>/lab.yaml, as `lab`) in a marked block of _keys_user's
-# authorized_keys. Removing someone from lab.yaml removes their keys from the
-# block; keys outside it (the agent's, added by hand) stay. Used for
-# labgrid-dev, the phone probes' accounts and dprobe (contrib/debian-probe).
+# The GitHub keys (github.com/<user>.keys) of the host's labgrid_access
+# (host_vars, kept out of the public lab records) in a marked block of
+# _keys_user's authorized_keys. Removing someone from labgrid_access removes
+# their keys from the block; keys outside it (the agent's, added by hand)
+# stay. labgrid_access_keys (host_vars, whole key lines, for keys not on
+# GitHub) go in the same block. Used for labgrid-dev, the phone probes' accounts and dprobe
+# (contrib/debian-probe).
 #   _keys_user: the account
-#   _keys_lab: the lab's name, for the marker (default inventory_hostname)
 # The host fetches the keys, not the controller: a url lookup in a forked
 # worker crashes Ansible on macOS (proxy lookup, objc fork safety). If GitHub
 # can't be reached, the fetch fails and the old keys stay.
 - name: GitHub keys for {{ _keys_user }}
-  vars:
-    _users: "{{ (lab.maintainers | default([]) + lab.access | default([])) | unique }}"
   block:
+    # Unset would empty the block and lock everyone out; [] is a choice
+    - name: Check the host lists who has access
+      ansible.builtin.assert:
+        that: labgrid_access is defined
+        fail_msg: >-
+          Set labgrid_access (GitHub user names) in host_vars/{{ inventory_hostname }}.yml,
+          [] for nobody
+
     - name: Fetch the GitHub keys of the lab's users
       ansible.builtin.uri:
         url: "https://github.com/{{ item }}.keys"
         return_content: true
-      loop: "{{ _users }}"
+      loop: "{{ labgrid_access | unique }}"
       register: _github_keys
       check_mode: false
 
@@ -30,7 +37,8 @@
     - name: Authorize the lab's GitHub users as {{ _keys_user }}
       ansible.builtin.blockinfile:
         path: "~{{ _keys_user }}/.ssh/authorized_keys"
-        marker: "# {mark} openwrt-tests: GitHub keys of labs/{{ _keys_lab | default(inventory_hostname) }}/lab.yaml"
+        # The marker of the deployed blocks, from when lab.yaml held the users
+        marker: "# {mark} openwrt-tests: GitHub keys of labs/{{ inventory_hostname }}/lab.yaml"
         create: true
         owner: "{{ _keys_user }}"
         mode: "0600"
@@ -38,3 +46,5 @@
         block: |-
           {% for r in _github_keys.results %}{% for key in r.content.splitlines() if key | trim %}{{ key | trim }} {{ r.item }}
           {% endfor %}{% endfor %}
+          {% for key in labgrid_access_keys | default([]) %}{{ key | trim }}
+          {% endfor %}
