@@ -1,6 +1,7 @@
 import enum
 import ipaddress
 import os
+import re
 from typing import ClassVar
 from urllib.parse import urlparse
 
@@ -48,9 +49,9 @@ class UBootTFTPStrategy(Strategy):
 
     status = attr.ib(default=Status.unknown)
 
-    # `version` output of the bootloader, read at its prompt before booting;
-    # None if it has no such command (test_base.py records it)
-    uboot_version = attr.ib(default=None)
+    # everything the bootloader printed from power-on up to its prompt
+    # (banner, SoC, DRAM, ...); test_base.py records and parses it
+    bootloader_log = attr.ib(default=None)
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
@@ -98,12 +99,6 @@ class UBootTFTPStrategy(Strategy):
                 staged_file = staged
                 tftp_server_ip = None
 
-            self.power.cycle()
-            for expect, send in self.console_unlock:
-                self.console.expect(expect, timeout=60)
-                self.console.write(send.encode())
-            # interrupt uboot
-
             self.uboot.init_commands = (
                 f"setenv bootfile {staged_file}",
             ) + self.uboot.init_commands
@@ -119,17 +114,31 @@ class UBootTFTPStrategy(Strategy):
                     f"setenv gatewayip {tftp_server_ip}",
                 ) + self.uboot.init_commands
 
-            self.target.activate(self.uboot)
-            # bookkeeping only: vendor bootloaders may lack `version`
-            # (Aruba APBoot answers "APBoot 1.5.7.2 (build ...)")
-            out, _, _ = self.uboot.run("version", timeout=30)
-            banner = [
-                line.strip()
-                for line in out
-                if line.strip() and "nknown command" not in line
-            ]
-            if banner:
-                self.uboot_version = banner[0]
+            # Record what is read from the console from power-on until the
+            # bootloader prompt (bootloader_log). Only matches are kept: on a
+            # timeout pexpect leaves the data in its buffer for the next match.
+            seen = []
+            console_expect = self.console.expect
+
+            def recording_expect(pattern, timeout=-1):
+                result = console_expect(pattern, timeout=timeout)
+                if isinstance(result[3], bytes):
+                    seen.append(result[1] + result[3])
+                return result
+
+            self.console.expect = recording_expect
+            try:
+                self.power.cycle()
+                for expect, send in self.console_unlock:
+                    self.console.expect(expect, timeout=60)
+                    self.console.write(send.encode())
+                # interrupt uboot
+                self.target.activate(self.uboot)
+            finally:
+                del self.console.expect
+            log = b"".join(seen).decode(errors="replace")
+            prompt = re.search(self.uboot.prompt, log)
+            self.bootloader_log = log[: prompt.start()] if prompt else log
         elif status == Status.shell:
             # transition to uboot
             self.transition(Status.uboot)
