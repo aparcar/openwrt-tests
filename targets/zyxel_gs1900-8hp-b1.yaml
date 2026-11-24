@@ -1,8 +1,6 @@
 # ZyXEL GS1900-8HP B1: RTL8380, 128M RAM, 8x 1G (PoE), stock vendor U-Boot
 # (not modified: RAM boot over TFTP from the prompt). Kselftest images are
 # self-built, so pass the initramfs as LG_IMAGE.
-# shortcut: autoboot text and interrupt key copied from the 24EP draft,
-# check them against the B1's boot log (bootdelay=0)
 openwrt:
   name: ZyXEL GS1900-8HP B1
   target: realtek-rtl838x
@@ -21,8 +19,11 @@ targets:
       - SerialDriver:
           txdelay: 0.01
       - UBootDriver:
-          autoboot: "Hit Esc key to stop autoboot"
-          interrupt: "\x1b"
+          # "Press SPACE to abort boot script:  0": with bootdelay=0 U-Boot
+          # checks for the key only once, so send it already at the banner
+          # (it waits in the UART FIFO); a second one at the line is harmless
+          autoboot: "U-Boot Version:|Press SPACE to abort boot script"
+          interrupt: " "
           prompt: "RTL838x# "
           init_commands:
             - rtk network on
