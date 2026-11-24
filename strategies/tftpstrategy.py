@@ -48,6 +48,10 @@ class UBootTFTPStrategy(Strategy):
 
     status = attr.ib(default=Status.unknown)
 
+    # `version` output of the bootloader, read at its prompt before booting;
+    # None if it has no such command (test_base.py records it)
+    uboot_version = attr.ib(default=None)
+
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
 
@@ -116,6 +120,16 @@ class UBootTFTPStrategy(Strategy):
                 ) + self.uboot.init_commands
 
             self.target.activate(self.uboot)
+            # bookkeeping only: vendor bootloaders may lack `version`
+            # (Aruba APBoot answers "APBoot 1.5.7.2 (build ...)")
+            out, _, _ = self.uboot.run("version", timeout=30)
+            banner = [
+                line.strip()
+                for line in out
+                if line.strip() and "nknown command" not in line
+            ]
+            if banner:
+                self.uboot_version = banner[0]
         elif status == Status.shell:
             # transition to uboot
             self.transition(Status.uboot)
