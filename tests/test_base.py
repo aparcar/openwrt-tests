@@ -116,6 +116,40 @@ def test_ubus_system_board(ssh_command, record_property):
     record_property("version", output["release"]["version"])
 
 
+def test_uboot_version(shell_command, strategy, record_property):
+    """Records the version of the U-Boot that booted the device, so the
+    results show which bootloader each board runs.
+
+    Only for bookkeeping: it skips, never fails, when the version can't be
+    found, e.g. on QEMU or boards that don't boot with U-Boot.
+
+    U-Boot writes its version to /chosen/u-boot,version of the device tree it
+    hands to Linux. Boards with an appended DTB (most ath79 and ramips) get
+    none, so the TFTP strategy also runs `version` at the U-Boot prompt
+    before booting. Last fallback: `ver` from the U-Boot environment, if
+    uboot-envtools is installed and configured (fw_printenv only reads).
+    """
+
+    def device(cmd):
+        out, _, rc = shell_command.run(f"{cmd} 2>/dev/null")
+        return " ".join(out).strip() if rc == 0 else None
+
+    sources = {
+        "devicetree": lambda: device(
+            "tr -d '\\000' < /proc/device-tree/chosen/u-boot,version"
+        ),
+        "console": lambda: getattr(strategy, "uboot_version", None),
+        "environment": lambda: device("fw_printenv -n ver"),
+    }
+    for source, read in sources.items():
+        version = read()
+        if version:
+            record_property("uboot_version", version)
+            record_property("uboot_version_source", source)
+            return
+    pytest.skip("no U-Boot version found (not booted by U-Boot?)")
+
+
 @pytest.mark.lg_feature("rootfs")
 def test_sysupgrade_backup(ssh_command):
     """`sysupgrade -b` creates a configuration backup that contains the
