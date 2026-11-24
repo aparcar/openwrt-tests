@@ -18,12 +18,16 @@ targets:
       - TFTPProviderDriver: {}
       - SerialDriver:
           txdelay: 0.01
-      - UBootDriver:
+      # The vendor U-Boot (2.0.0, 2015) doesn't expand $?, which UBootDriver
+      # reads after every command; SmallUBootDriver frames the output with
+      # "Unknown command" messages instead.
+      - SmallUBootDriver:
           # "Press SPACE to abort boot script:  0": with bootdelay=0 U-Boot
-          # checks for the key only once, so send it already at the banner
-          # (it waits in the UART FIFO); a second one at the line is harmless
-          autoboot: "U-Boot Version:|Press SPACE to abort boot script"
-          interrupt: " "
+          # checks for the key only once, so send it already at the banner;
+          # it waits in the UART FIFO until then
+          boot_expression: "U-Boot Version:"
+          boot_secret: " "
+          boot_secret_nolf: true
           prompt: "RTL838x# "
           init_commands:
             - rtk network on
