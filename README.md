@@ -124,10 +124,11 @@ access to the `labgrid-aparcar` host:
 labgrid-aparcar -> openwrt-one
 ```
 
-You can request access to existing labs or contribute your own. To do this,
-submit a pull request modifying the lab's `labs/<lab>/lab.yaml`: everyone in
-its `maintainers` and `access` lists gets their GitHub SSH keys
-(`github.com/<user>.keys`) authorized on the lab host. To add a device, see
+You can request access to existing labs or contribute your own. To get
+access, ask one of the lab's `maintainers` (`labs/<lab>/lab.yaml`): the lab's
+admin keeps the list of GitHub users whose SSH keys
+(`github.com/<user>.keys`) are authorized on the lab host, outside this
+repository. To add a device, see
 [docs/adding-a-device.md](docs/adding-a-device.md). If you have multiple
 devices of the same model, see [docs/sharing-target-files.md](docs/sharing-target-files.md)
 for how to avoid duplicate target files. For repository-specific metadata under
@@ -315,8 +316,8 @@ The controller is set up via Ansible, see [ansible/README.md](ansible/README.md)
   pinned version the tests use), `pdudaemon`, a TFTP-only `dnsmasq`, the DUT
   VLANs, the per-lab configuration from `labs/<lab>/` (`lab.yaml`,
   `exporter.yaml`, `pdudaemon.conf`, `dnsmasq.conf`), and the shared developer
-  account `labgrid-dev` with the GitHub keys of the lab's `maintainers` and
-  `access`.
+  account `labgrid-dev` with the GitHub keys of the host's `labgrid_access`
+  (in its gitignored `host_vars`).
 - **Role `labgrid_agent`** (also in this repository): sets up the
   [`labgrid-agent`](https://github.com/aparcar/kernelci-labgrid). OpenWrt CI's
   Ansible applies it, because it holds the lab's credentials. The agent runs

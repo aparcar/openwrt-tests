@@ -46,6 +46,67 @@ The tags come from `maintenance:` of the lab in `labs/labgrid-switchlab/lab.yaml
 regenerates the coordinator's places, so a tag set with `labgrid-client
 set-tags` only lasts until the next one.
 
+## Switch tests
+
+`tests/test_switch.py` checks what the uplink alone shows (ports in the
+bridge, uplink errors, SFP module). `tests/test_switch_probe.py` tests the
+switching itself: flooding, MAC learning, VLAN separation, hardware
+forwarding (iperf3 at line rate while the DUT's CPU sees nothing) and link
+flaps. Its hosts are VLAN interfaces of the lab host, run by dprobe
+(`dprobe l2`, contrib/debian-probe) on the lab host:
+
+```
+DUT port A ── XS1930 lanX (VLAN 10X) ─┐
+DUT port B ── XS1930 lanY (VLAN 10Y) ─┼─ lan1 trunk ── lab host vlan10X / vlan10Y / uplink VLAN
+DUT uplink ── XS1930 (DUT's VLAN) ────┘                (dprobe l2 frames / iperf)
+```
+
+The XS1930 keeps the VLANs apart, so the three hosts only meet through the
+DUT's bridge. Frames are raw Ethernet (ethertype 0x88b5) and counted per
+host; iperf3 runs between throwaway namespaces with macvlans on two VLAN
+interfaces. `dprobe l2 link` takes a test port of the XS1930 down/up over
+SSH, only the ports listed in `dprobe_lab_switch.ports`.
+
+Cabling (lan3–lan8 are already VLANs 103–108 on the XS1930):
+
+| DUT | A | B | XS1930 |
+|---|---|---|---|
+| LGS328MPC | lan3 | lan4 | lan3, lan4 (copper) |
+| SKS8300 | port 2 | port 3 | lan5, lan6 (10GBase-T SFP+ modules) |
+| USW Aggregation | lan2 | lan3 | lan7, lan8 (10GBase-T SFP+ modules) |
+
+Which DUT port is A or B doesn't matter: the fixture finds out by sending
+frames and watching the DUT's port counters. Tagged traffic can't pass the
+XS1930's access ports, so tests of 802.1Q tags, LACP and STP need direct
+links (a lab host SFP+ NIC).
+
+Setup:
+
+1. Cable as above.
+2. Install dprobe on the lab host (contrib/debian-probe/ansible, the
+   `debian_probes` group) with
+   `dprobe_allowed_vlans: ["103-110"]` (developers log in with the GitHub
+   keys of the host's `labgrid_access`, the local labgrid-agent with its
+   own key), and
+   `dprobe_lab_switch: {host: root@192.168.128.2, key:
+   /etc/dprobe/lab-switch.key, vlan_offset: 100, ports: [lan3, lan4, lan5,
+   lan6, lan7, lan8]}`. Generate that key on the lab host and add its
+   public half to the XS1930's `/etc/dropbear/authorized_keys`.
+3. Add the probe hosts to each DUT's place in `exporter.yaml`, e.g. for the
+   SKS8300:
+
+   ```yaml
+     switch-a:
+       cls: NetworkInterface
+       ifname: vlan105
+     switch-b:
+       cls: NetworkInterface
+       ifname: vlan106
+   ```
+
+   and deploy (`lab.yml --limit labgrid-switchlab --tags export`). Without
+   them the module skips.
+
 ## Next steps
 
 1. Fix the USW and LGS serial wiring. Then USW: fix the U-Boot prompt and

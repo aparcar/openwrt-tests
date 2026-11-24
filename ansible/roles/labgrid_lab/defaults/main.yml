@@ -4,9 +4,14 @@
 # --- Accounts -----------------------------------------------------------------
 
 # Shared developer login: device access and labgrid, nothing else. Its SSH
-# keys include the GitHub keys of the lab's maintainers and access list, in
-# an Ansible-managed block (tasks/github_keys.yml); other keys are left alone.
+# keys include the GitHub keys of the host's labgrid_access, in an
+# Ansible-managed block (tasks/github_keys.yml); other keys are left alone.
 labgrid_dev_user: labgrid-dev
+# labgrid_access: GitHub user names whose keys may log in as labgrid-dev and
+# the probe accounts. Required in host_vars (not public); no default, so a
+# missing list stops the run instead of removing everyone's keys.
+# labgrid_access_keys: optional, whole authorized_keys lines for keys not on
+# GitHub (e.g. a build box), same accounts as labgrid_access.
 # Group shared by everyone who runs labgrid on this host (developers and the
 # kernelci agent): owns the TFTP tree and labgrid's staging cache.
 labgrid_group: labgrid
