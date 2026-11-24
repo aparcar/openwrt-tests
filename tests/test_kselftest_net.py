@@ -211,6 +211,21 @@ def test_kselftest_drivers_net(ksft, netdevs, test, record_property):
     record_property("kselftest_netdevs", json.dumps(netdevs))
     results = {}
     for dev in netdevs:
+        # A selftest taking the DSA conduit down (queues.py check_down) leaves
+        # all switch ports down; it brings only its own NETIF back up and
+        # waits 5 s for carrier, which a port looped to another port never
+        # gets. Bring them all up and wait for the renegotiation here.
+        ups = "; ".join(f"ip link set dev {d} up" for d in netdevs)
+        carrier = f'[ "$(cat /sys/class/net/{dev}/carrier)" = 1 ]'
+        _, _, rc = ksft.run(
+            f"{ups}; i=0;"
+            f" while ! {carrier} && [ $i -lt 30 ]; do sleep 1; i=$((i+1)); done;"
+            f" {carrier}",
+            timeout=60,
+        )
+        if rc != 0:
+            results[dev] = ("no carrier", ["no carrier within 30 s"], [])
+            continue
         result, lines, warnings = run_ksft(
             ksft,
             "drivers/net",
