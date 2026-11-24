@@ -69,7 +69,8 @@ the switch does.
 - **Outlets:** `PDUDaemonPort.index` 0–3, so index 3 is the fourth socket.
   Index 3 powers the UniFi Cloud Gateway Fiber (`ubnt_ucgfiber`, bring-up
   only: no published image yet, so its healthcheck fails and CI schedules
-  nothing on it).
+  nothing on it). Index 2 powers the ZyXEL GS1900-8HP B1
+  (`zyxel_gs1900-8hp-b1`, in maintenance: kselftest loops, see below).
 - Bluetooth RPC must stay enabled and authentication disabled on the strip.
 
 ### labgrid-probe
@@ -154,7 +155,7 @@ flowchart LR
   SW ---|"lan13 TFTP ⚡ · lan14 LAN"| d8["IgniteNet SS-W2-AC2600"]
   SW ---|"lan15 TFTP ⚡ · lan16 LAN"| d9["Aruba AP-32x"]
   SW ---|"lan17 LAN ⚡"| d10["Pine64 Rock64"]
-  SW ---|"lan5 LAN ⚡"| d11["Raspberry Pi 3B"]
+  SW ---|"lan5 LAN"| d11["ZyXEL GS1900-8HP B1 (lan1)<br/>power: strip outlet 2"]
   SW ---|"lan19 LAN ⚡ · lan20 WAN"| d12["VisionFive2"]
   SW2 ---|"lan8 LAN ⚡"| d13["RIPE Atlas v5"]
   SW ---|"lan23 LAN ⚡ · lan24 WAN"| d14["ASUS RT-N16"]
@@ -194,8 +195,8 @@ flowchart LR
   A1 -->|1.1.3| a7["CH340<br/>Enterasys WS-AP3710i"]
   A1 -->|1.1.4| a8["CH340<br/>IgniteNet SS-W2-AC2600"]
   A0 -->|1.2| a3["CH340<br/>Aruba AP-32x"]
-  A0 -->|1.3| a4["CH9102 cdc_acm<br/>Raspberry Pi 3B"]
-  A0 -->|1.4| a5["USB-SD-Mux<br/>Raspberry Pi 3B SD"]
+  A0 -->|1.3| a4["CH340<br/>ZyXEL GS1900-8HP B1"]
+  A0 -->|1.4| a5["USB-SD-Mux<br/>(was Raspberry Pi 3B SD)"]
 
   B1 -->|1.1.1| b1["CP210x<br/>TL-WDR3600 v1"]
   B1 -->|1.1.2| b2["CP210x<br/>BPi-R4"]
@@ -228,7 +229,7 @@ a labgrid place named `labgrid-aparcar-<device>`.
 | ---------------------- | -------- | -------- | -------- | ------------------------------------- | ---------------------------------- |
 | OpenWrt One            | 1        | 102      | 101      | `platform-xhci-hcd.0-usb-0:1.1.1:1.0` | TFTP via `192.168.102.1`           |
 | BananaPi BPi-R4-Lite   | 3        | 104      | 103      | `platform-xhci-hcd.0-usb-0:1.1.2:1.0` | TFTP via `192.168.104.1`           |
-| Raspberry Pi 3B        | 5        | 105      | –        | `platform-xhci-hcd.0-usb-0:1.3:1.0`   | SD-Mux (`USBSDMuxDevice`)          |
+| ZyXEL GS1900-8HP B1    | strip 2  | 105      | –        | `platform-xhci-hcd.0-usb-0:1.3:1.0`   | TFTP via `192.168.105.1` (maintenance) |
 | UniFi Cloud Gateway Fiber | strip 3 | 107     | 108      | `platform-xhci-hcd.1-usb-0:2.3:1.0`   | TFTP via `192.168.107.1` (bring-up only) |
 | Enterasys WS-AP3710i   | 12       | 112      | –        | `platform-xhci-hcd.0-usb-0:1.1.3:1.0` | TFTP via `192.168.112.1`           |
 | IgniteNet SS-W2-AC2600 | 13       | 114      | –        | `platform-xhci-hcd.0-usb-0:1.1.4:1.0` | TFTP via `192.168.113.1`           |
@@ -272,7 +273,13 @@ Notes:
   WAN VLANs were identified from the WAN MAC (LAN MAC ±1) in the exporter's
   DHCP leases. The VisionFive2 is wired to switch port `lan20`.
 - **Serial:** the Enterasys, IgniteNet, Aruba AP-32x, Pine64 Rock64, o2 Box
-  6431 and RIPE Atlas v5 additionally match `@port_number: 0`. The Pine64
+  6431, RIPE Atlas v5 and GS1900-8HP additionally match `@port_number: 0`.
+- **GS1900-8HP B1:** loop cables lan5↔lan6 and lan7↔lan8 for the kernel's DSA
+  selftests. Its stock U-Boot enables all ports with `rtk network on`, so
+  the target file stops RX/TX on lan5–8 there (`mw.l` on `MAC_PORT_CTRL`,
+  not saved) before TFTP. It stays in `maintenance:`: an
+  official image would bridge the loops; only self-built kselftest images
+  keep lan5–8 out of the bridge. The Pine64
   Rock64 console runs at 1500000 baud, all others at the default 115200. The
   ASUS RT-N16's console is not connected at the moment.
 - **LAN access:** the `NetworkService` reaches each device at

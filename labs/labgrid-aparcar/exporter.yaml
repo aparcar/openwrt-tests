@@ -168,19 +168,24 @@ labgrid-aparcar-pine64_rock64:
       ID_PATH: platform-xhci-hcd.1-usb-0:2.1.3:1.0
     speed: 1500000
 
-labgrid-aparcar-raspberry-pi-3b:
+## ZyXEL GS1900-8HP B1, in the Raspberry Pi 3B's former place (switch 1
+## lan5, hub A 1.3). Its lan1 is cabled to switch 1 lan5; powered from the
+## Bluetooth power strip (the third socket; the strip counts from 0).
+## Stock vendor U-Boot, RAM boot over TFTP.
+labgrid-aparcar-zyxel_gs1900-8hp-b1:
   NetworkService:
     address: 192.168.1.1%vlan105
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 5
-    pdu: labgrid-switch-1
-  USBSDMuxDevice:
-    match:
-      ID_PATH: platform-xhci-hcd.0-usb-0:1.4.1
+    index: 2
+    pdu: labgrid-strip-1
+  TFTPProvider:
+    external: tftp://192.168.105.1/zyxel_gs1900-8hp-b1/
+    internal: /srv/tftp/zyxel_gs1900-8hp-b1/
   USBSerialPort:
     match:
+      '@port_number': '0'
       ID_PATH: platform-xhci-hcd.0-usb-0:1.3:1.0
 
 labgrid-aparcar-starfive_visionfive2-v1.2a:

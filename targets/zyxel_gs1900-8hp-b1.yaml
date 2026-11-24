@@ -1,0 +1,53 @@
+# ZyXEL GS1900-8HP B1: RTL8380, 128M RAM, 8x 1G (PoE), stock vendor U-Boot
+# (not modified: RAM boot over TFTP from the prompt). Kselftest images are
+# self-built, so pass the initramfs as LG_IMAGE.
+# shortcut: autoboot text and interrupt key copied from the 24EP draft,
+# check them against the B1's boot log (bootdelay=0)
+openwrt:
+  name: ZyXEL GS1900-8HP B1
+  target: realtek-rtl838x
+  profile: zyxel_gs1900-8hp-b1
+  # loop cables lan5<->lan6, lan7<->lan8 for test_kselftest_dsa_loops
+  # ([h1, swp1, swp2, h2]); the image must keep them out of the bridges
+  kselftest_loops: [lan5, lan6, lan7, lan8]
+targets:
+  main:
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      - PDUDaemonDriver: {}
+      - TFTPProviderDriver: {}
+      - SerialDriver:
+          txdelay: 0.01
+      - UBootDriver:
+          autoboot: "Hit Esc key to stop autoboot"
+          interrupt: "\x1b"
+          prompt: "RTL838x# "
+          init_commands:
+            - rtk network on
+            # The vendor U-Boot switches all ports once the network is on.
+            # Stop RX/TX (MAC_PORT_CTRL bits 1:0, 0x417 -> 0x414) on the loop
+            # ports lan5-8 (switch ports 12-15) so the loop cables can't
+            # storm before Linux; its phylink link_up sets the bits again.
+            - mw.l 0xbb00db60 0x414
+            - mw.l 0xbb00dbe0 0x414
+            - mw.l 0xbb00dc60 0x414
+            - mw.l 0xbb00dce0 0x414
+            - tftpboot 0x84f00000
+          boot_command: bootm 0x84f00000
+      - ShellDriver:
+          prompt: 'root@[\w()]+:[^ ]+ '
+          login_prompt: Please press Enter to activate this console.
+          await_login_timeout: 15
+          login_timeout: 120
+          post_login_settle_time: 5
+          username: root
+      - UBootTFTPStrategy: {}
+      - SSHDriver:
+          connection_timeout: 120.0
+          explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/tftpstrategy.py
