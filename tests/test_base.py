@@ -7,6 +7,7 @@ conftest.py) and in this order: the first test boots the device, so its log
 is the boot log, and a device without a shell or SSH fails here first."""
 
 import os
+import re
 import tarfile
 import time
 
@@ -119,28 +120,39 @@ def test_ubus_system_board(ssh_command, record_property):
 
 
 def test_uboot_version(shell_command, strategy, record_property):
-    """Records the version of the U-Boot that booted the device, so the
-    results show which bootloader each board runs.
+    """Records the bootloader's boot output and the version of the U-Boot
+    that booted the device, so the results show which bootloader each board
+    runs.
 
     Only for bookkeeping: it skips, never fails, when the version can't be
     found, e.g. on QEMU or boards that don't boot with U-Boot.
 
-    U-Boot writes its version to /chosen/u-boot,version of the device tree it
-    hands to Linux. Boards with an appended DTB (most ath79 and ramips) get
-    none, so the TFTP strategy also runs `version` at the U-Boot prompt
-    before booting. Last fallback: `ver` from the U-Boot environment, if
-    uboot-envtools is installed and configured (fw_printenv only reads).
+    The TFTP strategy keeps everything the bootloader printed from power-on
+    up to its prompt (bootloader_log); the version is its banner line
+    ("U-Boot 2026.10 ...", also vendor forks like Aruba's "APBoot ..."),
+    after SPL/TPL. Fallbacks: /chosen/u-boot,version of the device tree
+    U-Boot hands to Linux, then `ver` from the U-Boot environment if
+    uboot-envtools is set up (fw_printenv only reads).
     """
+    log = getattr(strategy, "bootloader_log", None)
+    if log:
+        record_property("bootloader_log", log)
+
+    def banner():
+        lines = re.findall(
+            r"^\s*((?:U-Boot|APBoot) (?!SPL|TPL)\S.*?)\s*$", log or "", re.MULTILINE
+        )
+        return lines[-1] if lines else None
 
     def device(cmd):
         out, _, rc = shell_command.run(f"{cmd} 2>/dev/null")
         return " ".join(out).strip() if rc == 0 else None
 
     sources = {
+        "console": banner,
         "devicetree": lambda: device(
             "tr -d '\\000' < /proc/device-tree/chosen/u-boot,version"
         ),
-        "console": lambda: getattr(strategy, "uboot_version", None),
         "environment": lambda: device("fw_printenv -n ver"),
     }
     for source, read in sources.items():
