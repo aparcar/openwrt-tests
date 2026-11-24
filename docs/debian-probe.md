@@ -143,9 +143,10 @@ The role does the following:
   `/usr/local/sbin/dprobe` (`python3 -I`);
 - writes `/etc/dprobe/dprobe.json` (`trunk`, `mgmt_vlan`, `allowed_vlans`);
 - creates the `dprobe` user with a sudoers rule for `/usr/local/sbin/dprobe`
-  only. It may log in with the GitHub keys of the `maintainers` and `access`
-  of `dprobe_lab` (`labs/<lab>/lab.yaml`) and with `dprobe_authorized_keys`,
-  each in its own Ansible-managed block of `authorized_keys`. An SSH login as
+  only. It may log in with the GitHub keys of `labgrid_access` (as for lab
+  hosts; on a lab host its `host_vars` already have it), with
+  `dprobe_authorized_keys` and, on a lab host, with the local `labgrid-agent`'s
+  key, each in its own Ansible-managed block of `authorized_keys`. An SSH login as
   `dprobe` runs nothing but `sudo -n /usr/local/sbin/dprobe <args>` (and
   labgrid's keepalive `cat`): sshd forces `probe-ssh`
   (`contrib/probe-ssh/probe_ssh.py`) on it, as for the phone probes, so there
@@ -175,7 +176,8 @@ labgrid-<lab>-debian-probe:
 ```
 
 Whoever runs the tests must be able to log in: developers through
-`dprobe_lab`, the lab's `labgrid-agent` through `dprobe_authorized_keys`.
+`labgrid_access`, the lab's `labgrid-agent` through `dprobe_authorized_keys`
+(or automatically when dprobe runs on the lab host).
 
 ## Unit tests
 

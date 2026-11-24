@@ -79,8 +79,8 @@ installs `adb` (its udev rules give `plugdev` the phone), the `aprobe` user
 creates the place. Debian lab hosts only: `labgrid_lab_openwrt` doesn't
 set the probe up.
 
-Who may log in as `aprobe`: the lab's `maintainers` and `access` with their
-GitHub keys, as for `labgrid-dev` (an Ansible-managed block of
+Who may log in as `aprobe`: the host's `labgrid_access` with their GitHub
+keys, as for `labgrid-dev` (an Ansible-managed block of
 `~aprobe/.ssh/authorized_keys`), and the agent's key (the `labgrid_agent`
 role). That login runs nothing but `aprobe`: sshd forces
 `/usr/local/sbin/probe-ssh aprobe` (`contrib/probe-ssh/probe_ssh.py`) on it,

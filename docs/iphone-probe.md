@@ -129,8 +129,8 @@ pymobiledevice3 is also the `iphone` extra in openwrt-tests'
 `iprobe` does. `uv sync --extra iphone` installs it into a checkout's venv
 (e.g. to try `iprobe` on a laptop with the phone attached).
 
-Who may log in as `iprobe`: the lab's `maintainers` and `access` with their
-GitHub keys, as for `labgrid-dev` (an Ansible-managed block of
+Who may log in as `iprobe`: the host's `labgrid_access` with their GitHub
+keys, as for `labgrid-dev` (an Ansible-managed block of
 `~iprobe/.ssh/authorized_keys`), and the agent's key (the `labgrid_agent`
 role). That login runs nothing but `iprobe`: sshd forces
 `/usr/local/sbin/probe-ssh iprobe` (`contrib/probe-ssh/probe_ssh.py`) on it,
