@@ -63,15 +63,18 @@ the switch does.
 
 - **Model:** Shelly Power Strip 4 Gen4 (`ShellyPStripG4-D885ACEBBCB0`), for
   devices that can't be powered over PoE
-- **pdudaemon name:** `labgrid-strip-1`, driver `shelly_ble`. The exporter
-  switches it over Bluetooth LE (`pdudaemon_bluetooth` in the
-  host's `ansible/host_vars`), so the strip is on no network.
+- **pdudaemon name:** `labgrid-strip-1`, driver `shelly_gen2`: JSON-RPC over
+  HTTP to the strip at `192.168.8.214` (Wi-Fi). The driver connects to the
+  PDU's name, so `labgrid_hosts` in the host's `ansible/host_vars` maps
+  `labgrid-strip-1` to that address. Bluetooth LE (`shelly_ble`) dropped
+  every connection during service discovery (HCI reason 0x3e).
 - **Outlets:** `PDUDaemonPort.index` 0–3, so index 3 is the fourth socket.
   Index 3 powers the UniFi Cloud Gateway Fiber (`ubnt_ucgfiber`, bring-up
   only: no published image yet, so its healthcheck fails and CI schedules
   nothing on it). Index 2 powers the ZyXEL GS1900-8HP B1
   (`zyxel_gs1900-8hp-b1`, in maintenance: kselftest loops, see below).
-- Bluetooth RPC must stay enabled and authentication disabled on the strip.
+- Authentication must stay disabled on the strip (`shelly_gen2` doesn't
+  support it), and it needs a fixed address (DHCP reservation).
 
 ### labgrid-probe
 
