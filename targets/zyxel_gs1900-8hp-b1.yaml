@@ -17,7 +17,8 @@ targets:
       - PDUDaemonDriver: {}
       - TFTPProviderDriver: {}
       - SerialDriver:
-          txdelay: 0.01
+          # at 0.01 the 500 MHz CPU dropped input of long command lines
+          txdelay: 0.05
       # The vendor U-Boot (2.0.0, 2015) doesn't expand $?, which UBootDriver
       # reads after every command; SmallUBootDriver frames the output with
       # "Unknown command" messages instead.
