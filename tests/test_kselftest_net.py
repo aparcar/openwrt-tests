@@ -1,75 +1,64 @@
 """Linux kernel networking selftests (tools/testing/selftests) on the device,
-from the image's `kselftests-net` package, so they match its kernel. Only
-tests that need no extra cabling: the bridge/router/tc data path over veth
-pairs, the device's own network drivers without a remote end, and a DSA
-switch's FDB under concurrent updates.
+from the image's `kselftests-net` package, so they match its kernel: the
+bridge/router/tc data path over veth pairs, the device's own network drivers
+without a remote end, and a DSA switch's FDB under concurrent updates. Where
+the target declares loop cables (`kselftest_loops`), also the bridge/tc tests
+offloaded to the DSA switch.
 
 Images without the package (all official ones) skip the module."""
 
 import json
 import re
+from pathlib import Path
 
 import pytest
 
 KSFT = "/usr/libexec/kselftests"
 
-# net/forwarding tests on veth pairs (lib.sh's default NETIF_CREATE=yes): the
-# kernel's software bridge, router, tc and tunnel paths on this CPU. Not the
-# rate-based ones (tc_police, sch_*: flaky on slow CPUs) nor local_termination
-# (needs the multicast mtools, not packaged)
-FORWARDING = [
-    "bridge_fdb_learning_limit.sh",
-    "bridge_igmp.sh",
-    "bridge_locked_port.sh",
-    "bridge_mdb.sh",
-    "bridge_mdb_host.sh",
-    "bridge_mld.sh",
-    "bridge_port_isolation.sh",
-    "bridge_sticky_fdb.sh",
-    "bridge_vlan_aware.sh",
-    "bridge_vlan_mcast.sh",
-    "bridge_vlan_unaware.sh",
-    "gre_multipath.sh",
-    "ipip_flat_gre.sh",
-    "no_forwarding.sh",
-    "pedit_dsfield.sh",
-    "pedit_ip.sh",
-    "pedit_l4port.sh",
-    "router.sh",
-    "router_bridge.sh",
-    "router_bridge_vlan.sh",
-    "router_multipath.sh",
-    "router_nh.sh",
-    "router_vid_1.sh",
-    "skbedit_priority.sh",
-    "tc_actions.sh",
-    "tc_chains.sh",
-    "tc_flower.sh",
-    "tc_shblocks.sh",
-    "tc_tunnel_key.sh",
-    "tc_vlan_modify.sh",
-    "vxlan_bridge_1d.sh",
-    "vxlan_bridge_1q.sh",
+# The selftests the kselftests-net package installs ("collection:test", its
+# kselftest-list.txt): refresh with scripts/ksft-list.sh after a package
+# change. Which ones run, and how, follows from the collection; a test missing
+# from the image under test skips.
+TESTS = [
+    tuple(line.split(":", 1))
+    for line in (Path(__file__).parent / "kselftest-net.list").read_text().split()
 ]
 
-# drivers/net tests with a local device only (NetDrvEnv, no REMOTE_*). Not
-# shaper.py: the net-shaper family (CONFIG_NET_SHAPER) is only built when a
-# driver selects it, none in OpenWrt's targets do
-DRIVERS = [
-    "hds.py",
-    "napi_threaded.py",
-    "queues.py",
-    "stats.py",
-    "hw/irq.py",
-    "hw/nic_timestamp.py",
-    "hw/rss_api.py",
-    "hw/xsk_reconfig.py",
-]
+# The exceptions: tests that can't run on OpenWrt, with the reason
+EXCLUDE = {
+    "drivers/net:shaper.py": "the net-shaper family (CONFIG_NET_SHAPER) is only "
+    "built when a driver selects it, none in OpenWrt's targets do",
+}
 
 # Selftest timeouts (s) above the default 900: no_forwarding waits out ~200
 # unanswered pings (5 s each) and reads the capture once per check (~350
 # tcpdump runs): 17 min on a BPi-R4 Lite (Cortex-A53)
 SLOW = {"no_forwarding.sh": 2700}
+
+
+def params(collections, exclude=(), timeout=None):
+    """pytest params for the list's tests in `collections`, named by their
+    path below the first one (hw/irq.py); excluded ones skip with the reason.
+    pytest-timeout's default (300 s) would abort a selftest that still runs
+    on the console, so each test gets its selftest timeout plus the result
+    collection."""
+    found = []
+    for collection, test in TESTS:
+        if collection not in collections or test in exclude:
+            continue
+        name = f"{collection}/{test}".removeprefix(f"{collections[0]}/")
+        marks = [pytest.mark.timeout(timeout or SLOW.get(test, 900) + 100)]
+        if reason := EXCLUDE.get(f"{collection}:{test}"):
+            marks.append(pytest.mark.skip(reason=reason))
+        found.append(pytest.param((collection, test), id=name, marks=marks))
+    return found
+
+
+def require(shell, collection, test):
+    """Skip a test the image under test doesn't have (older package)."""
+    if shell.run(f"test -e {KSFT}/{collection}/{test}")[2]:
+        pytest.skip(f"{collection}/{test} not in this image's kselftests-net")
+
 
 # kselftest exit codes; 124 is timeout(1)'s
 RC = {0: "pass", 1: "fail", 4: "skip", 124: "timeout"}
@@ -92,6 +81,14 @@ def ksft(strategy):
     shell = strategy.shell
     if shell.run(f"test -x {KSFT}/run_kselftest.sh")[2]:
         pytest.skip("image without kselftests-net")
+    # On slow devices the shell comes before netifd has set up the bridges:
+    # its later conduit MTU change takes eth0 and with it every DSA port down,
+    # also those a running selftest uses (GS1900: 7 s after the prompt)
+    shell.run(
+        "i=0; until logread | grep -q 'init complete' || [ $i -ge 180 ];"
+        " do sleep 1; i=$((i+1)); done",
+        timeout=200,
+    )
     # the tests' interface churn logs to the serial console (VisionFive 2)
     # and garbles the shell driver's markers; warnings are read from dmesg
     loglevel = shell.run_check("cat /proc/sys/kernel/printk")[0].split()[0]
@@ -180,34 +177,38 @@ def check(result, lines, warnings):
     assert result == "pass", "\n".join(lines)
 
 
-# pytest-timeout's default (300 s) would abort a selftest that still runs on
-# the console; give each test its selftest timeout plus the result collection
-@pytest.mark.parametrize(
-    "test",
-    [
-        pytest.param(t, marks=pytest.mark.timeout(SLOW.get(t, 900) + 100))
-        for t in FORWARDING
-    ],
-)
-def test_kselftest_forwarding(ksft, test, record_property):
+@pytest.mark.parametrize("case", params(["net/forwarding"]))
+def test_kselftest_forwarding(ksft, case, record_property):
     """A net/forwarding selftest on veth pairs passes: the kernel's software
     bridge, routing, tc and tunnel paths behave as upstream expects on this
     CPU (endianness, alignment, word size). A failure the same kernel passes
-    on other targets points to an arch or OpenWrt patch problem."""
+    on other targets points to an arch or OpenWrt patch problem.
+
+    lib.sh's default NETIF_CREATE=yes creates the veth pairs."""
+    collection, test = case
+    require(ksft, collection, test)
     # busybox's ping6 fails the selftests' pings; iputils (a dependency) works
     command = f"env PING6='ping -6' ./{test}"
     timeout = SLOW.get(test, 900)
-    check(*run_ksft(ksft, "net/forwarding", command, timeout, record_property))
+    check(*run_ksft(ksft, collection, command, timeout, record_property))
 
 
-@pytest.mark.timeout(2400)
-@pytest.mark.parametrize("test", DRIVERS)
-def test_kselftest_drivers_net(ksft, netdevs, test, record_property):
+@pytest.mark.parametrize(
+    "case", params(["drivers/net", "drivers/net/hw"], timeout=2400)
+)
+def test_kselftest_drivers_net(ksft, netdevs, case, record_property):
     """A drivers/net selftest passes on each Ethernet interface with a link
     (LAN, WAN, DSA conduit): statistics, queues, NAPI, IRQs, timestamping as
     the driver reports them through netlink and ethtool. A failure is a
     driver that reports inconsistent counters or breaks on reconfiguration;
-    a skip is a feature the driver doesn't have."""
+    a skip is a feature the driver doesn't have.
+
+    Tests with a remote end (NetDrvEpEnv: traffic to a second host over
+    REMOTE_*) skip: the lab has no remote host for them yet."""
+    collection, test = case
+    require(ksft, collection, test)
+    if ksft.run(f"grep -q NetDrvEpEnv {KSFT}/{collection}/{test}")[2] == 0:
+        pytest.skip("needs a remote end (NetDrvEpEnv, REMOTE_*)")
     record_property("kselftest_netdevs", json.dumps(netdevs))
     results = {}
     for dev in netdevs:
@@ -226,12 +227,10 @@ def test_kselftest_drivers_net(ksft, netdevs, test, record_property):
         if rc != 0:
             results[dev] = ("no carrier", ["no carrier within 30 s"], [])
             continue
+        # from the collection's directory, as run_kselftest.sh does: hw/ has
+        # its own lib/py that pulls in drivers/net's
         result, lines, warnings = run_ksft(
-            ksft,
-            "drivers/net",
-            f"env NETIF={dev} python3 ./{test}",
-            600,
-            record_property,
+            ksft, collection, f"env NETIF={dev} python3 ./{test}", 600, record_property
         )
         results[dev] = (result, lines, warnings)
     record_property(
@@ -243,6 +242,11 @@ def test_kselftest_drivers_net(ksft, netdevs, test, record_property):
         pytest.skip(f"skipped on {', '.join(results) or 'no interface with a link'}")
 
 
+# drivers/net/dsa's own test; the collection's other entries are wrappers of
+# net/forwarding tests (test_kselftest_dsa_loops)
+FDB_STRESS = "test_bridge_fdb_stress.sh"
+
+
 @pytest.mark.timeout(400)
 def test_kselftest_dsa_fdb_stress(ksft, links, record_property):
     """Adding and removing an FDB entry on a DSA port in a tight loop while
@@ -250,6 +254,7 @@ def test_kselftest_dsa_fdb_stress(ksft, links, record_property):
     kernel warning: the switch driver's FDB code is safe without the rtnl
     lock. Uses a DSA port without a link, so the lab's cables stay as they
     are."""
+    require(ksft, "drivers/net/dsa", FDB_STRESS)
     free = [
         name
         for name, link in links.items()
@@ -263,8 +268,57 @@ def test_kselftest_dsa_fdb_stress(ksft, links, record_property):
         *run_ksft(
             ksft,
             "drivers/net/dsa",
-            f"./test_bridge_fdb_stress.sh {free[0]}",
+            f"./{FDB_STRESS} {free[0]}",
             300,
             record_property,
         )
     )
+
+
+@pytest.fixture(scope="module")
+def loop_ports(env, ksft, links):
+    """The ports of the target's `openwrt: kselftest_loops: [h1, swp1, swp2,
+    h2]`, cabled h1<->swp1 and swp2<->h2, with swp1/swp2 on the DSA switch.
+    The image must keep them out of every bridge (uci-defaults): bridged,
+    the loops would storm or join the lab's networks."""
+    ports = (env.config.data.get("openwrt") or {}).get("kselftest_loops")
+    if not ports:
+        pytest.skip("target defines no kselftest_loops")
+    assert len(ports) == 4, "kselftest_loops needs [h1, swp1, swp2, h2]"
+    for port in ports:
+        assert port in links, f"{port} doesn't exist"
+        assert "master" not in links[port], (
+            f"{port} is in {links[port]['master']}: the loops need unbridged ports"
+        )
+    assert kind(links[ports[1]]) == "dsa" and kind(links[ports[2]]) == "dsa", (
+        "swp1 and swp2 must be DSA ports"
+    )
+    # a short command line: slow serial consoles (GS1900) drop long input
+    names = " ".join(ports)
+    _, _, rc = ksft.run(
+        f"up() {{ for p in {names}; do [ $(cat /sys/class/net/$p/carrier) = 1 ]"
+        f" || return 1; done; }}; for p in {names}; do ip link set $p up; done;"
+        " i=0; until up || [ $i -ge 30 ]; do sleep 1; i=$((i+1)); done; up",
+        timeout=60,
+    )
+    if rc != 0:
+        pytest.skip(f"no carrier on all of {ports} within 30 s: loops not cabled")
+    return ports
+
+
+@pytest.mark.parametrize("case", params(["drivers/net/dsa"], exclude=(FDB_STRESS,)))
+def test_kselftest_dsa_loops(ksft, loop_ports, case, record_property):
+    """A net/forwarding selftest passes over loop cables through the DSA
+    switch (drivers/net/dsa): the switch driver offloads bridging, FDB
+    learning, VLAN filtering, multicast and tc as the software bridge does
+    it. A failure is a switch driver that forwards, filters or floods
+    differently from the kernel's bridge.
+
+    The collection's wrappers run the net/forwarding test with
+    NETIF_CREATE=no on the four given ports."""
+    collection, test = case
+    record_property("kselftest_loops", json.dumps(loop_ports))
+    require(ksft, collection, test)
+    command = f"env PING6='ping -6' ./{test} {' '.join(loop_ports)}"
+    timeout = SLOW.get(test, 900)
+    check(*run_ksft(ksft, collection, command, timeout, record_property))
