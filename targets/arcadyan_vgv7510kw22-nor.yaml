@@ -22,11 +22,19 @@ targets:
         login_timeout: 120
         post_login_settle_time: 5
         username: root
-      UBootDriver:
-        prompt: "VR9 #"
-        init_commands:
-          - tftpboot
-        boot_command: bootm $loadaddr
+      ## this U-Boot (2013.10-openwrt4) has no echo
+      SmallUBootDriver:
+        boot_expression: "Hit any key to stop autoboot"
+        ## one key: the newline after it prints a second prompt, which
+        ## would answer the first command
+        boot_secret_nolf: true
+        prompt: "VGV7510KW22 # "
+        ## TFTP in the boot command: the 8 MB initramfs over 100 Mbit takes
+        ## longer than the 30 s an init command gets. Above $loadaddr
+        ## (0x81000000), so the kernel can unpack to 0x80002000 below it.
+        boot_command: tftpboot 0x82000000; bootm 0x82000000
+        ## until "Linux version": includes the TFTP transfer
+        boot_timeout: 120
       UBootTFTPStrategy: {}
       SSHDriver:
         connection_timeout: 120.0
