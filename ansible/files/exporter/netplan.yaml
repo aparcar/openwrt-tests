@@ -4,17 +4,11 @@
 network:
   version: 2
   vlans:
-{% for vlan in range(0, 24) %}
-    vlan{{ vlan + 101 }}:
-      id: {{ vlan + 101 }}
+{% for vlan in labgrid_dut_vlans %}
+    vlan{{ vlan }}:
+      id: {{ vlan }}
       link: {{ vlan_interface }}
       addresses:
-          - 192.168.{{ vlan + 101 }}.1/24
-          - 192.168.1.{{ vlan + 101 }}/24
+          - 192.168.{{ vlan }}.1/24
+          - 192.168.1.{{ vlan }}/24
 {% endfor %}
-    vlan200:
-      id: 200
-      link: {{ vlan_interface }}
-      addresses:
-          - 192.168.200.1/24
-          - 192.168.1.200/24
