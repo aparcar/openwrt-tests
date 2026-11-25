@@ -6,7 +6,8 @@ openwrt:
   target: realtek-rtl838x
   profile: zyxel_gs1900-8hp-b1
   # loop cables lan5<->lan6, lan7<->lan8 for test_kselftest_dsa_loops
-  # ([h1, swp1, swp2, h2]); the image must keep them out of the bridges
+  # ([h1, swp1, swp2, h2]); the test takes them out of the bridges while it
+  # runs, outside of it the image must block the loops (RSTP)
   kselftest_loops: [lan5, lan6, lan7, lan8]
 targets:
   main:
