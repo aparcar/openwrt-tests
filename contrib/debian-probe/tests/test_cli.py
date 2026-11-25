@@ -4,6 +4,7 @@ import json
 import pytest
 from dprobe import cli, slot
 from dprobe.util import ERROR, FAILED, OK, ProbeError, mac_for, vlan_id
+
 from drivers.debianprobedriver import DebianProbeError, parse_reply, to_argv
 
 
