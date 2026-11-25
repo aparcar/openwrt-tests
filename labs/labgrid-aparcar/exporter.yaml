@@ -16,23 +16,24 @@ labgrid-aparcar-openwrt_one:
     match:
       ID_PATH: platform-xhci-hcd.0-usb-0:1.1.1:1.0
 
+## Switch 3 lan5 (LAN) and lan6 (WAN, PoE: powered over its WAN port)
 labgrid-aparcar-bananapi_bpi-r4-lite:
   wan:
     cls: NetworkInterface
-    ifname: vlan103
+    ifname: vlan138
   NetworkService:
-    address: 192.168.1.1%vlan104
+    address: 192.168.1.1%vlan137
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 3
-    pdu: labgrid-switch-1
+    index: 6
+    pdu: labgrid-switch-3
   TFTPProvider:
-    external: tftp://192.168.104.1/bananapi_bpi-r4-lite/
+    external: tftp://192.168.137.1/bananapi_bpi-r4-lite/
     internal: /srv/tftp/bananapi_bpi-r4-lite/
   USBSerialPort:
     match:
-      ID_PATH: platform-xhci-hcd.0-usb-0:1.1.2:1.0
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.4.2:1.0
 
 labgrid-aparcar-genexis_pulse-ex400:
   wan:
@@ -151,21 +152,21 @@ labgrid-aparcar-aruba_ap-32x:
       '@port_number': '0'
       ID_PATH: platform-xhci-hcd.0-usb-0:1.2:1.0
 
+## Switch 3 lan1; console (CH9102) and SD-Mux on hub D (hub A port 1.4)
 labgrid-aparcar-pine64_rock64:
   NetworkService:
-    address: 192.168.1.1%vlan117
+    address: 192.168.1.1%vlan133
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 17
-    pdu: labgrid-switch-1
+    index: 1
+    pdu: labgrid-switch-3
   USBSDMuxDevice:
     match:
-      ID_PATH: platform-xhci-hcd.1-usb-0:2.1.4.1
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.4.1.1.1
   USBSerialPort:
     match:
-      '@port_number': '0'
-      ID_PATH: platform-xhci-hcd.1-usb-0:2.1.3:1.0
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.4.1.2:1.0
     speed: 1500000
 
 ## ZyXEL GS1900-8HP B1, in the Raspberry Pi 3B's former place (switch 1
@@ -188,23 +189,24 @@ labgrid-aparcar-zyxel_gs1900-8hp-b1:
       '@port_number': '0'
       ID_PATH: platform-xhci-hcd.0-usb-0:1.3:1.0
 
+## Switch 3 lan4 (LAN, PoE: it draws power there) and lan3 (WAN)
 labgrid-aparcar-starfive_visionfive2-v1.2a:
   wan:
     cls: NetworkInterface
-    ifname: vlan120
+    ifname: vlan135
   NetworkService:
-    address: 192.168.1.1%vlan119
+    address: 192.168.1.1%vlan136
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 19
-    pdu: labgrid-switch-1
+    index: 4
+    pdu: labgrid-switch-3
   TFTPProvider:
-    external: tftp://192.168.119.1/starfive_visionfive2-v1.2a/
+    external: tftp://192.168.136.1/starfive_visionfive2-v1.2a/
     internal: /srv/tftp/starfive_visionfive2-v1.2a/
   USBSerialPort:
     match:
-      ID_PATH: platform-xhci-hcd.1-usb-0:2.4:1.0
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.4.1.4:1.0
 
 labgrid-aparcar-ripe_atlas-v5:
   NetworkService:
@@ -222,41 +224,45 @@ labgrid-aparcar-ripe_atlas-v5:
       '@port_number': '0'
       ID_PATH: platform-xhci-hcd.1-usb-0:1.3:1.0
 
-## CFE (no U-Boot): CFETFTPStrategy flashes the TRX from this TFTPProvider
+## CFE (no U-Boot): CFETFTPStrategy flashes the TRX from this TFTPProvider.
+## Switch 3 lan7 (WAN) and lan8 (LAN, PoE); console back (PL2303, hub D)
 labgrid-aparcar-asus_rt-n16:
   wan:
     cls: NetworkInterface
-    ifname: vlan124
+    ifname: vlan139
   NetworkService:
-    address: 192.168.1.1%vlan123
+    address: 192.168.1.1%vlan140
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 23
-    pdu: labgrid-switch-1
+    index: 8
+    pdu: labgrid-switch-3
   TFTPProvider:
-    external: tftp://192.168.123.1/asus_rt-n16/
+    external: tftp://192.168.140.1/asus_rt-n16/
     internal: /srv/tftp/asus_rt-n16/
-  ## FIXME: no console. Its PL2303 was on hub A 1.1.4, which is now the
-  ## IgniteNet's port; add the USBSerialPort back with the adapter's new port.
+  USBSerialPort:
+    match:
+      '@port_number': '0'
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.4.3:1.0
 
-## o2 Box 6431, LAN only. No initramfs boot: U-Boot writes the sysupgrade
-## image from this TFTPProvider to flash (flash_commands in the target file)
+## o2 Box 6431, LAN only, switch 3 lan2. No initramfs boot: U-Boot writes
+## the sysupgrade image from this TFTPProvider to flash (flash_commands in the
+## target file)
 labgrid-aparcar-arcadyan_vgv7510kw22-nor:
   NetworkService:
-    address: 192.168.1.1%vlan122
+    address: 192.168.1.1%vlan134
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 22
-    pdu: labgrid-switch-1
+    index: 2
+    pdu: labgrid-switch-3
   TFTPProvider:
-    external: tftp://192.168.122.1/arcadyan_vgv7510kw22-nor/
+    external: tftp://192.168.134.1/arcadyan_vgv7510kw22-nor/
     internal: /srv/tftp/arcadyan_vgv7510kw22-nor/
   USBSerialPort:
     match:
       '@port_number': '0'
-      ID_PATH: platform-xhci-hcd.1-usb-0:2.1.1:1.0
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.4.1.3:1.0
 
 ## UniFi Security Gateway. U-Boot fetches the initramfs over LAN 1 (octeth1),
 ## not the WAN port.

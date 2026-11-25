@@ -8,7 +8,7 @@
 - **IP:** `172.20.0.1`
 - **Power control:** `pdudaemon` runs on the exporter (`localhost:16421`) and
   toggles PoE on the switches below via its `ubus` driver; each device's
-  `PDUDaemonPort.pdu` is the switch (`labgrid-switch-1` or `labgrid-switch-2`)
+  `PDUDaemonPort.pdu` is the switch (`labgrid-switch-1` to `labgrid-switch-3`)
   and `.index` the port that powers it
   (`labs/labgrid-aparcar/pdudaemon.conf`). The names resolve
   through the exporter's `/etc/hosts` (`labgrid_hosts` in
@@ -27,12 +27,14 @@ other labs) because DUT VLAN 128 needs `192.168.128.0/24` on the exporter.
 | `172.20.0.4` | Wi-Fi probe                             |
 | `172.20.0.5` | Wi-Fi probe 2                           |
 | `172.20.0.6` | `labgrid-switch-2` (Plasma Cloud PSX10) |
+| `172.20.0.7` | `labgrid-switch-3` (ZyXEL GS1900-24EP)  |
 
 ### Switch 1 (PDU)
 
 - **Model:** Linksys LGS328MPC v2 (PoE, running OpenWrt)
 - **IP:** `172.20.0.2`
-- **DUT ports:** `lan1`–`lan24`, VLAN 101–124
+- **DUT ports:** `lan1`–`lan23`, VLAN 101–123. `lan24` is the uplink of
+  switch 3.
 
 ### Switch 2 (PDU)
 
@@ -40,21 +42,38 @@ other labs) because DUT VLAN 128 needs `192.168.128.0/24` on the exporter.
 - **IP:** `172.20.0.6`
 - **DUT ports:** `lan1`–`lan8`, VLAN 125–132. `lan9`/`lan10` are SFP+.
 
-Both switches are set up with `contrib/labgrid-switch/install-switch.sh`
+### Switch 3 (PDU)
+
+- **Model:** ZyXEL GS1900-24EP (PoE on `lan1`–`lan12`, running OpenWrt with
+  realtek-poe, which provides the `poe` ubus object)
+- **IP:** `172.20.0.7`
+- **DUT ports:** `lan1`–`lan23`, VLAN 133–155. `lan24` is the uplink to
+  switch 1 `lan24`.
+
+All switches are set up with `contrib/labgrid-switch/install-switch.sh`
 (VLANs, trunks, management address, hostname):
 
 ```shell
 sh contrib/labgrid-switch/install-switch.sh --name labgrid-switch-1 \
     --address 172.20.0.2/24 --gateway 172.20.0.1 \
-    --first-vlan 101 --ports 24 --transit 125-132 \
-    --trunk lan25 --trunk lan26 --trunk lan28 --mgmt lan27 \
+    --first-vlan 101 --ports 24 --transit 125-155 \
+    --trunk lan24 --trunk lan25 --trunk lan26 --trunk lan27 --trunk lan28 \
     root@172.20.0.2 -J labgrid-aparcar
 
 sh contrib/labgrid-switch/install-switch.sh --name labgrid-switch-2 \
     --address 172.20.0.6/24 --gateway 172.20.0.1 \
     --first-vlan 125 --ports 8 --trunk lan9 \
     root@172.20.0.6 -J labgrid-aparcar
+
+sh contrib/labgrid-switch/install-switch.sh --name labgrid-switch-3 \
+    --address 172.20.0.7/24 --gateway 172.20.0.1 \
+    --first-vlan 133 --ports 24 --trunk lan24 \
+    root@172.20.0.7 -J labgrid-aparcar
 ```
+
+Switch 1's transit range covers switch 2 (125–132) and switch 3 (133–155):
+the script takes one range, and its trunks carry both switches' VLANs to the
+exporter and the probe.
 
 It writes the config without applying it; `/etc/init.d/network restart` on
 the switch does.
@@ -94,14 +113,16 @@ the switch does.
 Every DUT gets two switch ports, each untagged in its own VLAN:
 
 - **Switch ports:** on switch 1, port `lanN` is the untagged member of VLAN
-  `100+N`; on switch 2, of VLAN `124+N`.
+  `100+N`; on switch 2, of VLAN `124+N`; on switch 3, of VLAN `132+N`.
 - **Trunks:**
-  - Switch 1 `lan25` and `lan26` carry all DUT VLANs (101–132) tagged, plus
+  - Switch 1 `lan25` and `lan26` carry all DUT VLANs (101–155) tagged, plus
     the management network (VLAN 1) untagged. That's where the exporter and
     the labgrid-probe are connected.
-  - Switch 1 `lan28` is the uplink of switch 2 (its `lan9`): the DUT VLANs
-    tagged, management untagged.
-  - Switch 1 `lan27` is management only.
+  - Switch 1 `lan28` is the uplink of switch 2 (its `lan9`), switch 1 `lan24`
+    the uplink of switch 3 (its `lan24`): the DUT VLANs tagged, management
+    untagged.
+  - Switch 1 `lan27` is a trunk as well (all DUT VLANs tagged, management
+    untagged).
 - **LAN VLAN** (the DUT's LAN port):
   - The exporter has `192.168.<VLAN>.1/24` for TFTP and `192.168.1.<VLAN>/24`
     to reach the DUT, which keeps its default `192.168.1.1`.
@@ -128,7 +149,8 @@ Every DUT gets two switch ports, each untagged in its own VLAN:
 
 ### Network and power
 
-Switch 1 port `lanN` is VLAN `100+N`, switch 2 port `lanN` is VLAN `124+N`.
+Switch 1 port `lanN` is VLAN `100+N`, switch 2 port `lanN` is VLAN `124+N`,
+switch 3 port `lanN` is VLAN `132+N`.
 ⚡ marks the PoE port that pdudaemon toggles (`PDUDaemonPort.index`, on the
 switch named in `PDUDaemonPort.pdu`). The IgniteNet and the Aruba fetch
 firmware over their second port (VLAN 113 and 115).
@@ -138,18 +160,20 @@ flowchart LR
   EXP["Exporter (Raspberry Pi 5)<br/>172.20.0.1<br/>pdudaemon :16421 · TFTP"]
   PROBE["labgrid-probe (GL-MT2500)<br/>172.20.0.3"]
   SW2["Plasma Cloud PSX10 (PoE, OpenWrt) · 172.20.0.6<br/>lan1–lan8: VLAN 125–132"]
+  SW3["ZyXEL GS1900-24EP (PoE, OpenWrt) · 172.20.0.7<br/>lan1–lan23: VLAN 133–155"]
 
   subgraph SW["Linksys LGS328MPC v2 (PoE, OpenWrt) · 172.20.0.2"]
-    T["lan25 / lan26<br/>trunk: VLAN 101–132 tagged<br/>+ mgmt untagged"]
-    U["lan28<br/>trunk: VLAN 101–132 tagged<br/>+ mgmt untagged"]
+    T["lan25 / lan26<br/>trunk: VLAN 101–155 tagged<br/>+ mgmt untagged"]
+    U["lan28 / lan24<br/>trunk: VLAN 101–155 tagged<br/>+ mgmt untagged"]
   end
 
   EXP ---|trunk| T
   PROBE ---|trunk| T
   SW2 ---|lan9| U
+  SW3 ---|lan24| U
 
   SW ---|"lan1 WAN ⚡ · lan2 LAN"| d1["OpenWrt One"]
-  SW ---|"lan3 WAN ⚡ · lan4 LAN"| d2["BPi-R4-Lite"]
+  SW3 ---|"lan5 LAN · lan6 WAN ⚡"| d2["BPi-R4-Lite"]
   SW2 ---|"lan1 LAN ⚡ · lan2 WAN"| d3["Genexis Pulse EX400"]
   SW2 ---|"lan3 LAN ⚡ · lan4 WAN"| d4["TL-WDR3600 v1"]
   SW2 ---|"lan5 LAN ⚡ · lan6 WAN"| d5["BPi-R4"]
@@ -157,20 +181,22 @@ flowchart LR
   SW ---|"lan12 LAN ⚡"| d7["Enterasys WS-AP3710i"]
   SW ---|"lan13 TFTP ⚡ · lan14 LAN"| d8["IgniteNet SS-W2-AC2600"]
   SW ---|"lan15 TFTP ⚡ · lan16 LAN"| d9["Aruba AP-32x"]
-  SW ---|"lan17 LAN ⚡"| d10["Pine64 Rock64"]
+  SW3 ---|"lan1 LAN ⚡"| d10["Pine64 Rock64"]
   SW ---|"lan5 LAN"| d11["ZyXEL GS1900-8HP B1 (lan1)<br/>power: strip outlet 2"]
-  SW ---|"lan19 LAN ⚡ · lan20 WAN"| d12["VisionFive2"]
+  SW3 ---|"lan3 WAN · lan4 LAN ⚡"| d12["VisionFive2"]
   SW2 ---|"lan8 LAN ⚡"| d13["RIPE Atlas v5"]
-  SW ---|"lan23 LAN ⚡ · lan24 WAN"| d14["ASUS RT-N16"]
-  SW ---|"lan22 LAN ⚡"| d15["o2 Box 6431"]
+  SW3 ---|"lan7 WAN · lan8 LAN ⚡"| d14["ASUS RT-N16"]
+  SW3 ---|"lan2 LAN ⚡"| d15["o2 Box 6431"]
   SW ---|"lan7 LAN · lan8 WAN"| d16["UniFi Cloud Gateway Fiber<br/>power: strip outlet 3"]
 ```
 
 ### USB (serial consoles and SD-Muxes)
 
-Three 7-port hubs. Each one is two cascaded 4-port hub chips, with the inner
-chip on port 1. The labels are the `ID_PATH` port numbers (from `lsusb -tv`).
-Free ports: hub B `1.4`; hub C `2.1.2`, `2.2`.
+Three 7-port hubs, plus hub D on hub A port 1.4 for the devices on switch 3.
+Hubs A–C are two cascaded 4-port hub chips each, with the inner chip on port
+1. The labels are the `ID_PATH` port numbers (from `lsusb -tv`). Free ports:
+hub A `1.1.2`; hub B `1.4`; hub C `2.1.1`–`2.1.4`, `2.2`, `2.4` (the
+devices that moved to switch 3 came with their adapters).
 
 ```mermaid
 flowchart LR
@@ -194,12 +220,18 @@ flowchart LR
   X1 -->|port 2| C0
 
   A1 -->|1.1.1| a1["LGT8F328P cdc_acm<br/>OpenWrt One"]
-  A1 -->|1.1.2| a2["LGT8F328P cdc_acm<br/>BPi-R4-Lite"]
   A1 -->|1.1.3| a7["CH340<br/>Enterasys WS-AP3710i"]
   A1 -->|1.1.4| a8["CH340<br/>IgniteNet SS-W2-AC2600"]
   A0 -->|1.2| a3["CH340<br/>Aruba AP-32x"]
   A0 -->|1.3| a4["CH340<br/>ZyXEL GS1900-8HP B1"]
-  A0 -->|1.4| a5["USB-SD-Mux<br/>(was Raspberry Pi 3B SD)"]
+  A0 -->|1.4| D0["Hub D (switch 3 devices)"]
+  D0 -->|1.4.1| D1["1.4.1"]
+  D1 -->|1.4.1.1.1| d1m["USB-SD-Mux<br/>Pine64 Rock64 SD"]
+  D1 -->|1.4.1.2| d1s["CH9102 cdc_acm<br/>Pine64 Rock64 @1.5 Mbaud"]
+  D1 -->|1.4.1.3| d1o["PL2303<br/>o2 Box 6431"]
+  D1 -->|1.4.1.4| d1v["CH9102 cdc_acm<br/>VisionFive2"]
+  D0 -->|1.4.2| d2r["LGT8F328P cdc_acm<br/>BPi-R4-Lite"]
+  D0 -->|1.4.3| d3a["PL2303<br/>ASUS RT-N16"]
 
   B1 -->|1.1.1| b1["CP210x<br/>TL-WDR3600 v1"]
   B1 -->|1.1.2| b2["CP210x<br/>BPi-R4"]
@@ -208,14 +240,10 @@ flowchart LR
   B0 -->|1.2| b5["USB-SD-Mux<br/>Raspberry Pi 4 SD"]
   B0 -->|1.3| b6["PL2303<br/>RIPE Atlas v5"]
 
-  C1 -->|2.1.1| c7["PL2303<br/>o2 Box 6431"]
-  C1 -->|2.1.3| c2["CH340<br/>Pine64 Rock64 @1.5 Mbaud"]
-  C1 -->|2.1.4| c3["USB-SD-Mux<br/>Pine64 Rock64 SD"]
   C0 -->|2.3| c5["CH9102 cdc_acm<br/>UniFi Cloud Gateway Fiber"]
-  C0 -->|2.4| c1["CH9102 cdc_acm<br/>VisionFive2"]
 
   classDef mux fill:#eef,stroke:#669
-  class a5,b5,c3 mux
+  class b5,d1m mux
 ```
 
 The USB-SD-Mux shows up as a `0424:2640` hub with a `0424:4041` card reader on
@@ -231,18 +259,31 @@ a labgrid place named `labgrid-aparcar-<device>`.
 | Device                 | PoE port | LAN VLAN | WAN VLAN | Serial `ID_PATH`                      | Firmware delivery                  |
 | ---------------------- | -------- | -------- | -------- | ------------------------------------- | ---------------------------------- |
 | OpenWrt One            | 1        | 102      | 101      | `platform-xhci-hcd.0-usb-0:1.1.1:1.0` | TFTP via `192.168.102.1`           |
-| BananaPi BPi-R4-Lite   | 3        | 104      | 103      | `platform-xhci-hcd.0-usb-0:1.1.2:1.0` | TFTP via `192.168.104.1`           |
 | ZyXEL GS1900-8HP B1    | strip 2  | 105      | –        | `platform-xhci-hcd.0-usb-0:1.3:1.0`   | TFTP via `192.168.105.1` (maintenance) |
 | UniFi Cloud Gateway Fiber | strip 3 | 107     | 108      | `platform-xhci-hcd.1-usb-0:2.3:1.0`   | TFTP via `192.168.107.1` (bring-up only) |
 | Enterasys WS-AP3710i   | 12       | 112      | –        | `platform-xhci-hcd.0-usb-0:1.1.3:1.0` | TFTP via `192.168.112.1`           |
 | IgniteNet SS-W2-AC2600 | 13       | 114      | –        | `platform-xhci-hcd.0-usb-0:1.1.4:1.0` | TFTP via `192.168.113.1`           |
 | Aruba AP-32x           | 15       | 116      | –        | `platform-xhci-hcd.0-usb-0:1.2:1.0`   | TFTP via `192.168.115.1`           |
-| Pine64 Rock64          | 17       | 117      | –        | `platform-xhci-hcd.1-usb-0:2.1.3:1.0` | SD-Mux (`USBSDMuxDevice`)          |
-| StarFive VisionFive2   | 19       | 119      | 120      | `platform-xhci-hcd.1-usb-0:2.4:1.0`   | TFTP via `192.168.119.1`           |
-| o2 Box 6431            | 22       | 122      | –        | `platform-xhci-hcd.1-usb-0:2.1.1:1.0` | U-Boot flashes via `192.168.122.1` |
-| ASUS RT-N16            | 23       | 123      | 124      | not connected                         | CFE flashes via `192.168.123.1`    |
 
-Free ports: `lan6`, `lan9`–`lan11`, `lan18`, `lan21`.
+Free ports: `lan3`, `lan4`, `lan6`, `lan9`–`lan11`, `lan17`–`lan23`.
+
+### Switch 3 (`labgrid-switch-3`)
+
+| Device                | PoE port | LAN VLAN | WAN VLAN | Serial `ID_PATH`                        | Firmware delivery                  |
+| --------------------- | -------- | -------- | -------- | --------------------------------------- | ---------------------------------- |
+| Pine64 Rock64         | 1        | 133      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.2:1.0` | SD-Mux (`USBSDMuxDevice`)          |
+| o2 Box 6431           | 2        | 134      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.3:1.0` | U-Boot flashes via `192.168.134.1` |
+| StarFive VisionFive2  | 4        | 136      | 135      | `platform-xhci-hcd.0-usb-0:1.4.1.4:1.0` | TFTP via `192.168.136.1`           |
+| BananaPi BPi-R4-Lite  | 6        | 137      | 138      | `platform-xhci-hcd.0-usb-0:1.4.2:1.0`   | TFTP via `192.168.137.1`           |
+| ASUS RT-N16           | 8        | 140      | 139      | `platform-xhci-hcd.0-usb-0:1.4.3:1.0`   | CFE flashes via `192.168.140.1`    |
+
+Free ports: `lan9`–`lan23` (PoE up to `lan12`). The Pine64 Rock64 and the o2
+Box 6431 draw no PoE on their ports (`ubus call poe info`: "Searching"):
+check how they are powered before relying on `power cycle` for them.
+
+PoE: the 24EP's PoE controller speaks the Broadcom dialect (realtek-poe's
+default; firmware v16.1). With `force_dialect 'realtek'` in `/etc/config/poe`
+every reply reads 0xff and no port can be switched.
 
 ### Switch 2 (`labgrid-switch-2`)
 
@@ -266,7 +307,7 @@ Notes:
   - The Raspberry Pis and the Pine64 Rock64 have no TFTP provider: they are
     imaged by switching their SD card to the host via a `USBSDMuxDevice`.
   - The ASUS RT-N16 has CFE instead of U-Boot and no netbootable image:
-    `CFETFTPStrategy` interrupts CFE, gives it `192.168.123.2` and writes the
+    `CFETFTPStrategy` interrupts CFE, gives it `192.168.140.2` and writes the
     TRX to flash over TFTP on every run (several minutes).
   - The o2 Box 6431 can't boot an initramfs: U-Boot loads the sysupgrade
     image over TFTP, writes it to the firmware partition (`0xb0080000`) and
@@ -274,17 +315,16 @@ Notes:
     `UBootTFTPStrategy` in its target file).
 - **WAN VLAN:** "–" means the board has no WAN port, or it isn't cabled. The
   WAN VLANs were identified from the WAN MAC (LAN MAC ±1) in the exporter's
-  DHCP leases. The VisionFive2 is wired to switch port `lan20`.
-- **Serial:** the Enterasys, IgniteNet, Aruba AP-32x, Pine64 Rock64, o2 Box
-  6431, RIPE Atlas v5 and GS1900-8HP additionally match `@port_number: 0`.
+  DHCP leases.
+- **Serial:** the Enterasys, IgniteNet, Aruba AP-32x, o2 Box 6431, RIPE
+  Atlas v5, ASUS RT-N16 and GS1900-8HP additionally match `@port_number: 0`.
 - **GS1900-8HP B1:** loop cables lan5↔lan6 and lan7↔lan8 for the kernel's DSA
   selftests. Its stock U-Boot enables all ports with `rtk network on`, so
   the target file stops RX/TX on lan5–8 there (`mw.l` on `MAC_PORT_CTRL`,
   not saved) before TFTP. It stays in `maintenance:`: an
   official image would bridge the loops; only self-built kselftest images
   keep lan5–8 out of the bridge. The Pine64
-  Rock64 console runs at 1500000 baud, all others at the default 115200. The
-  ASUS RT-N16's console is not connected at the moment.
+  Rock64 console runs at 1500000 baud, all others at the default 115200.
 - **LAN access:** the `NetworkService` reaches each device at
   `192.168.1.1%vlan<LAN VLAN>` as `root`.
 - The devices the lab offers (its places' `device=` tags) come from the
