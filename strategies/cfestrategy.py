@@ -1,6 +1,7 @@
 import enum
 import ipaddress
 import os
+import time
 from typing import ClassVar
 from urllib.parse import urlparse
 
@@ -159,6 +160,15 @@ class CFETFTPStrategy(Strategy):
             server = staged.hostname
             self._image = f"{server}:{staged.path.lstrip('/')}"
 
+            # the expect buffer outlives the "off" state: drop what an ended
+            # system printed (a CFE banner), or _interrupt matches it at once;
+            # bounded, an unpowered board's console may emit noise without end
+            deadline = time.monotonic() + 1
+            try:
+                while time.monotonic() < deadline:
+                    self.console.expect(r"(?s).+", timeout=0.2)
+            except pexpect.TIMEOUT:
+                pass
             self.power.cycle()
             self._interrupt()
 

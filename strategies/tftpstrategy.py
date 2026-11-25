@@ -2,10 +2,12 @@ import enum
 import ipaddress
 import os
 import re
+import time
 from typing import ClassVar
 from urllib.parse import urlparse
 
 import attr
+import pexpect
 from labgrid.driver import TFTPProviderDriver
 from labgrid.factory import target_factory
 from labgrid.strategy.common import Strategy, StrategyError
@@ -14,6 +16,22 @@ from labgrid.util.managedfile import ManagedFile
 # U-Boot's TFTP client truncates the requested file name to 127 characters
 # (MAX_LEN in net/tftp.c), which full OpenWrt image names easily exceed
 HASH_LEN = 16
+
+
+def drain_console(console):
+    """Drop what the console read before this power-on.
+
+    Its expect buffer outlives the "off" state: after a test ended the system
+    (panic, reboot), it still holds that boot's "stop autoboot" line, which
+    the bootloader driver would match at once, interrupting before power-on
+    and then missing the real countdown. Bounded in time: some unpowered
+    boards' consoles emit noise without end (the AP-32x a stream of "|")."""
+    deadline = time.monotonic() + 1
+    try:
+        while time.monotonic() < deadline:
+            console.expect(r"(?s).+", timeout=0.2)
+    except pexpect.TIMEOUT:
+        pass
 
 
 class Status(enum.Enum):
@@ -81,6 +99,7 @@ class UBootTFTPStrategy(Strategy):
             self.transition(Status.off)
             self.target.activate(self.tftp)
             self.target.activate(self.console)
+            drain_console(self.console)
             if self.uboot_baudrate:
                 self.console.serial.baudrate = self.uboot_baudrate
 
