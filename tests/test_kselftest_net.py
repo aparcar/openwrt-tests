@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-KSFT = "/usr/libexec/kselftests"
+KSFT = "/usr/libexec/kselftests-net"
 
 # The selftests the kselftests-net package installs ("collection:test", its
 # kselftest-list.txt): refresh with scripts/ksft-list.sh after a package
@@ -246,6 +246,10 @@ def test_kselftest_drivers_net(ksft, netdevs, case, record_property):
     REMOTE_*) skip: the lab has no remote host for them yet."""
     collection, test = case
     require(ksft, collection, test)
+    if not test.endswith(".py"):
+        # shortcut: the shell tests here need a port pair (NETIFS) or
+        # netconsole/netdevsim; wire them up when a lab target declares those
+        pytest.skip("drivers/net shell test: needs NETIFS or netconsole, not set up")
     if ksft.run(f"grep -q NetDrvEpEnv {KSFT}/{collection}/{test}")[2] == 0:
         pytest.skip("needs a remote end (NetDrvEpEnv, REMOTE_*)")
     record_property("kselftest_netdevs", json.dumps(netdevs))
