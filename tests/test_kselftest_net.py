@@ -35,6 +35,43 @@ EXCLUDE = {
 # tcpdump runs): 17 min on a BPi-R4 Lite (Cortex-A53)
 SLOW = {"no_forwarding.sh": 2700}
 
+# Known failures per device (profile), marked xfail (not strict) at run time,
+# so a fix shows as XPASS; other devices run these as normal tests
+RTL83XX_FDB = (
+    "rtl83xx DSA has no FDB isolation: a MAC learned on a bridge port drops "
+    "known unicast to a standalone port instead of trapping it to the CPU"
+)
+SLOW_CPU = "500 MHz CPU: the selftest's timing doesn't hold"
+KNOWN = {
+    "zyxel_gs1900-8hp-b1": {
+        **{
+            f"test_kselftest_dsa_loops[{test}]": RTL83XX_FDB
+            for test in (
+                "bridge_locked_port.sh",
+                "bridge_mdb.sh",
+                "bridge_mld.sh",
+                "bridge_vlan_aware.sh",
+                "bridge_vlan_unaware.sh",
+            )
+        },
+        "test_kselftest_dsa_loops[tc_actions.sh]": f"{RTL83XX_FDB}; times out",
+        "test_kselftest_forwarding[bridge_igmp.sh]": f"{SLOW_CPU} (exclude timeout)",
+        "test_kselftest_forwarding[bridge_mld.sh]": f"{SLOW_CPU} (exclude timeout)",
+        "test_kselftest_forwarding[tc_actions.sh]": f"{SLOW_CPU} (900 s timeout)",
+        "test_kselftest_drivers_net[queues.py]": "single-core kernel without "
+        "RPS: no sysfs rx-* queues for get_queues/addremove_queues to count",
+        "test_kselftest_drivers_net[hw/irq.py]": "rtl838x eth doesn't set the "
+        "NAPI IRQ (netif_napi_set_irq), check_irqs_reported finds none",
+    },
+}
+
+
+@pytest.fixture(autouse=True)
+def known_issue(env, request):
+    profile = (env.config.data.get("openwrt") or {}).get("profile")
+    if reason := KNOWN.get(profile, {}).get(request.node.name):
+        request.applymarker(pytest.mark.xfail(reason=reason))
+
 
 def params(collections, exclude=(), timeout=None):
     """pytest params for the list's tests in `collections`, named by their

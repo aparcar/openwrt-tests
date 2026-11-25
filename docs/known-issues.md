@@ -21,6 +21,10 @@ as a normal one.
 | `test_known_issues_platform.py::test_poweroff` | [openwrt#18481](https://github.com/openwrt/openwrt/issues/18481) | openwrt_one | the board boots again ~25 s after `poweroff` (EM6324 watchdog) |
 | `test_known_issues_platform.py::test_reboot` | [openwrt#26753](https://github.com/openwrt/openwrt/issues/26753) | ignitenet_ss-w2-ac2600, snapshot | `reboot` hangs: no bootloader banner after "Restarting system" |
 | `test_known_issues_platform.py::test_qcom_socinfo_debugfs` | [openwrt#17756](https://github.com/openwrt/openwrt/issues/17756) | ipq806x | reading `/sys/kernel/debug/qcom_socinfo/*` oopses |
+| `test_kselftest_net.py::test_kselftest_dsa_loops[...]` (bridge_locked_port, bridge_mdb, bridge_mld, bridge_vlan_aware, bridge_vlan_unaware, tc_actions) | not reported yet | zyxel_gs1900-8hp-b1 (rtl83xx DSA) | no FDB isolation: known unicast to a standalone port is forwarded to the bridge port that learned the MAC and dropped, not trapped to the CPU |
+| `test_kselftest_net.py::test_kselftest_forwarding[...]` (bridge_igmp, bridge_mld, tc_actions) | – (slow CPU) | zyxel_gs1900-8hp-b1 | 500 MHz CPU: "exclude timeout" fails, tc_actions exceeds 900 s |
+| `test_kselftest_net.py::test_kselftest_drivers_net[queues.py]` | – (kernel config) | zyxel_gs1900-8hp-b1 | single-core kernel without RPS has no sysfs `rx-*` queues to compare with |
+| `test_kselftest_net.py::test_kselftest_drivers_net[hw/irq.py]` | not reported yet | zyxel_gs1900-8hp-b1 (rtl838x eth) | the driver's NAPIs report no IRQ (no `netif_napi_set_irq()`) |
 | – (no session to test in) | [openwrt#25302](https://github.com/openwrt/openwrt/issues/25302) | enterasys_ws-ap3710i, 25.12 | initramfs hangs after "Uncompressing Kernel Image"; healthcheck pinned to 23.05.5 |
 
 Notes:
