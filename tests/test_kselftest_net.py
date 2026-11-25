@@ -9,6 +9,8 @@ Images without the package (all official ones) skip the module."""
 
 import json
 import re
+import shlex
+import time
 from pathlib import Path
 
 import pytest
@@ -312,35 +314,74 @@ def test_kselftest_dsa_fdb_stress(ksft, links, record_property):
     )
 
 
+def bridged(shell, ports):
+    """{port: bridge} of the given ports that are in a bridge."""
+    return {
+        link["ifname"]: link["master"]
+        for link in json.loads("\n".join(shell.run_check("ip -j link show")))
+        if link["ifname"] in ports and "master" in link
+    }
+
+
 @pytest.fixture(scope="module")
 def loop_ports(env, ksft, links):
     """The ports of the target's `openwrt: kselftest_loops: [h1, swp1, swp2,
     h2]`, cabled h1<->swp1 and swp2<->h2, with swp1/swp2 on the DSA switch.
-    The image must keep them out of every bridge (uci-defaults): bridged,
-    the loops would storm or join the lab's networks."""
+    Takes them out of every netifd bridge while the tests run and restores
+    the network config afterwards. Through UCI, not `ip link set nomaster`:
+    netifd puts a port back into a VLAN-aware bridge when its link comes up.
+    Bridged, the loops would storm or join the lab's networks, so outside of
+    this fixture the image must block them (RSTP on its bridges)."""
     ports = (env.config.data.get("openwrt") or {}).get("kselftest_loops")
     if not ports:
         pytest.skip("target defines no kselftest_loops")
     assert len(ports) == 4, "kselftest_loops needs [h1, swp1, swp2, h2]"
     for port in ports:
         assert port in links, f"{port} doesn't exist"
-        assert "master" not in links[port], (
-            f"{port} is in {links[port]['master']}: the loops need unbridged ports"
-        )
     assert kind(links[ports[1]]) == "dsa" and kind(links[ports[2]]) == "dsa", (
         "swp1 and swp2 must be DSA ports"
     )
-    # a short command line: slow serial consoles (GS1900) drop long input
-    names = " ".join(ports)
-    _, _, rc = ksft.run(
-        f"up() {{ for p in {names}; do [ $(cat /sys/class/net/$p/carrier) = 1 ]"
-        f" || return 1; done; }}; for p in {names}; do ip link set $p up; done;"
-        " i=0; until up || [ $i -ge 30 ]; do sleep 1; i=$((i+1)); done; up",
-        timeout=60,
+    # One short command each: slow serial consoles (GS1900) drop long input.
+    # Ports are a list on device sections, one string on bridge-vlan sections
+    # (realtek), both with optional :t/:u/* suffixes.
+    show = dict(
+        line.split("=", 1) for line in ksft.run_check("uci show network") if "=" in line
     )
-    if rc != 0:
-        pytest.skip(f"no carrier on all of {ports} within 30 s: loops not cabled")
-    return ports
+    ksft.run_check("cp /etc/config/network /tmp/ksft-network")
+    try:
+        for key, value in show.items():
+            if not key.endswith(".ports"):
+                continue
+            tokens = " ".join(shlex.split(value)).split()
+            drop = [t for t in tokens if t.split(":")[0] in ports]
+            if not drop:
+                continue
+            if show.get(key.removesuffix(".ports")) == "bridge-vlan":
+                keep = " ".join(t for t in tokens if t not in drop)
+                ksft.run_check(f"uci set '{key}={keep}'")
+            else:
+                for t in drop:
+                    ksft.run_check(f"uci del_list '{key}={t}'")
+        ksft.run_check("uci commit network")
+        ksft.run_check("/etc/init.d/network reload", timeout=60)
+        for _ in range(30):
+            if not (left := bridged(ksft, ports)):
+                break
+            time.sleep(1)
+        assert not left, f"still bridged after network reload: {left}"
+        names = " ".join(ports)
+        _, _, rc = ksft.run(
+            f"up() {{ for p in {names}; do [ $(cat /sys/class/net/$p/carrier) = 1 ]"
+            f" || return 1; done; }}; for p in {names}; do ip link set $p up; done;"
+            " i=0; until up || [ $i -ge 30 ]; do sleep 1; i=$((i+1)); done; up",
+            timeout=60,
+        )
+        if rc != 0:
+            pytest.skip(f"no carrier on all of {ports} within 30 s: loops not cabled")
+        yield ports
+    finally:
+        ksft.run("mv /tmp/ksft-network /etc/config/network")
+        ksft.run("/etc/init.d/network reload", timeout=60)
 
 
 @pytest.mark.parametrize("case", params(["drivers/net/dsa"], exclude=(FDB_STRESS,)))
