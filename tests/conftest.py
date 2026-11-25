@@ -96,9 +96,16 @@ def pytest_configure(config):
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(items):
     # test_base.py first, in its own order (the basics: boot, shell, SSH,
-    # kernel log), then the other modules as collected (by file name). The
-    # sort is stable, so tests keep their order within a module.
-    items.sort(key=lambda item: item.path.name != "test_base.py")
+    # kernel log), then the other modules as collected (by file name), and
+    # test_known_issues_platform.py last: it ends the system (oops, reboot,
+    # poweroff), so a failed boot after it can't cut the other modules short.
+    # The sort is stable, so tests keep their order within a module.
+    items.sort(
+        key=lambda item: (
+            item.path.name != "test_base.py",
+            item.path.name == "test_known_issues_platform.py",
+        )
+    )
 
     # Tests using the `online` fixture (probe_fixtures.py), directly or
     # through another fixture, need the labgrid feature `online` (the DUT has
