@@ -1,8 +1,9 @@
 ## Ubiquiti UniFi USW Aggregation: RTL9303, 256M RAM, 16M NOR, 8x 10G
 ## SFP+, internal 3.3V TTL header (115200 8N1). Boots the initramfs from
 ## U-Boot over TFTP (openwrt/openwrt commit e4ed8e7fe7).
-## shortcut: prompt not checked on the board yet (U-Boot usw-US_v1.0.25.77),
-## fix it once autoboot was stopped.
+## U-Boot usw-US_v1.0.25.77 (prompt "uboot> # ") has no `echo` and skips
+## the network at boot ("Net Initialization Skipped"): `rtk network on`
+## before tftpboot.
 openwrt:
   name: Ubiquiti UniFi USW Aggregation
   target: realtek-rtl930x
@@ -19,10 +20,12 @@ targets:
       TFTPProviderDriver: {}
       SerialDriver:
         txdelay: 0.01
-      UBootDriver:
-        autoboot: "Hit Esc key to stop autoboot"
-        interrupt: "\x1b"
-        prompt: 'RTL93\d\d# '
+      ## no `echo` in this U-Boot; one Esc (boot_secret) stops autoboot
+      SmallUBootDriver:
+        boot_expression: "Hit Esc key to stop autoboot"
+        boot_secret: "\x1b"
+        boot_secret_nolf: true
+        prompt: 'uboot> # '
         init_commands:
           - rtk network on
           - tftpboot 0x82000000
