@@ -197,6 +197,11 @@ def run_ksft(shell, cwd, command, timeout, record_property):
         f"dmesg | tail -n +{before + 1} | grep -E '{KERNEL_ERRORS.pattern}'"
     )[0]
     result = RC.get(rc, f"rc {rc}")
+    # exit 0 without a single result line means the selftest never ran (e.g.
+    # lib.sh failed to load its helpers): not a pass
+    reported = shell.run(r"grep -cE '^(TEST: |not ok |ok )' /tmp/ksft.log")[0]
+    if result == "pass" and reported == ["0"]:
+        result = "no results"
     if result != "pass":
         # the selftest prints the failing command's error just before its TEST line
         record_property(
