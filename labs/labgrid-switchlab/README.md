@@ -12,14 +12,14 @@ Realtek switches as DUTs. Lab name on the CI server: `switchlab-lab`.
 
 | DUT | Outlet | Serial (USB hub port) | XS1930 port | VLAN | Bootloader |
 |---|---|---|---|---|---|
-| Linksys LGS328MPC v2 | 4 | ttyUSB0 (1.2) | lan2 (copper) | 102 | U-Boot 2011.12 (Realtek SDK), 115200, `Enter correct key to stop autoboot` (`acp`) |
+| Linksys LGS328MPC v2 | 4 | ttyUSB0 (1.2) | lan2 (copper) | 102 | U-Boot 2011.12.(3.6.0.48) (Realtek SDK), 115200, `Enter correct key to stop autoboot` (3 s, `acp`) |
 | XikeStor SKS8300-12X V1 | 2 | ttyUSB1 (1.3) | lan9 (10G SFP+; SKS port 1, FLEXOPTIX 10GBase-R) | 109 | vendor "U-boot version: V2.00", **9600**, `Hit Ctrl+B to stop autoboot` (1 s); OpenWrt at 115200 |
-| Ubiquiti USW Aggregation | 3 | ttyUSB2 (1.4) | lan10 (10G SFP+, LR fibre to USW lan1) | 110 | U-Boot usw-US_v1.0.25.77, 115200, `Hit Esc key to stop autoboot` |
+| Ubiquiti USW Aggregation | 3 | ttyUSB2 (1.4) | lan10 (10G SFP+, LR fibre to USW lan1) | 110 | U-Boot usw-US_v1.0.25.77, 115200, `Hit Esc key to stop autoboot` (1 s), prompt `uboot> # ` |
 
 All three have OpenWrt (snapshot) in flash and answer on 192.168.1.1 through
 their VLAN. Outlet 1 is unused.
 
-## Status (2026-11-21)
+## Status (2026-11-25)
 
 Health checks use the snapshot initramfs (none of the three is in a release).
 
@@ -33,14 +33,20 @@ Health checks use the snapshot initramfs (none of the three is in a release).
   `writeconfig`) doesn't survive a reboot, and this U-Boot has no
   `saveenv` (see the DTS in openwrt/openwrt commit 81b148fd38), so the
   switch stays in the strategy.
-- **USW Aggregation**: no console. Power works (NETIO outlet 3 draws ~4 W),
-  but ttyUSB2 gets no byte at all through a power cycle: TX not wired or
-  TX/RX swapped. Tagged `maintenance=serial`. The U-Boot prompt in the
-  target file is still a guess.
-- **LGS328MPC**: console carries garbage (ttyUSB0). With the LGS
-  unpowered, ttyUSB0 still receives noise whenever the USW powers up, so
-  check grounding/wiring of both adapters together. Tagged
-  `maintenance=serial`.
+- **USW Aggregation**: works since its console was fixed. `test_base.py`
+  passes from a local run (snapshot r38552, boot about 80 s). U-Boot
+  (RTL9300, 256 MB, 16 MB SPI-NOR) stops at one Esc and prompts
+  `uboot> # `; it has no `echo`, so the target uses `SmallUBootDriver`.
+  Its network is off until `rtk network on` (hardware profile `UBNT_USL8A`,
+  about 4 s); TFTP loads to `0x82000000` over the fibre in lan1, the
+  legacy uImage runs at `0x80100000`.
+- **LGS328MPC**: the console now shows U-Boot (`U-Boot
+  2011.12.(3.6.0.48)`, RTL9300, 512 MB, 128 MB SPI-NAND; the flash boot
+  loads to `0x81000000`), but with noise bursts while U-Boot and Linux set
+  up the switch hardware, and corrupted characters. `acp` sent at the
+  autoboot line never stopped it, so input probably arrives garbled too.
+  Check the console cable and ground of ttyUSB0 (hub port 1.2), with the
+  USW powered off. Stays in `maintenance:`; the U-Boot prompt is unknown.
 
 The tags come from `maintenance:` of the lab in `labs/labgrid-switchlab/lab.yaml`: a deploy
 regenerates the coordinator's places, so a tag set with `labgrid-client
@@ -109,8 +115,11 @@ Setup:
 
 ## Next steps
 
-1. Fix the USW and LGS serial wiring. Then USW: fix the U-Boot prompt and
-   load address from its console; LGS: check the `acp` interrupt and the
-   U-Boot prompt. Drop each from `maintenance:` in `labs/labgrid-switchlab/lab.yaml` once it
-   passes its health check, and deploy (`lab.yml --limit labgrid-switchlab
-   --tags export`).
+1. Fix the LGS serial noise. Then check the `acp` interrupt (likely needs
+   repeating during the 3 s countdown) and the U-Boot prompt, and boot the
+   initramfs from `0x81000000`. Drop it from `maintenance:` in
+   `labs/labgrid-switchlab/lab.yaml` once it passes its health check, and
+   deploy (`lab.yml --limit labgrid-switchlab --tags export`).
+2. The lab host's sshd resets new connections when a client opens many in a
+   short time (`kex_exchange_identification: read: Connection reset by
+   peer`); check `MaxStartups`/`PerSourcePenalties` before CI runs here.
