@@ -741,7 +741,8 @@ def test_wifi_vif_macs_unique(bed, record_property):
 
 def dynamic_vlan_bed(bed):
     """An AP whose wifi-station key puts a station into VLAN 150 (wifi-vlan
-    t_vlan, bridge br-hwsim with DHCP); returns the peer's radio."""
+    t_vlan, bridge br-hwsim with DHCP); returns the peer's radio and the log
+    mark taken before the setup was applied."""
     bed.use_wpad("full")
     radios = bed.load(radios=2)
     dut, sta = radios[0], radios[1]
@@ -780,7 +781,7 @@ def dynamic_vlan_bed(bed):
     token = bed.mark()
     bed.apply()
     assert bed.wait_ap("hwsim-dvlan"), bed.debug()
-    return sta
+    return sta, token
 
 
 def vlan_wifi_ports(bed):
@@ -802,7 +803,8 @@ def test_wifi_hwsim_dynamic_vlan_bridged(bed, record_property):
     station with the VLAN's key lands in that VLAN's bridge and gets DHCP
     there. With `vlan_no_bridge` the VLAN interface was not bridged.
     """
-    peer = bed.peer(dynamic_vlan_bed(bed))
+    sta, token = dynamic_vlan_bed(bed)
+    peer = bed.peer(sta)
     assert peer.connect("hwsim-dvlan", key=KEY), f"VLAN key rejected\n{bed.debug()}"
     time.sleep(3)  # hostapd adds the VLAN iface on the station's association
     ports, wireless_ports = vlan_wifi_ports(bed)
@@ -841,7 +843,7 @@ def test_wifi_reload_applies_wifi_vlan(bed, record_property):
     flag of the station's AP_VLAN netdev after `wifi reload`; netifd's
     status has the new config, but the existing bridge port isn't updated.
     """
-    peer = bed.peer(dynamic_vlan_bed(bed))
+    peer = bed.peer(dynamic_vlan_bed(bed)[0])
     assert peer.connect("hwsim-dvlan", key=KEY), f"VLAN key rejected\n{bed.debug()}"
     seen = {}
     for change, want in (
