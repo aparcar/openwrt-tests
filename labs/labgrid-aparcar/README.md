@@ -174,7 +174,7 @@ flowchart LR
   SW3 ---|lan24| U
 
   SW ---|"lan1 WAN ⚡ · lan2 LAN"| d1["OpenWrt One"]
-  SW3 ---|"lan5 LAN · lan6 WAN ⚡"| d2["BPi-R4-Lite"]
+  SW3 ---|"lan1 LAN · lan6 WAN ⚡"| d2["BPi-R4-Lite"]
   SW2 ---|"lan1 LAN ⚡ · lan2 WAN"| d3["Genexis Pulse EX400"]
   SW2 ---|"lan3 LAN ⚡ · lan4 WAN"| d4["TL-WDR3600 v1"]
   SW2 ---|"lan5 LAN ⚡ · lan6 WAN"| d5["BPi-R4"]
@@ -274,14 +274,14 @@ Free ports: `lan3`, `lan4`, `lan6`, `lan9`–`lan11`, `lan17`–`lan23`.
 | --------------------- | -------- | -------- | -------- | --------------------------------------- | ---------------------------------- |
 | o2 Box 6431           | 2        | 134      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.3:1.0` | U-Boot flashes via `192.168.134.1` |
 | StarFive VisionFive2  | 4        | 136      | 135      | `platform-xhci-hcd.0-usb-0:1.4.1.4:1.0` | TFTP via `192.168.136.1`           |
-| BananaPi BPi-R4-Lite  | 6        | 137      | 138      | `platform-xhci-hcd.0-usb-0:1.4.2:1.0`   | TFTP via `192.168.137.1`           |
+| BananaPi BPi-R4-Lite  | 6        | 133      | 138      | `platform-xhci-hcd.0-usb-0:1.4.2:1.0`   | TFTP via `192.168.133.1`           |
 | ASUS RT-N16           | 8        | 140      | 139      | `platform-xhci-hcd.0-usb-0:1.4.3:1.0`   | CFE flashes via `192.168.140.1`    |
 | Raspberry Pi 3B       | 9        | 141      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.2:1.0` | SD-Mux (`USBSDMuxDevice`)          |
 
-Free ports: `lan1`, `lan10`–`lan23` (PoE up to `lan12`). `lan1`'s PoE output
+Free ports: `lan5`, `lan10`–`lan23` (PoE up to `lan12`). `lan1`'s PoE output
 is broken: it detects and classifies a powered device but never switches
 power on, with several devices and both realtek-poe and the kernel driver.
-Use it for data only.
+So it carries the R4-Lite's LAN, which needs no PoE.
 
 PoE: the 24EP's PoE controller is a Gen1 MCU (Broadcom dialect, firmware
 v16.1) with two BCM59011 PSE chips (id `0xe011`). Switch 3 runs a self-built

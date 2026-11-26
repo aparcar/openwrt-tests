@@ -16,20 +16,21 @@ labgrid-aparcar-openwrt_one:
     match:
       ID_PATH: platform-xhci-hcd.0-usb-0:1.1.1:1.0
 
-## Switch 3 lan5 (LAN) and lan6 (WAN, PoE: powered over its WAN port)
+## Switch 3 lan1 (LAN; no PoE needed, lan1's PoE output is broken) and lan6
+## (WAN, PoE: powered over its WAN port)
 labgrid-aparcar-bananapi_bpi-r4-lite:
   wan:
     cls: NetworkInterface
     ifname: vlan138
   NetworkService:
-    address: 192.168.1.1%vlan137
+    address: 192.168.1.1%vlan133
     username: root
   PDUDaemonPort:
     host: localhost:16421
     index: 6
     pdu: labgrid-switch-3
   TFTPProvider:
-    external: tftp://192.168.137.1/bananapi_bpi-r4-lite/
+    external: tftp://192.168.133.1/bananapi_bpi-r4-lite/
     internal: /srv/tftp/bananapi_bpi-r4-lite/
   USBSerialPort:
     match:
