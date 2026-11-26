@@ -170,6 +170,10 @@ class UBootTFTPStrategy(Strategy):
                 self.console.serial.baudrate = self.console.port.speed
             self.uboot.await_boot()
             self.target.activate(self.shell)
+            # the ShellDriver's post-login "dmesg -n 1" sometimes loses bytes;
+            # kernel lines between a command's marker and the prompt then
+            # time the command out
+            self.shell.run_check("dmesg -n 1")
         else:
             raise StrategyError(f"no transition found from {self.status} to {status}")
         self.status = status
