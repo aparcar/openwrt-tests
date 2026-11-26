@@ -321,6 +321,9 @@ def wait_for_interface(shell, iface, timeout=120, need_ipv4=False):
 def wait_for_dhcp_server(shell, timeout=120):
     """Wait until the DUT's LAN is up and its dnsmasq runs."""
     wait_for_interface(shell, "lan", timeout)
+    if shell.run("[ -x /usr/sbin/dnsmasq ]")[2] != 0:
+        # NAS images (DEVICE_TYPE nas) ship no DHCP server
+        pytest.skip("no dnsmasq in this image")
     deadline = time.monotonic() + timeout
     while shell.run("pidof dnsmasq")[2] != 0:
         if time.monotonic() > deadline:
