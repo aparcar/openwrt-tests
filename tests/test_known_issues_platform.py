@@ -154,6 +154,25 @@ def test_poweroff(env, target, power_strategy, shell_command, request, record_pr
             "openwrt/openwrt#18481: the EM6324 watchdog is not disabled at "
             "poweroff, the board boots again after about 25 s",
         )
+    elif _openwrt(env, "profile") in ("bananapi_bpi-r4", "bananapi_bpi-r4-lite"):
+        # BL31 v2.10 (2024.01.17) stays off, v2.14 (2026.05.21) resets
+        _known_issue(
+            request,
+            "with OpenWrt's TF-A 2026.05.21 (BL31 v2.14) poweroff resets the "
+            "SoC, BL2 starts within a second",
+        )
+    elif _openwrt(env, "profile") in (
+        "gemtek_w1700k-ubi",
+        "ignitenet_ss-w2-ac2600",
+        "netgear_r7800",
+        "wd_mybooklive",
+    ):
+        # the Aruba AP-32x (also ipq806x) stays off
+        _known_issue(
+            request,
+            "the watchdog keeps running after poweroff, U-Boot starts again "
+            "after about 25 s",
+        )
 
     console = _end_session(target, shell_command, "poweroff")
     try:
