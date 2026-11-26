@@ -182,7 +182,7 @@ flowchart LR
   SW ---|"lan12 LAN ⚡"| d7["Enterasys WS-AP3710i"]
   SW ---|"lan13 TFTP ⚡ · lan14 LAN"| d8["IgniteNet SS-W2-AC2600"]
   SW ---|"lan15 TFTP ⚡ · lan16 LAN"| d9["Aruba AP-32x"]
-  SW3 ---|"lan1 LAN ⚡"| d10["Pine64 Rock64"]
+  SW3 ---|"lan9 LAN ⚡"| d10["Raspberry Pi 3B"]
   SW ---|"lan5 LAN"| d11["ZyXEL GS1900-8HP B1 (lan1)<br/>power: strip outlet 2"]
   SW3 ---|"lan3 WAN · lan4 LAN ⚡"| d12["VisionFive2"]
   SW2 ---|"lan8 LAN ⚡"| d13["RIPE Atlas v5"]
@@ -227,8 +227,8 @@ flowchart LR
   A0 -->|1.3| a4["CH340<br/>ZyXEL GS1900-8HP B1"]
   A0 -->|1.4| D0["Hub D (switch 3 devices)"]
   D0 -->|1.4.1| D1["1.4.1"]
-  D1 -->|1.4.1.1.1| d1m["USB-SD-Mux<br/>Pine64 Rock64 SD"]
-  D1 -->|1.4.1.2| d1s["CH9102 cdc_acm<br/>Pine64 Rock64 @1.5 Mbaud"]
+  D1 -->|1.4.1.1.1| d1m["USB-SD-Mux<br/>Raspberry Pi 3B SD"]
+  D1 -->|1.4.1.2| d1s["CH9102 cdc_acm<br/>Raspberry Pi 3B"]
   D1 -->|1.4.1.3| d1o["PL2303<br/>o2 Box 6431"]
   D1 -->|1.4.1.4| d1v["CH9102 cdc_acm<br/>VisionFive2"]
   D0 -->|1.4.2| d2r["LGT8F328P cdc_acm<br/>BPi-R4-Lite"]
@@ -272,16 +272,16 @@ Free ports: `lan3`, `lan4`, `lan6`, `lan9`–`lan11`, `lan17`–`lan23`.
 
 | Device                | PoE port | LAN VLAN | WAN VLAN | Serial `ID_PATH`                        | Firmware delivery                  |
 | --------------------- | -------- | -------- | -------- | --------------------------------------- | ---------------------------------- |
-| Pine64 Rock64         | 1        | 133      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.2:1.0` | SD-Mux (`USBSDMuxDevice`)          |
 | o2 Box 6431           | 2        | 134      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.3:1.0` | U-Boot flashes via `192.168.134.1` |
 | StarFive VisionFive2  | 4        | 136      | 135      | `platform-xhci-hcd.0-usb-0:1.4.1.4:1.0` | TFTP via `192.168.136.1`           |
 | BananaPi BPi-R4-Lite  | 6        | 137      | 138      | `platform-xhci-hcd.0-usb-0:1.4.2:1.0`   | TFTP via `192.168.137.1`           |
 | ASUS RT-N16           | 8        | 140      | 139      | `platform-xhci-hcd.0-usb-0:1.4.3:1.0`   | CFE flashes via `192.168.140.1`    |
+| Raspberry Pi 3B       | 9        | 141      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.2:1.0` | SD-Mux (`USBSDMuxDevice`)          |
 
-Free ports: `lan9`–`lan23` (PoE up to `lan12`). The Pine64 Rock64 is leaving
-switch 3: the switch detects its PoE splitter (class 3) but cuts the power
-again right after switching it on, in a loop, while the same splitter and
-board run on PoE+ switches. Its `lan1` row stays until it has a new place.
+Free ports: `lan1`, `lan10`–`lan23` (PoE up to `lan12`). `lan1`'s PoE output
+is broken: it detects and classifies a powered device but never switches
+power on, with several devices and both realtek-poe and the kernel driver.
+Use it for data only.
 
 PoE: the 24EP's PoE controller is a Gen1 MCU (Broadcom dialect, firmware
 v16.1) with two BCM59011 PSE chips (id `0xe011`). Switch 3 runs a self-built
@@ -312,7 +312,7 @@ Notes:
     `TFTPProvider.external` is a `tftp://192.168.<VLAN>.1/<device>/` URL.
   - The IgniteNet and the Aruba fetch over their second port, so their TFTP
     VLAN (113, 115) differs from their LAN VLAN.
-  - The Raspberry Pis and the Pine64 Rock64 have no TFTP provider: they are
+  - The Raspberry Pis have no TFTP provider: they are
     imaged by switching their SD card to the host via a `USBSDMuxDevice`.
   - The ASUS RT-N16 has CFE instead of U-Boot and no netbootable image:
     `CFETFTPStrategy` interrupts CFE, gives it `192.168.140.2` and writes the
@@ -331,8 +331,8 @@ Notes:
   the target file stops RX/TX on lan5–8 there (`mw.l` on `MAC_PORT_CTRL`,
   not saved) before TFTP. It stays in `maintenance:`: an
   official image would bridge the loops; only self-built kselftest images
-  keep lan5–8 out of the bridge. The Pine64
-  Rock64 console runs at 1500000 baud, all others at the default 115200.
+  keep lan5–8 out of the bridge. All consoles run at the default 115200
+  baud.
 - **LAN access:** the `NetworkService` reaches each device at
   `192.168.1.1%vlan<LAN VLAN>` as `root`.
 - The devices the lab offers (its places' `device=` tags) come from the

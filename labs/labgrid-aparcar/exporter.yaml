@@ -152,14 +152,15 @@ labgrid-aparcar-aruba_ap-32x:
       '@port_number': '0'
       ID_PATH: platform-xhci-hcd.0-usb-0:1.2:1.0
 
-## Switch 3 lan1; console (CH9102) and SD-Mux on hub D (hub A port 1.4)
-labgrid-aparcar-pine64_rock64:
+## Switch 3 lan9 (PoE over a splitter; lan1's PoE output is broken);
+## console (CH9102) and SD-Mux on hub D (hub A port 1.4)
+labgrid-aparcar-raspberry-pi-3b:
   NetworkService:
-    address: 192.168.1.1%vlan133
+    address: 192.168.1.1%vlan141
     username: root
   PDUDaemonPort:
     host: localhost:16421
-    index: 1
+    index: 9
     pdu: labgrid-switch-3
   USBSDMuxDevice:
     match:
@@ -167,7 +168,6 @@ labgrid-aparcar-pine64_rock64:
   USBSerialPort:
     match:
       ID_PATH: platform-xhci-hcd.0-usb-0:1.4.1.2:1.0
-    speed: 1500000
 
 ## ZyXEL GS1900-8HP B1, in the Raspberry Pi 3B's former place (switch 1
 ## lan5, hub A 1.3). Its lan1 is cabled to switch 1 lan5; powered from the
