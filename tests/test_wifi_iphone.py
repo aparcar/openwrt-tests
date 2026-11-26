@@ -56,6 +56,22 @@ WPA3_ONLY_XFAIL = pytest.mark.xfail(
     strict=False,
 )
 KNOWN = {"sae": [WPA3_ONLY_XFAIL]}
+# Seen on the WDR3600: after `wifi down`/`wifi up` the AP is back on channel
+# 36 and the lab's Linux clients rejoin (test_wifi_restart_clients_reconnect
+# [5g]), but wifid finds "no scan candidate network" for 120 s.
+RESTART_5G_XFAIL = pytest.mark.xfail(
+    reason="the iPhone doesn't rescan for a 5 GHz AP that vanished; Linux "
+    "clients do rejoin",
+    strict=False,
+)
+RESTART_BANDS = [
+    pytest.param(
+        *p.values,
+        marks=[*p.marks, RESTART_5G_XFAIL] if p.values[0] == "5g" else p.marks,
+        id=p.id,
+    )
+    for p in BANDS
+]
 
 
 def per_band(values, known=None):
@@ -179,7 +195,7 @@ def test_iphone_hidden_ssid(ssh_command, iphone_probe, target, band):
     assert_ping(bed, state["ip"])
 
 
-@pytest.mark.parametrize("band", BANDS)
+@pytest.mark.parametrize("band", RESTART_BANDS)
 def test_iphone_reconnects_after_wifi_restart(
     ssh_command, iphone_probe, target, band, record_property
 ):

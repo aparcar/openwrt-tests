@@ -42,6 +42,24 @@ BANDS = [p for p in band_params() if p.values[0] in PHONE_BANDS]
 REJECT_SECONDS = 45
 WRONG_KEY = "not-the-key-42"
 AP_ENCRYPTIONS = ["none", "psk2", "psk-mixed", "sae-mixed", "sae"]
+# Seen on the OpenWrt One, WDR3600, SS-W2-AC2600 and Pulse EX400 (Pixel 5,
+# Android 14, screen off): after `wifi down`/`wifi up` the AP is back on
+# channel 36, the lab's Linux clients rejoin within seconds
+# (test_wifi_restart_clients_reconnect[5g]), the phone doesn't within 180 s.
+# Not strict, so a pass shows up as XPASS.
+RESTART_5G_XFAIL = pytest.mark.xfail(
+    reason="the phone doesn't rescan for a 5 GHz AP that vanished; Linux "
+    "clients do rejoin",
+    strict=False,
+)
+RESTART_BANDS = [
+    pytest.param(
+        *p.values,
+        marks=[*p.marks, RESTART_5G_XFAIL] if p.values[0] == "5g" else p.marks,
+        id=p.id,
+    )
+    for p in BANDS
+]
 
 
 def per_band(values):
@@ -166,7 +184,7 @@ def test_android_hidden_ssid(ssh_command, android_probe, target, band):
     assert_ping(bed, state["ip"])
 
 
-@pytest.mark.parametrize("band", BANDS)
+@pytest.mark.parametrize("band", RESTART_BANDS)
 def test_android_reconnects_after_wifi_restart(
     ssh_command, android_probe, target, band, record_property
 ):
