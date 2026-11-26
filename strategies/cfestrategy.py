@@ -73,6 +73,12 @@ class CFETFTPStrategy(Strategy):
     # the first TFTP download after boot can give up ("break!! by max
     # retry!!") before ARP has settled; a failed download writes nothing
     flash_attempts = attr.ib(default=3, validator=attr.validators.instance_of(int))
+    # every boot is a first boot: fstools formats the JFFS2 overlay (minutes
+    # of NOR erasing) and then copies what was written to the temporary
+    # tmpfs overlay over; a file being copied can't be executed
+    overlay_timeout = attr.ib(
+        default=600.0, validator=attr.validators.instance_of((int, float))
+    )
 
     status = attr.ib(default=Status.unknown)
 
@@ -190,6 +196,20 @@ class CFETFTPStrategy(Strategy):
             )
             self.power.cycle()
             self.target.activate(self.shell)
+            # the JFFS2 overlay is final once fstools set its state to 2
+            # (FS_STATE_READY, after the copy); while it isn't ready yet
+            # /overlay is a tmpfs without a state. procd's "init complete"
+            # comes after the copy, and also ends the wait on boards that
+            # stay on a tmpfs overlay.
+            timeout = Timeout(self.overlay_timeout)
+            ready = (
+                '[ "$(readlink /overlay/.fs_state)" = 2 ] || '
+                "logread | grep -q 'init complete'"
+            )
+            while self.shell.run(ready)[2] != 0:
+                if timeout.expired:
+                    raise StrategyError("overlay not ready after first boot")
+                time.sleep(5)
         else:
             raise StrategyError(f"no transition found from {self.status} to {status}")
         self.status = status
