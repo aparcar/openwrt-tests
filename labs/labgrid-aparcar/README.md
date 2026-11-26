@@ -197,8 +197,8 @@ flowchart LR
 Three 7-port hubs, plus hub D on hub A port 1.4 for the devices on switch 3.
 Hubs A–C are two cascaded 4-port hub chips each, with the inner chip on port
 1. The labels are the `ID_PATH` port numbers (from `lsusb -tv`). Free ports:
-hub A `1.1.2`; hub B `1.4`; hub C `2.1.1`–`2.1.4`, `2.2`, `2.4` (the
-devices that moved to switch 3 came with their adapters).
+hub A `1.1.2`; hub B `1.4`; hub C `2.1.1`–`2.1.4`, `2.2`, `2.4`. Hub D is
+full (the devices that moved to switch 3 came with their adapters).
 
 ```mermaid
 flowchart LR
@@ -255,31 +255,33 @@ its port 1, which is the `USBSDMuxDevice` `ID_PATH` (e.g. `…:1.4.1`).
 ## Devices
 
 Derived from `labs/labgrid-aparcar/exporter.yaml`. Each row is
-a labgrid place named `labgrid-aparcar-<device>`.
+a labgrid place named `labgrid-aparcar-<device>`. LAN and WAN are
+`<VLAN> (<switch port>)`; ⚡ marks the port that powers the device over PoE
+(pdudaemon's `PDUDaemonPort.index` is that port's number).
 
 ### Switch 1 (`labgrid-switch-1`)
 
-| Device                 | PoE port | LAN VLAN | WAN VLAN | Serial `ID_PATH`                      | Firmware delivery                  |
-| ---------------------- | -------- | -------- | -------- | ------------------------------------- | ---------------------------------- |
-| OpenWrt One            | 1        | 102      | 101      | `platform-xhci-hcd.0-usb-0:1.1.1:1.0` | TFTP via `192.168.102.1`           |
-| ZyXEL GS1900-8HP B1    | strip 2  | 105      | –        | `platform-xhci-hcd.0-usb-0:1.3:1.0`   | TFTP via `192.168.105.1` (maintenance) |
-| UniFi Cloud Gateway Fiber | strip 3 | 107     | 108      | `platform-xhci-hcd.1-usb-0:2.3:1.0`   | TFTP via `192.168.107.1` (bring-up only) |
-| Enterasys WS-AP3710i   | 12       | 112      | –        | `platform-xhci-hcd.0-usb-0:1.1.3:1.0` | TFTP via `192.168.112.1`           |
-| IgniteNet SS-W2-AC2600 | 13       | 114      | –        | `platform-xhci-hcd.0-usb-0:1.1.4:1.0` | TFTP via `192.168.113.1`           |
-| Aruba AP-32x           | 15       | 116      | –        | `platform-xhci-hcd.0-usb-0:1.2:1.0`   | TFTP via `192.168.115.1`           |
+| Device                                       | LAN          | WAN          | Serial `ID_PATH`                      | Firmware delivery                              |
+| -------------------------------------------- | ------------ | ------------ | ------------------------------------- | ---------------------------------------------- |
+| OpenWrt One                                  | 102 (lan2)   | 101 (lan1 ⚡) | `platform-xhci-hcd.0-usb-0:1.1.1:1.0` | TFTP via `192.168.102.1`                       |
+| ZyXEL GS1900-8HP B1 (power: strip outlet 2)  | 105 (lan5)   | –            | `platform-xhci-hcd.0-usb-0:1.3:1.0`   | TFTP via `192.168.105.1` (maintenance)         |
+| UniFi Cloud Gateway Fiber (power: strip outlet 3) | 107 (lan7) | 108 (lan8) | `platform-xhci-hcd.1-usb-0:2.3:1.0`   | TFTP via `192.168.107.1` (bring-up only)       |
+| Enterasys WS-AP3710i                         | 112 (lan12 ⚡) | –          | `platform-xhci-hcd.0-usb-0:1.1.3:1.0` | TFTP via `192.168.112.1`                       |
+| IgniteNet SS-W2-AC2600                       | 114 (lan14)  | –            | `platform-xhci-hcd.0-usb-0:1.1.4:1.0` | TFTP via `192.168.113.1` on 113 (lan13 ⚡)      |
+| Aruba AP-32x                                 | 116 (lan16)  | –            | `platform-xhci-hcd.0-usb-0:1.2:1.0`   | TFTP via `192.168.115.1` on 115 (lan15 ⚡)      |
 
 Free ports: `lan3`, `lan4`, `lan6`, `lan9`–`lan11`, `lan17`–`lan23`.
 
 ### Switch 3 (`labgrid-switch-3`)
 
-| Device                | PoE port | LAN VLAN | WAN VLAN | Serial `ID_PATH`                        | Firmware delivery                  |
-| --------------------- | -------- | -------- | -------- | --------------------------------------- | ---------------------------------- |
-| o2 Box 6431           | 2        | 134      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.3:1.0` | U-Boot flashes via `192.168.134.1` |
-| StarFive VisionFive2  | 4        | 136      | 135      | `platform-xhci-hcd.0-usb-0:1.4.1.4:1.0` | TFTP via `192.168.136.1`           |
-| BananaPi BPi-R4-Lite  | 6        | 133      | 138      | `platform-xhci-hcd.0-usb-0:1.4.2:1.0`   | TFTP via `192.168.133.1`           |
-| ASUS RT-N16           | 8        | 140      | 139      | `platform-xhci-hcd.0-usb-0:1.4.3:1.0`   | CFE flashes via `192.168.140.1`    |
-| Raspberry Pi 3B       | 9        | 141      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.2:1.0` | SD-Mux (`USBSDMuxDevice`)          |
-| WD My Book Live       | 10       | 142      | –        | `platform-xhci-hcd.0-usb-0:1.4.4:1.0`   | TFTP via `192.168.142.1`           |
+| Device                | LAN            | WAN          | Serial `ID_PATH`                        | Firmware delivery                  |
+| --------------------- | -------------- | ------------ | --------------------------------------- | ---------------------------------- |
+| BananaPi BPi-R4-Lite  | 133 (lan1)     | 138 (lan6 ⚡) | `platform-xhci-hcd.0-usb-0:1.4.2:1.0`   | TFTP via `192.168.133.1`           |
+| o2 Box 6431           | 134 (lan2 ⚡)   | –            | `platform-xhci-hcd.0-usb-0:1.4.1.3:1.0` | TFTP via `192.168.134.1`           |
+| StarFive VisionFive2  | 136 (lan4 ⚡)   | 135 (lan3)   | `platform-xhci-hcd.0-usb-0:1.4.1.4:1.0` | TFTP via `192.168.136.1`           |
+| ASUS RT-N16           | 140 (lan8 ⚡)   | 139 (lan7)   | `platform-xhci-hcd.0-usb-0:1.4.3:1.0`   | CFE flashes via `192.168.140.1`    |
+| Raspberry Pi 3B       | 141 (lan9 ⚡)   | –            | `platform-xhci-hcd.0-usb-0:1.4.1.2:1.0` | SD-Mux (`USBSDMuxDevice`)          |
+| WD My Book Live       | 142 (lan10 ⚡)  | –            | `platform-xhci-hcd.0-usb-0:1.4.4:1.0`   | TFTP via `192.168.142.1`           |
 
 Free ports: `lan5`, `lan11`–`lan23` (PoE up to `lan12`). `lan1`'s PoE output
 is broken: it detects and classifies a powered device but never switches
@@ -294,17 +296,20 @@ pdudaemon's `ubus` driver works unchanged. A stock OpenWrt image brings back
 realtek-poe, and sysupgrade drops `/usr/share/rpcd/acl.d/pdudaemon.json`:
 run `install-switch.sh` again after flashing one. The PSE inputs are in port
 order (`lanN` is PSE port N-1); `ethtool --show-pse lanN` shows a port's
-state.
+state, `ethtool --set-pse lanN c33-pse-admin-control enable|disable` or
+`ubus call poe manage '{"port":"lanN","enable":true}'` switches it. The
+budget is 130 W, at most 15.4 W per port (802.3af). The PoE controller keeps
+each port's on/off state across a reboot of the switch.
 
 ### Switch 2 (`labgrid-switch-2`)
 
-| Device                | PoE port | LAN VLAN | WAN VLAN | Serial `ID_PATH`                      | Firmware delivery         |
-| --------------------- | -------- | -------- | -------- | ------------------------------------- | ------------------------- |
-| Genexis Pulse EX400   | 1        | 125      | 126      | `platform-xhci-hcd.1-usb-0:1.1.3:1.0` | TFTP via `192.168.125.1`  |
-| TP-Link TL-WDR3600 v1 | 3        | 127      | 128      | `platform-xhci-hcd.1-usb-0:1.1.1:1.0` | TFTP via `192.168.127.1`  |
-| BananaPi BPi-R4       | 5        | 129      | 130      | `platform-xhci-hcd.1-usb-0:1.1.2:1.0` | TFTP via `192.168.129.1`  |
-| Raspberry Pi 4        | 7        | 131      | –        | `platform-xhci-hcd.1-usb-0:1.1.4:1.0` | SD-Mux (`USBSDMuxDevice`) |
-| RIPE Atlas v5         | 8        | 132      | –        | `platform-xhci-hcd.1-usb-0:1.3:1.0`   | TFTP via `192.168.132.1`  |
+| Device                | LAN          | WAN        | Serial `ID_PATH`                      | Firmware delivery         |
+| --------------------- | ------------ | ---------- | ------------------------------------- | ------------------------- |
+| Genexis Pulse EX400   | 125 (lan1 ⚡) | 126 (lan2) | `platform-xhci-hcd.1-usb-0:1.1.3:1.0` | TFTP via `192.168.125.1`  |
+| TP-Link TL-WDR3600 v1 | 127 (lan3 ⚡) | 128 (lan4) | `platform-xhci-hcd.1-usb-0:1.1.1:1.0` | TFTP via `192.168.127.1`  |
+| BananaPi BPi-R4       | 129 (lan5 ⚡) | 130 (lan6) | `platform-xhci-hcd.1-usb-0:1.1.2:1.0` | TFTP via `192.168.129.1`  |
+| Raspberry Pi 4        | 131 (lan7 ⚡) | –          | `platform-xhci-hcd.1-usb-0:1.1.4:1.0` | SD-Mux (`USBSDMuxDevice`) |
+| RIPE Atlas v5         | 132 (lan8 ⚡) | –          | `platform-xhci-hcd.1-usb-0:1.3:1.0`   | TFTP via `192.168.132.1`  |
 
 No free ports.
 
@@ -320,10 +325,9 @@ Notes:
   - The ASUS RT-N16 has CFE instead of U-Boot and no netbootable image:
     `CFETFTPStrategy` interrupts CFE, gives it `192.168.140.2` and writes the
     TRX to flash over TFTP on every run (several minutes).
-  - The o2 Box 6431 can't boot an initramfs: U-Boot loads the sysupgrade
-    image over TFTP, writes it to the firmware partition (`0xb0080000`) and
-    boots it from flash on every run (`flash_commands` of
-    `UBootTFTPStrategy` in its target file).
+  - The o2 Box 6431's U-Boot (2013.10-openwrt4) has no `echo`
+    (`SmallUBootDriver`); it loads the initramfs to `0x82000000` and boots it
+    from RAM.
 - **WAN VLAN:** "–" means the board has no WAN port, or it isn't cabled. The
   WAN VLANs were identified from the WAN MAC (LAN MAC ±1) in the exporter's
   DHCP leases.
@@ -340,3 +344,17 @@ Notes:
   `192.168.1.1%vlan<LAN VLAN>` as `root`.
 - The devices the lab offers (its places' `device=` tags) come from the
   `devices:` list in `labs/labgrid-aparcar/lab.yaml`, not from this file.
+
+## Status (2026-11-26)
+
+In `maintenance:` of `lab.yaml` (CI skips them):
+
+- **o2 Box 6431:** unstable on its PoE splitter power (random LZMA unpack
+  failures in U-Boot, oopses, garbled UART input, TFTP frame errors); next
+  step is its original power supply.
+- **Raspberry Pi 3B** and **WD My Book Live:** new on switch 3, first boot
+  not verified yet.
+- **ZyXEL GS1900-8HP B1:** kselftest loop cables, self-built images only.
+
+Gone: the Pine64 Rock64 (switch 3's 802.3af ports couldn't power it) and the
+UniFi Security Gateway (not wired, see its FIXME in `exporter.yaml`).
