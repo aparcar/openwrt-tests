@@ -44,8 +44,9 @@ other labs) because DUT VLAN 128 needs `192.168.128.0/24` on the exporter.
 
 ### Switch 3 (PDU)
 
-- **Model:** ZyXEL GS1900-24EP (PoE on `lan1`–`lan12`, running OpenWrt with
-  realtek-poe, which provides the `poe` ubus object)
+- **Model:** ZyXEL GS1900-24EP (802.3af PoE on `lan1`–`lan12`, at most
+  15.4 W per port, running OpenWrt with the kernel PSE driver; the `poe` ubus
+  object comes from rpcd-mod-ethtool-poe, see below)
 - **IP:** `172.20.0.7`
 - **DUT ports:** `lan1`–`lan23`, VLAN 133–155. `lan24` is the uplink to
   switch 1 `lan24`.
@@ -277,13 +278,20 @@ Free ports: `lan3`, `lan4`, `lan6`, `lan9`–`lan11`, `lan17`–`lan23`.
 | BananaPi BPi-R4-Lite  | 6        | 137      | 138      | `platform-xhci-hcd.0-usb-0:1.4.2:1.0`   | TFTP via `192.168.137.1`           |
 | ASUS RT-N16           | 8        | 140      | 139      | `platform-xhci-hcd.0-usb-0:1.4.3:1.0`   | CFE flashes via `192.168.140.1`    |
 
-Free ports: `lan9`–`lan23` (PoE up to `lan12`). The Pine64 Rock64 and the o2
-Box 6431 draw no PoE on their ports (`ubus call poe info`: "Searching"):
-check how they are powered before relying on `power cycle` for them.
+Free ports: `lan9`–`lan23` (PoE up to `lan12`). The Pine64 Rock64 is leaving
+switch 3: the switch detects its PoE splitter (class 3) but cuts the power
+again right after switching it on, in a loop, while the same splitter and
+board run on PoE+ switches. Its `lan1` row stays until it has a new place.
 
-PoE: the 24EP's PoE controller speaks the Broadcom dialect (realtek-poe's
-default; firmware v16.1). With `force_dialect 'realtek'` in `/etc/config/poe`
-every reply reads 0xff and no port can be switched.
+PoE: the 24EP's PoE controller is a Gen1 MCU (Broadcom dialect, firmware
+v16.1) with two BCM59011 PSE chips (id `0xe011`). Switch 3 runs a self-built
+image with the in-kernel realtek-pse-mcu driver (it needs the BCM59011 id,
+not in OpenWrt yet) and rpcd-mod-ethtool-poe for the `poe` ubus object, so
+pdudaemon's `ubus` driver works unchanged. A stock OpenWrt image brings back
+realtek-poe, and sysupgrade drops `/usr/share/rpcd/acl.d/pdudaemon.json`:
+run `install-switch.sh` again after flashing one. The PSE inputs are in port
+order (`lanN` is PSE port N-1); `ethtool --show-pse lanN` shows a port's
+state.
 
 ### Switch 2 (`labgrid-switch-2`)
 
