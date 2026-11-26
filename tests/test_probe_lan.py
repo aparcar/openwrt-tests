@@ -86,10 +86,21 @@ def test_lan_ping_dut(slot, lease):
     assert reply["received"] > 0, reply["out"]
 
 
-def test_lan_dns_dhcp_hostname(slot, lease):
+def test_lan_dns_dhcp_hostname(env, shell_command, request, slot, lease):
     """The DUT's DNS resolves a LAN client by the hostname it sent in its
     DHCP request (e.g. `<host>.lan`), so devices on the LAN can reach each
     other by name."""
+    profile = (env.config.data.get("openwrt") or {}).get("profile")
+    release = shell_command.run_check(". /etc/openwrt_release; echo $DISTRIB_RELEASE")
+    if profile == "rpi-4" and release == ["SNAPSHOT"]:
+        # Udp InCsumErrors counts the queries; `ethtool -K eth0 rx off` fixes
+        # it. 25.12 (6.12) passes.
+        request.applymarker(
+            pytest.mark.xfail(
+                reason="bcmgenet on 6.18 drops the probe's DNS queries as UDP "
+                "checksum errors while RX checksum offload is on"
+            )
+        )
     name = f"{slot.info['hostname']}.{lease.get('domain') or 'lan'}"
     reply = slot.call("resolve", name=name, server=DUT_LAN_IP)
     assert lease["ip"] in reply["addresses"], (
