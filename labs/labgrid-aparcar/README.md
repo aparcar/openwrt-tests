@@ -352,8 +352,8 @@ In `maintenance:` of `lab.yaml` (CI skips them):
 - **o2 Box 6431:** unstable on its PoE splitter power (random LZMA unpack
   failures in U-Boot, oopses, garbled UART input, TFTP frame errors); next
   step is its original power supply.
-- **Raspberry Pi 3B** and **WD My Book Live:** new on switch 3, first boot
-  not verified yet.
+- **Raspberry Pi 3B:** new on switch 3; its SD-Mux reports no medium
+  (card missing or not seated).
 - **ZyXEL GS1900-8HP B1:** kselftest loop cables, self-built images only.
 
 Gone: the Pine64 Rock64 (switch 3's 802.3af ports couldn't power it) and the

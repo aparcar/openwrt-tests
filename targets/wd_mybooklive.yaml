@@ -28,7 +28,15 @@ targets:
           login_timeout: 120
           post_login_settle_time: 5
           username: root
-      - UBootTFTPStrategy: {}
+      - UBootTFTPStrategy:
+          # its LAN defaults to a DHCP client (02_network); the lab reaches
+          # every DUT at 192.168.1.1
+          shell_commands:
+            - uci set network.lan.proto=static
+            - uci set network.lan.ipaddr=192.168.1.1
+            - uci set network.lan.netmask=255.255.255.0
+            - uci commit network
+            - ifup lan
       - SSHDriver:
           connection_timeout: 120.0
           explicit_scp_mode: True

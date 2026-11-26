@@ -65,6 +65,11 @@ class UBootTFTPStrategy(Strategy):
     # (XikeStor: Ctrl+B, menu, Ctrl+F, password)
     console_unlock = attr.ib(default=attr.Factory(list))
 
+    # shell commands run once after login, for boards whose defaults don't
+    # fit the lab (NAS boards whose LAN is a DHCP client instead of
+    # 192.168.1.1)
+    shell_commands = attr.ib(default=attr.Factory(list))
+
     status = attr.ib(default=Status.unknown)
 
     # everything the bootloader printed from power-on up to its prompt
@@ -174,6 +179,8 @@ class UBootTFTPStrategy(Strategy):
             # kernel lines between a command's marker and the prompt then
             # time the command out
             self.shell.run_check("dmesg -n 1")
+            for command in self.shell_commands:
+                self.shell.run_check(command)
         else:
             raise StrategyError(f"no transition found from {self.status} to {status}")
         self.status = status
