@@ -68,7 +68,7 @@ def _end_session(target, shell, command):
     reason="openwrt/openwrt#17756: qcom_socinfo debugfs reads oops on ipq806x"
 )
 @pytest.mark.timeout(600)  # boot, reads
-def test_qcom_socinfo_debugfs(env, power_strategy, shell_command):
+def test_qcom_socinfo_debugfs(env, target, power_strategy, shell_command):
     """Reading every file in /sys/kernel/debug/qcom_socinfo works without a
     kernel oops (ipq806x only).
 
@@ -102,7 +102,12 @@ def test_qcom_socinfo_debugfs(env, power_strategy, shell_command):
         assert not errors, f"kernel errors reading qcom_socinfo: {errors[:5]}"
     finally:
         if not alive:
-            # the read crashed the kernel: boot again for the next test
+            # the read crashed the kernel: boot again for the next test, and
+            # drop the SSH connection (its keepalive died with the kernel)
+            try:
+                target.deactivate(target.get_driver("SSHDriver", activate=False))
+            except NoDriverFoundError:
+                pass
             power_strategy.transition("off")
         elif unmounted:
             shell.run("umount /sys/kernel/debug")
