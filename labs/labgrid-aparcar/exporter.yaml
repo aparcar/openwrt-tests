@@ -153,6 +153,23 @@ labgrid-aparcar-aruba_ap-32x:
       '@port_number': '0'
       ID_PATH: platform-xhci-hcd.0-usb-0:1.2:1.0
 
+## Western Digital My Book Live: switch 3 lan10 (LAN, its only port; PoE
+## over a 12 V splitter), console on hub D's last port
+labgrid-aparcar-wd_mybooklive:
+  NetworkService:
+    address: 192.168.1.1%vlan142
+    username: root
+  PDUDaemonPort:
+    host: localhost:16421
+    index: 10
+    pdu: labgrid-switch-3
+  TFTPProvider:
+    external: tftp://192.168.142.1/wd_mybooklive/
+    internal: /srv/tftp/wd_mybooklive/
+  USBSerialPort:
+    match:
+      ID_PATH: platform-xhci-hcd.0-usb-0:1.4.4:1.0
+
 ## Switch 3 lan9 (PoE over a splitter; lan1's PoE output is broken);
 ## console (CH9102) and SD-Mux on hub D (hub A port 1.4)
 labgrid-aparcar-raspberry-pi-3b:

@@ -1,0 +1,38 @@
+openwrt:
+  name: Western Digital My Book Live
+  target: apm821xx-sata
+  profile: wd_mybooklive
+targets:
+  main:
+    resources:
+      RemotePlace:
+        name: !template "$LG_PLACE"
+    drivers:
+      - PDUDaemonDriver: {}
+      - TFTPProviderDriver: {}
+      - SerialDriver:
+          txdelay: 0.01
+      - UBootDriver:
+          prompt: "=> "
+          init_commands:
+            # stock U-Boot; kernel_addr_r comes from its env (OpenWrt's
+            # boot.scr uses it too). The initramfs is a legacy multi image
+            # (kernel, empty initrd, dtb), so bootm needs no separate dtb
+            - setenv bootargs console=ttyS0,115200
+            - tftp ${kernel_addr_r}
+          boot_command: bootm ${kernel_addr_r}
+      - ShellDriver:
+          prompt: 'root@[\w()]+:[^ ]+ '
+          login_prompt: Please press Enter to activate this console.
+          await_login_timeout: 15
+          login_timeout: 120
+          post_login_settle_time: 5
+          username: root
+      - UBootTFTPStrategy: {}
+      - SSHDriver:
+          connection_timeout: 120.0
+          explicit_scp_mode: True
+images:
+  root: !template $LG_IMAGE
+imports:
+  - ../strategies/tftpstrategy.py

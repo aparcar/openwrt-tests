@@ -183,6 +183,7 @@ flowchart LR
   SW ---|"lan13 TFTP ⚡ · lan14 LAN"| d8["IgniteNet SS-W2-AC2600"]
   SW ---|"lan15 TFTP ⚡ · lan16 LAN"| d9["Aruba AP-32x"]
   SW3 ---|"lan9 LAN ⚡"| d10["Raspberry Pi 3B"]
+  SW3 ---|"lan10 LAN ⚡"| d17["WD My Book Live"]
   SW ---|"lan5 LAN"| d11["ZyXEL GS1900-8HP B1 (lan1)<br/>power: strip outlet 2"]
   SW3 ---|"lan3 WAN · lan4 LAN ⚡"| d12["VisionFive2"]
   SW2 ---|"lan8 LAN ⚡"| d13["RIPE Atlas v5"]
@@ -233,6 +234,7 @@ flowchart LR
   D1 -->|1.4.1.4| d1v["CH9102 cdc_acm<br/>VisionFive2"]
   D0 -->|1.4.2| d2r["LGT8F328P cdc_acm<br/>BPi-R4-Lite"]
   D0 -->|1.4.3| d3a["PL2303<br/>ASUS RT-N16"]
+  D0 -->|1.4.4| d4w["serial adapter<br/>WD My Book Live"]
 
   B1 -->|1.1.1| b1["CP210x<br/>TL-WDR3600 v1"]
   B1 -->|1.1.2| b2["CP210x<br/>BPi-R4"]
@@ -277,8 +279,9 @@ Free ports: `lan3`, `lan4`, `lan6`, `lan9`–`lan11`, `lan17`–`lan23`.
 | BananaPi BPi-R4-Lite  | 6        | 133      | 138      | `platform-xhci-hcd.0-usb-0:1.4.2:1.0`   | TFTP via `192.168.133.1`           |
 | ASUS RT-N16           | 8        | 140      | 139      | `platform-xhci-hcd.0-usb-0:1.4.3:1.0`   | CFE flashes via `192.168.140.1`    |
 | Raspberry Pi 3B       | 9        | 141      | –        | `platform-xhci-hcd.0-usb-0:1.4.1.2:1.0` | SD-Mux (`USBSDMuxDevice`)          |
+| WD My Book Live       | 10       | 142      | –        | `platform-xhci-hcd.0-usb-0:1.4.4:1.0`   | TFTP via `192.168.142.1`           |
 
-Free ports: `lan5`, `lan10`–`lan23` (PoE up to `lan12`). `lan1`'s PoE output
+Free ports: `lan5`, `lan11`–`lan23` (PoE up to `lan12`). `lan1`'s PoE output
 is broken: it detects and classifies a powered device but never switches
 power on, with several devices and both realtek-poe and the kernel driver.
 So it carries the R4-Lite's LAN, which needs no PoE.
