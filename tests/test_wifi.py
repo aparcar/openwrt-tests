@@ -158,7 +158,9 @@ def wifi_diagnostics(ssh_command):
     for failure messages: the console doesn't show them (dmesg -n 1)."""
     out = ssh_command.run(
         "ls /sys/class/ieee80211; "
-        "dmesg | grep -i -E 'mt7|ath1|eeprom|firmware|ieee80211|phy[0-9]' | tail -n 20; "
+        "dmesg | grep -i -E 'mt7|ath1|eeprom|firmware|ieee80211|phy[0-9]' "
+        # bridge and switch port lines (mt7530, wl0-ap0) push out the driver's
+        "| grep -v -E 'allmulticast|promiscuous|mt7530' | tail -n 20; "
         "logread -e hostapd | tail -n 20"
     )[0]
     return "\n".join(out)
