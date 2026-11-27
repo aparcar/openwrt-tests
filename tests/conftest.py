@@ -131,11 +131,14 @@ def pytest_collection_modifyitems(items):
     )
 
     # Tests using the `online` fixture (probe_fixtures.py), directly or
-    # through another fixture, need the labgrid feature `online` (the DUT has
-    # a WAN uplink): add the mark before labgrid's hook skips on features
-    for item in items:
-        if "online" in getattr(item, "fixturenames", ()):
-            item.add_marker(pytest.mark.lg_feature("online"))
+    # through another fixture, reach the internet through the lab's probe:
+    # they run where lab.yaml says `online: true`, elsewhere only on targets
+    # with the labgrid feature `online` (the mark, added before labgrid's
+    # hook skips on features)
+    if not lab_config().get("online"):
+        for item in items:
+            if "online" in getattr(item, "fixturenames", ()):
+                item.add_marker(pytest.mark.lg_feature("online"))
 
     # The docstrings of the test and its module (what they check and why) as
     # the JUnit properties `description` and `module_description`:

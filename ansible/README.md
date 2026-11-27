@@ -101,7 +101,10 @@ and shared with `podman/config-sync.sh`:
   `country`: the regulatory domain (ISO code, e.g. `DE`) the Wi-Fi tests
   set on every radio, so the DUTs transmit by the rules of where the lab
   is. Without it the radios keep their defaults, and devices with a 6 GHz
-  radio (country `00`, which hostapd refuses) start no AP at all;
+  radio (country `00`, which hostapd refuses) start no AP at all; and
+  `online: true` if the DUTs may use the internet in tests (through the
+  lab's probe, `probe: true`): the tests using the `online` fixture (apk,
+  owut, uplink, igmpproxy) then run in that lab;
 - `exporter.yaml` (Jinja: comment with `##`);
 - optional `dnsmasq.conf`, `pdudaemon.conf`;
 - `README.md`: the lab's wiring for humans (not deployed).
