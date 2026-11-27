@@ -187,9 +187,9 @@ Don't lock a probe by hand: the fixtures reserve it through the coordinator,
 so tests of other DUTs queue for it (`labgrid-client reservations`, `who`).
 A probe held by a killed run shows its DUT place in its comment
 (`held for <place>`); unlock it with `labgrid-client -p <probe place>
-unlock`. Deploy new places only when the lab is idle: `uv run
-ansible-playbook lab.yml --limit labgrid-<lab> --tags export` restarts the
-coordinator.
+unlock`. New places are deployed with `uv run ansible-playbook lab.yml
+--limit labgrid-<lab> --tags export`, which updates the running coordinator
+without a restart.
 
 ## Pitfalls
 

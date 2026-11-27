@@ -16,6 +16,16 @@ uv run ansible-playbook lab.yml --limit labgrid-<lab> --tags agent    # kernelci
 uv run ansible-playbook reset-health.yml                              # fresh health checks in all labs
 ```
 
+Places (one per device in `labs/<lab>/lab.yaml`, plus the probes, with
+their `device`, `role` and `maintenance` tags) go to the running coordinator
+through its API: the role writes `/etc/labgrid/places.yaml` and runs
+labgrid's `contrib/sync-places.py` (`roles/labgrid_lab/files/`), which adds,
+deletes and changes places, matches and tags until the coordinator has
+exactly those. A deploy doesn't restart the coordinator, so locks,
+reservations and running tests stay; only a new labgrid version or a changed
+service unit restarts it. Places not in `lab.yaml` are deleted, and a tag set
+by hand is reset; comments are left alone.
+
 `inventory.yaml` only lists the hosts. Everything about a host (connection,
 passwords, agent, VLAN interface, PDUs) goes into `host_vars/<host>.yml`,
 which is gitignored; settings for all hosts are in `group_vars/all.yaml`.
@@ -51,7 +61,7 @@ host whose admin manages updates.
 | `labgrid-dev` | login | shared developer account for running tests | SSH keys: the GitHub keys (`github.com/<user>.keys`) of the lab's `maintainers` and `access` in `labs/<lab>/lab.yaml`, in an Ansible-managed block of `authorized_keys`; keys outside the block (added by hand) stay. Groups: `labgrid`, `dialout`, `plugdev`. Sudo only for `labgrid-bound-connect`. Home `0750`. |
 | `labgrid-agent` | system, login via its own key | runs kernelci-labgrid's agent (service) | Its own SSH key, logging in as itself to the local exporter. Groups: `labgrid`, `dialout`, `plugdev` (+ `kvm` on QEMU labs). Home `0700` (SSH key); tokens and config in `/etc/labgrid-agent` (`root:labgrid-agent`, `0750`/`0640`); checkouts `/opt/openwrtci-lab` `0750`. State `/var/lib/labgrid-agent` stays readable (`0755`): it holds firmware, logs and results, and the TFTP server must read the firmware labgrid symlinks there. |
 | `labgrid-exporter` | system, no login | runs `labgrid-exporter` (and the ser2net instances it starts) | device groups; reads `/etc/labgrid/exporter.yaml` (root-owned) |
-| `labgrid-coordinator` | system, no login | runs `labgrid-coordinator` | its state directory `/var/lib/labgrid-coordinator` (`places.yaml`) |
+| `labgrid-coordinator` | system, no login | runs `labgrid-coordinator` | its state directory `/var/lib/labgrid-coordinator` (`places.yaml`, written by the coordinator) |
 
 **`labgrid-dev` can't see the agent's credentials:**
 - it isn't in the `labgrid-agent` group;
@@ -111,9 +121,9 @@ lab admin's, in the host's own netplan file, and must define
 
 The first run of the new `lab.yml`:
 - moves the coordinator and exporter to their own accounts;
-- moves `places.yaml` to `/var/lib/labgrid-coordinator`. The old
-  `/etc/labgrid/places.yaml` is left alone, and the coordinator is regenerated
-  from `labs/<lab>/lab.yaml`;
+- moves the coordinator's state to `/var/lib/labgrid-coordinator`.
+  `/etc/labgrid/places.yaml` now holds the places from
+  `labs/<lab>/lab.yaml` that are synced to the coordinator;
 - drops `labgrid-dev` from any other groups;
 - replaces the global sudoers line with `/etc/sudoers.d/labgrid-bound-connect`;
 - stops at the netplan step if `/etc/netplan/labnet.yaml` still holds the

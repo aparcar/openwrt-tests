@@ -10,16 +10,6 @@
     group: "{{ labgrid_coordinator_user }}"
     mode: "0750"
 
-- name: Generate places.yaml from lab.yaml
-  ansible.builtin.template:
-    src: "{{ role_path }}/../labgrid_lab/templates/places.yaml.j2"
-    dest: "{{ labgrid_coordinator_dir }}/places.yaml"
-    owner: "{{ labgrid_coordinator_user }}"
-    group: "{{ labgrid_coordinator_user }}"
-    mode: "0640"
-  notify: Restart labgrid-coordinator (procd)
-  tags: export
-
 - name: Create the labgrid config directory
   ansible.builtin.file:
     path: "{{ labgrid_config_dir }}"
@@ -60,3 +50,6 @@
     state: started
     enabled: true
   loop: [labgrid-coordinator, labgrid-exporter]
+
+- name: Places (through the running coordinator)
+  ansible.builtin.import_tasks: ../../labgrid_lab/tasks/places.yml

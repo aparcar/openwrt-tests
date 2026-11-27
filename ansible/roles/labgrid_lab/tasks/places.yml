@@ -1,0 +1,52 @@
+# Places go to the running coordinator through its API (labgrid's
+# contrib/sync-places.py), so a deploy never restarts it: reservations, locks
+# and running tests survive. sync-places adds and deletes places, matches and
+# tags until the coordinator has exactly the places in places.yaml; it leaves
+# comments (the probes' "held for <place>") and locks alone. The coordinator
+# keeps its own state file in labgrid_coordinator_dir.
+# Shared with labgrid_lab_openwrt.
+
+# The coordinator saves its state only every 15 s and not when it stops: a
+# restart it is due for (new labgrid, changed unit) happens before the sync,
+# not right after it
+- name: Restart the coordinator now if it is due
+  ansible.builtin.meta: flush_handlers
+  tags: export
+
+# Not part of the installed labgrid package; our copy has a fix (see its header)
+- name: Install sync-places.py
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../labgrid_lab/files/sync-places.py"
+    dest: "{{ uv_tool_dir }}/labgrid-sync-places.py"
+    mode: "0644"
+  tags: export
+
+- name: Write the places the coordinator should have
+  ansible.builtin.template:
+    src: "{{ role_path }}/../labgrid_lab/templates/places.yaml.j2"
+    dest: "{{ labgrid_config_dir }}/places.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  tags: export
+
+- name: Wait for the coordinator
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 20408
+    timeout: 60
+  tags: export
+
+- name: Sync the coordinator's places
+  ansible.builtin.command:
+    argv:
+      - "{{ uv_tool_dir }}/labgrid/bin/python3"
+      - "{{ uv_tool_dir }}/labgrid-sync-places.py"
+      - --coordinator
+      - 127.0.0.1:20408
+      - sync
+      - "{{ labgrid_config_dir }}/places.yaml"
+  register: _places_sync
+  # it prints one line per change
+  changed_when: _places_sync.stdout | length > 0
+  tags: export

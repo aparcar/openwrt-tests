@@ -168,11 +168,9 @@ labgrid-<lab>-debian-probe:
     username: dprobe
 ```
 
-```yaml
-# places.yaml (labgrid_lab role), next to the -probe place
-labgrid-<lab>-debian-probe:
-  matches: [{exporter: '*', group: labgrid-<lab>-debian-probe, cls: '*'}]
-  tags: {role: debian-probe}
+```jinja
+{# ansible/roles/labgrid_lab/templates/places.yaml.j2, next to the -probe place #}
+{% set _ = places.update({inventory_hostname ~ "-debian-probe": {"role": "debian-probe"}}) %}
 ```
 
 Whoever runs the tests must be able to log in: developers through
