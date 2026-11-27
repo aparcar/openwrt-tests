@@ -20,6 +20,7 @@ import shlex
 import shutil
 import signal
 import tempfile
+import time
 from os import getenv
 from pathlib import Path
 
@@ -83,7 +84,12 @@ def _resolve_target_from_place():
     return None
 
 
+# time.monotonic() at the start of the session, before the first boot
+SESSION_START = pytest.StashKey[float]()
+
+
 def pytest_configure(config):
+    config.stash[SESSION_START] = time.monotonic()
     config._metadata = getattr(config, "_metadata", {})
     config._metadata["version"] = "12.3.4"
     config._metadata["environment"] = "staging"

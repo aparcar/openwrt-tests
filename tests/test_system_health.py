@@ -3,6 +3,10 @@ temperatures, processes, entropy and open files. They catch firmware that
 leaves too little room to run, and the recorded values show how resource use
 changes between releases."""
 
+import time
+
+from conftest import SESSION_START
+
 
 class TestSystemHealth:
     """Tests for monitoring system health and resource usage."""
@@ -76,17 +80,21 @@ class TestSystemHealth:
                 f"Filesystem {fs} is {usage['percent_used']}% full"
             )
 
-    def test_system_uptime(self, ssh_command):
-        """The device has been up for less than an hour, i.e. it really booted
-        the firmware for this run.
+    def test_system_uptime(self, ssh_command, request):
+        """The device has been up no longer than this test session runs, i.e.
+        it really booted the firmware for this run.
 
         A longer uptime means the tests ran on a system that was already
         running before, not a fresh boot of the image under test.
         """
         uptime_output = ssh_command.run_check("cat /proc/uptime")
         uptime_seconds = float(uptime_output[0].split()[0])
+        session_seconds = time.monotonic() - request.config.stash[SESSION_START]
 
-        assert uptime_seconds < 3600, "System uptime is over 1 hour"
+        assert uptime_seconds < session_seconds, (
+            f"up {uptime_seconds:.0f} s, longer than this session "
+            f"({session_seconds:.0f} s): not booted for this run"
+        )
 
     def test_temperature_sensors(self, ssh_command, record_property):
         """Every thermal sensor reads below 85 °C; records the temperatures.
