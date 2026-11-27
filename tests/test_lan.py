@@ -1,5 +1,8 @@
-"""The DUT's LAN bridge (br-lan) with its default configuration, seen from
-the DUT itself: link, address and a neighbour on the wire."""
+"""The DUT's LAN bridge with its default configuration, seen from the DUT
+itself: link, address and a neighbour on the wire.
+
+The bridge is br-lan on most devices; Realtek switches name it `switch`
+(board.json) and put LAN on its VLAN 1 (`switch.1`)."""
 
 from ipaddress import IPv4Interface
 from time import monotonic, sleep
@@ -7,13 +10,25 @@ from time import monotonic, sleep
 from conftest import ubus_call
 
 
+def lan_device(shell_command):
+    """The LAN interface's Linux device (br-lan, switch.1, ...)."""
+    return ubus_call(shell_command, "network.interface.lan", "status")["l3_device"]
+
+
 def test_lan_wait_for_link_ready(shell_command):
     """The LAN bridge comes up and starts forwarding within 60 seconds of
     boot. If it doesn't, nothing on the LAN ports can reach the device."""
+    bridge = (
+        shell_command.run("jsonfilter -i /etc/board.json -e @.bridge.name")[0]
+        or ["br-lan"]
+    )[0]
     deadline = monotonic() + 60
 
     while monotonic() < deadline:
-        if shell_command.run("dmesg | grep br-lan | grep forwarding")[2] == 0:
+        if (
+            shell_command.run(f"dmesg | grep '{bridge}: port' | grep forwarding")[2]
+            == 0
+        ):
             return
 
         sleep(1)
@@ -49,9 +64,8 @@ def test_lan_interface_address(shell_command, env):
         "lan_ipv4", "192.168.1.1/24"
     )
 
-    assert shell_command.get_ip_addresses("br-lan")[0] == IPv4Interface(
-        expected_address
-    )
+    addresses = shell_command.get_ip_addresses(lan_device(shell_command))
+    assert addresses[0] == IPv4Interface(expected_address)
 
 
 def test_lan_interface_has_neighbor(shell_command):
@@ -62,5 +76,5 @@ def test_lan_interface_has_neighbor(shell_command):
     host is attached.
     """
     assert "3 packets transmitted, 3 packets received" in "\n".join(
-        shell_command.run("ping -c 3 ff02::1%br-lan")[0]
+        shell_command.run(f"ping -c 3 ff02::1%{lan_device(shell_command)}")[0]
     )
