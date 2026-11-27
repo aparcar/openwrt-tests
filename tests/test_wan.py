@@ -1,8 +1,10 @@
 """The DUT's WAN side: firewall zone, WAN interface and downloads from the
 internet."""
 
+# ruff: noqa: F811 (tests take the imported `online` fixture as an argument)
 import pytest
 from conftest import ubus_call
+from probe_fixtures import online, slot, wan_slot  # noqa: F401 (fixtures)
 
 
 def check_download(
@@ -89,59 +91,41 @@ def test_https_download(ssh_command):
     ssh_command.run("rm config.buildinfo")
 
 
-# @pytest.mark.lg_feature("online")
-# def test_http_download(ssh_command):
-#     check_download(
-#         ssh_command,
-#         "http://http.badssl.com",
-#         expect_stderr="Download completed",
-#     )
+# TLS certificate validation, against badssl.com. The DUT must accept a
+# valid certificate and reject invalid ones; a device that fetches an
+# invalid one has broken TLS verification (no CA bundle, a library that
+# skips the check), so its HTTPS downloads and package installs are
+# unauthenticated. `online` brings the DUT's uplink up through the probe.
+
+# badssl.com hosts: the valid-certificate control, then certificates that
+# must be rejected (untrusted CA, hostname mismatch, expired)
+BADSSL_VALID = "https://sha256.badssl.com/"
+BADSSL_INVALID = {
+    "untrusted_root": "https://untrusted-root.badssl.com/",
+    "wrong_host": "https://wrong.host.badssl.com/",
+    "expired": "https://expired.badssl.com/",
+}
 
 
-# @pytest.mark.lg_feature("online")
-# def test_https_mozilla(ssh_command):
-#     check_download(
-#         ssh_command,
-#         "https://www.mozilla.org/",
-#         expect_stderr="Download completed",
-#     )
+def _fetch(ssh_command, url):
+    """uclient-fetch `url` to /dev/null; its exit code (0 = fetched)."""
+    return ssh_command.run(f"uclient-fetch -T 20 -q -O /dev/null {url}", timeout=60)[2]
 
 
-# @pytest.mark.lg_feature("online")
-# def test_https_untrusted(ssh_command):
-#     check_download(
-#         ssh_command,
-#         "https://untrusted-root.badssl.com/",
-#         expect_stderr="Connection error: Invalid SSL certificate",
-#         expect_exitcode=5,
-#     )
+def test_tls_valid_certificate(online, ssh_command):
+    """The DUT fetches a page served with a valid certificate. This is the
+    control for the rejection tests: if it fails, those prove nothing."""
+    assert _fetch(ssh_command, BADSSL_VALID) == 0, (
+        f"a valid certificate ({BADSSL_VALID}) was rejected"
+    )
 
 
-# @pytest.mark.lg_feature("online")
-# def test_https_wrong(ssh_command):
-#     check_download(
-#         ssh_command,
-#         "https://wrong.host.badssl.com/",
-#         expect_stderr="Connection error: Server hostname does not match SSL certificate",
-#         expect_exitcode=5,
-#     )
-
-
-# @pytest.mark.lg_feature("online")
-# def test_https_expired(ssh_command):
-#     check_download(
-#         ssh_command,
-#         "https://expired.badssl.com/",
-#         expect_stderr="Connection error: Invalid SSL certificate",
-#         expect_exitcode=5,
-#     )
-
-
-# @pytest.mark.lg_feature("online")
-# def test_https_rc4(ssh_command):
-#     check_download(
-#         ssh_command,
-#         "https://rc4.badssl.com/",
-#         expect_stderr="Connection error: Connection failed",
-#         4,
-#     )
+@pytest.mark.parametrize("case", sorted(BADSSL_INVALID))
+def test_tls_rejects_invalid_certificate(online, ssh_command, case):
+    """The DUT refuses an HTTPS fetch when the certificate is invalid
+    (untrusted CA, wrong hostname, expired). Accepting one means TLS
+    verification is off, so HTTPS gives no authenticity."""
+    assert _fetch(ssh_command, BADSSL_INVALID[case]) != 0, (
+        f"an invalid certificate ({case}, {BADSSL_INVALID[case]}) was accepted: "
+        "TLS verification is not working"
+    )
