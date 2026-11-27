@@ -10,6 +10,7 @@ import re
 import time
 
 import pytest
+from conftest import lab_config
 from labgrid.driver.exception import ExecutionError
 
 logger = logging.getLogger(__name__)
@@ -141,6 +142,20 @@ def wifi_radio_for_band(ssh_command, band):
     return radio, (ifaces[0] if ifaces else None)
 
 
+def lab_country_cmds(ssh_command):
+    """uci commands setting the lab's regulatory domain (lab.yaml `country`)
+    on every radio: the radios transmit where the lab is, so they follow its
+    rules. One radio is enough to change it for all (hostapd takes any
+    radio's country), and a 6 GHz radio defaults to '00', which hostapd
+    refuses: without a country no AP starts on such a device."""
+    country = lab_config().get("country")
+    if not country:
+        return []
+    config = "\n".join(ssh_command.run("uci show wireless")[0])
+    radios = re.findall(r"^wireless\.(\w+)=wifi-device$", config, re.MULTILINE)
+    return [f"uci set wireless.{r}.country={country}" for r in radios]
+
+
 def find_ap(ssh_command, ssid):
     """(interface, frequency in MHz) of the AP with `ssid`, or (None, None)."""
     iw = "\n".join(ssh_command.run("iw dev")[0])
@@ -217,6 +232,7 @@ def open_ap(
     for opt, value in (options or {}).items():
         assert opt in AP_OPTIONS, f"open_ap: unknown option {opt}"
         settings_cmds.append(f"uci set wireless.{iface}.{opt}={value}")
+    settings_cmds += lab_country_cmds(ssh_command)
     for setting in settings_cmds:
         ssh_command.run(setting)
     ssh_command.run("uci commit wireless")

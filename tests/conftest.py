@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import inspect
 import json
 import logging
@@ -48,6 +49,22 @@ from debian_probe_fixtures import (  # noqa: F401
 )
 from hwsim_setup import hwsim  # noqa: F401
 from probe_fixtures import probe  # noqa: F401
+
+
+@functools.cache
+def lab_config():
+    """The lab's labs/<lab>/lab.yaml, from LG_PLACE (labgrid-<lab>-<device>),
+    or {} (QEMU, no LG_PLACE, unknown lab)."""
+    parts = (getenv("LG_PLACE") or "").split("-", 2)
+    if len(parts) < 3:
+        return {}
+    lab_yaml = Path(__file__).parent.parent / "labs" / "-".join(parts[:2]) / "lab.yaml"
+    try:
+        import yaml
+
+        return yaml.safe_load(lab_yaml.read_text()) or {}
+    except FileNotFoundError:
+        return {}
 
 
 def _resolve_target_from_place():
