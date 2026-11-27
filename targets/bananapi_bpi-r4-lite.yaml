@@ -19,7 +19,10 @@ targets:
           prompt: "MT7987>"
           init_commands:
             - tftpboot
-          boot_command: bootm $loadaddr#$bootconf
+          # as the board's own boot (boot_update_conf): the 1pcie-2L overlay
+          # sets the PCIe lane switch (GPIO 11), without it the Wi-Fi card
+          # in the slot (MT7996, 14c3:7990) never links up
+          boot_command: bootm $loadaddr#config-mt7987a-bananapi-bpi-r4-lite#mt7987a-bananapi-bpi-r4-lite-1pcie-2L
       - ShellDriver:
           prompt: 'root@[\w()]+:[^ ]+ '
           login_prompt: Please press Enter to activate this console.
