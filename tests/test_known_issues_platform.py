@@ -129,12 +129,16 @@ def test_reboot(env, target, power_strategy, shell_command, request, record_prop
         _known_issue(request, "openwrt/openwrt#26753: ipq806x hangs on reboot")
 
     console = _end_session(target, shell_command, "reboot")
+    # a bootloader at another speed than Linux (XikeStor SKS8300: 9600)
+    uboot_baudrate = getattr(power_strategy, "uboot_baudrate", None)
     try:
         start = time.monotonic()
         index, _, _, _ = console.expect(
             [r"Restarting system", pexpect.TIMEOUT], timeout=REBOOT_TIMEOUT
         )
         assert index == 0, "the kernel never reached its restart handler"
+        if uboot_baudrate:
+            console.serial.baudrate = uboot_baudrate
         index, _, match, _ = console.expect(
             [BOOT_BANNER, pexpect.TIMEOUT], timeout=REBOOT_TIMEOUT
         )
@@ -142,6 +146,8 @@ def test_reboot(env, target, power_strategy, shell_command, request, record_prop
         assert index == 0, "no bootloader or kernel start after 'Restarting system'"
         record_property("reboot_banner", match.group(0).decode(errors="replace"))
     finally:
+        if uboot_baudrate:
+            console.serial.baudrate = console.port.speed
         power_strategy.transition("off")
 
 
