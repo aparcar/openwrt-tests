@@ -39,7 +39,12 @@ Health checks use the snapshot initramfs (none of the three is in a release).
   `uboot> # `; it has no `echo`, so the target uses `SmallUBootDriver`.
   Its network is off until `rtk network on` (hardware profile `UBNT_USL8A`,
   about 4 s); TFTP loads to `0x82000000` over the fibre in lan1, the
-  legacy uImage runs at `0x80100000`.
+  legacy uImage runs at `0x80100000`. Since 2026-11-26 that TFTP times out
+  on every boot (U-Boot doesn't bring the SFP+ module up), so the target
+  uses `FlashBootStrategy` instead: the OpenWrt in flash copies the image
+  under test over SSH, writes it to `firmware` (kernel0, where U-Boot boots
+  from) and the board is power cycled. Recovery if an image in flash
+  doesn't boot: the U-Boot TFTP steps above, by hand.
 - **LGS328MPC**: the console now shows U-Boot (`U-Boot
   2011.12.(3.6.0.48)`, RTL9300, 512 MB, 128 MB SPI-NAND; the flash boot
   loads to `0x81000000`), but with noise bursts while U-Boot and Linux set

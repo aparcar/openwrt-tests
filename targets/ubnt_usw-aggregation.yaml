@@ -1,15 +1,22 @@
 ## Ubiquiti UniFi USW Aggregation: RTL9303, 256M RAM, 16M NOR, 8x 10G
-## SFP+, internal 3.3V TTL header (115200 8N1). Boots the initramfs from
-## U-Boot over TFTP (openwrt/openwrt commit e4ed8e7fe7).
-## U-Boot usw-US_v1.0.25.77 (prompt "uboot> # ") has no `echo` and skips
-## the network at boot ("Net Initialization Skipped"): `rtk network on`
-## before tftpboot.
+## SFP+, internal 3.3V TTL header (115200 8N1). Network only through the
+## SFP+ cages, and its U-Boot (usw-US_v1.0.25.77, "rtk network on") doesn't
+## bring the lab's SFP+ module up reliably: TFTP times out ("T T").
+## U-Boot boots the uImage at the start of "firmware" (kernel0), so the
+## image under test goes there from the OpenWrt in flash (FlashBootStrategy:
+## scp, mtd write, power cycle); an initramfs still runs from RAM.
+## Recovery when the image in flash doesn't boot: Esc at "Hit Esc key to
+## stop autoboot", `rtk network on`, `tftpboot 0x82000000 <file>`,
+## `bootm 0x82000000`, then `mtd write` from the booted initramfs.
 openwrt:
   name: Ubiquiti UniFi USW Aggregation
   target: realtek-rtl930x
   profile: ubnt_usw-aggregation
   # in no release yet (not in 25.12)
   snapshots_only: true
+  # boot from flash, copy and write the image, boot again: longer than the
+  # 300 s per test
+  boot_timeout: 900
 targets:
   main:
     resources:
@@ -17,33 +24,24 @@ targets:
         name: !template "$LG_PLACE"
     drivers:
       PDUDaemonDriver: {}
-      TFTPProviderDriver: {}
       SerialDriver:
         txdelay: 0.01
-      ## no `echo` in this U-Boot; one Esc (boot_secret) stops autoboot
-      SmallUBootDriver:
-        boot_expression: "Hit Esc key to stop autoboot"
-        boot_secret: "\x1b"
-        boot_secret_nolf: true
-        prompt: 'uboot> # '
-        init_commands:
-          - rtk network on
-          - tftpboot 0x82000000
-        boot_command: bootm 0x82000000
       ShellDriver:
-        prompt: 'root@[\w()]+:[^ ]+ '
+        ## the image in flash may have a hostname of its own (usw-aggregation)
+        prompt: 'root@[\w()-]+:[^ ]+ '
         login_prompt: Please press Enter to activate this console.
         await_login_timeout: 15
-        login_timeout: 120
+        login_timeout: 180
         post_login_settle_time: 5
         username: root
-      UBootTFTPStrategy: {}
       SSHDriver:
         connection_timeout: 120.0
         explicit_scp_mode: True
+      FlashBootStrategy:
+        partition: firmware
 
 images:
   root: !template $LG_IMAGE
 
 imports:
-  - ../strategies/tftpstrategy.py
+  - ../strategies/flashstrategy.py
