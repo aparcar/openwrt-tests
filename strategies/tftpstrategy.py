@@ -78,6 +78,8 @@ class UBootTFTPStrategy(Strategy):
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
+        # the target's own init_commands; every boot puts the setenvs before them
+        self._init_commands = None
 
     def _stage(self, filename):
         """Like TFTPProviderDriver.stage(), but the symlink in the TFTP root
@@ -123,9 +125,11 @@ class UBootTFTPStrategy(Strategy):
                 staged_file = staged
                 tftp_server_ip = None
 
+            if self._init_commands is None:
+                self._init_commands = self.uboot.init_commands
             self.uboot.init_commands = (
                 f"setenv bootfile {staged_file}",
-            ) + self.uboot.init_commands
+            ) + self._init_commands
 
             if tftp_server_ip:
                 tftp_dut_ip = ipaddress.ip_address(tftp_server_ip) + 1
