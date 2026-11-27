@@ -153,6 +153,18 @@ def find_ap(ssh_command, ssid):
     return None, None
 
 
+def wait_ap(ssh_command, ssid, timeout=60):
+    """Wait until the AP with `ssid` runs (e.g. after `wifi up`); its
+    interface. Fails after `timeout` seconds."""
+    deadline = time.monotonic() + timeout
+    while True:
+        ifname, _ = find_ap(ssh_command, ssid)
+        if ifname:
+            return ifname
+        assert time.monotonic() < deadline, f"no {ssid} AP after {timeout} s"
+        time.sleep(2)
+
+
 def wifi_diagnostics(ssh_command):
     """The radios the kernel has and the last driver and hostapd messages,
     for failure messages: the console doesn't show them (dmesg -n 1)."""

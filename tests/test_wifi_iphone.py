@@ -34,7 +34,9 @@ from iphone_probe_fixtures import (
 )
 from probe_fixtures import DUT_LAN, DUT_LAN_IP
 from test_wifi import (
+    AP_KEY,
     band_params,
+    wait_ap,
     wifi_reset,  # noqa: F401 (autouse fixture: fresh APs for every test)
 )
 
@@ -56,22 +58,6 @@ WPA3_ONLY_XFAIL = pytest.mark.xfail(
     strict=False,
 )
 KNOWN = {"sae": [WPA3_ONLY_XFAIL]}
-# Seen on the WDR3600: after `wifi down`/`wifi up` the AP is back on channel
-# 36 and the lab's Linux clients rejoin (test_wifi_restart_clients_reconnect
-# [5g]), but wifid finds "no scan candidate network" for 120 s.
-RESTART_5G_XFAIL = pytest.mark.xfail(
-    reason="the iPhone doesn't rescan for a 5 GHz AP that vanished; Linux "
-    "clients do rejoin",
-    strict=False,
-)
-RESTART_BANDS = [
-    pytest.param(
-        *p.values,
-        marks=[*p.marks, RESTART_5G_XFAIL] if p.values[0] == "5g" else p.marks,
-        id=p.id,
-    )
-    for p in BANDS
-]
 
 
 def per_band(values, known=None):
@@ -195,23 +181,33 @@ def test_iphone_hidden_ssid(ssh_command, iphone_probe, target, band):
     assert_ping(bed, state["ip"])
 
 
-@pytest.mark.parametrize("band", RESTART_BANDS)
+@pytest.mark.parametrize("band", BANDS)
 def test_iphone_reconnects_after_wifi_restart(
     ssh_command, iphone_probe, target, band, record_property
 ):
-    """For each band, after `wifi down` and `wifi up` the iPhone comes back
-    on its own and the device reaches it again. If it fails, phones stay
-    offline after a Wi-Fi restart until the user rejoins by hand. The
-    reconnect time is recorded."""
+    """For each band, after `wifi down` and `wifi up` the iPhone gets back
+    on the restarted AP and the device reaches it again. If it fails, an AP
+    that was restarted (settings change, radio reset) doesn't take back the
+    clients it had. The reconnect time is recorded.
+
+    The phone is told to join again (its Wi-Fi profile reinstalled) once
+    the AP is back: on its own it rescans for an AP that went away only
+    every few minutes (wifid: "no scan candidate network"; in 2026-11 runs
+    it missed the 180 s on 5 GHz almost always, on 2.4 GHz in 7 of 17).
+    iOS 15 rejects turning Wi-Fi off and on (SetWiFiPowerState).
+    test_wifi_restart_clients_reconnect checks that clients come back
+    without help."""
     bed = PhoneBed.start(ssh_command, iphone_probe, target, band, "psk2")
     assert_joined(bed, bed.wait())
 
     ssh_command.run_check("wifi down")
     gone = bed.wait_gone()
     assert not gone["associated"], f"iPhone still associated after wifi down: {gone}"
-    started = time.monotonic()
     ssh_command.run_check("wifi up")
+    wait_ap(ssh_command, bed.ssid)
 
+    started = time.monotonic()
+    iphone_probe.join(bed.ssid, "psk2", key=AP_KEY)
     state = bed.wait(timeout=180)
     record_property("iphone_reconnect_s", round(time.monotonic() - started, 1))
     assert_joined(bed, state)
